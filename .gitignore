@@ -1,0 +1,44 @@
+# Brainstorm / maquettes (compagnon visuel superpowers)
+.superpowers/
+
+# Secrets et identifiants (BYO OAuth) : JAMAIS commités
+.env
+.env.*
+!.env.example
+client_secret*.json
+credentials*.json
+*token*.json
+secrets/
+
+# Donnees runtime locales (base, pieces jointes, cache)
+data/
+*.sqlite
+*.sqlite3
+*.db
+attachments/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Build / packaging
+build/
+dist/
+*.spec.bak
+*.app/
+*.dmg
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# OS / editeur
+.DS_Store
+.idea/
+.vscode/
