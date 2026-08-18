@@ -74,3 +74,23 @@ def test_send_endpoint(database):
     assert r.status_code == 200 and r.json()["gmail_id"] == "gX"
     assert captured["to"] == "d@x.co"
     assert c.post("/send", json={"account_id": 1, "to": "d@x.co"}).status_code == 401
+
+
+def test_action_endpoints(database):
+    store = Store(database)
+    a = store.upsert_account("me@example.org")
+    store.upsert_message(a, "g1", subject="x", label_ids='["INBOX"]')
+    calls = []
+
+    def act_fn(mid, action, add=None, remove=None):
+        calls.append((mid, action, add, remove))
+        return {"ok": True}
+
+    app = create_app(store, TOKEN, act_fn=act_fn)
+    c = TestClient(app)
+    r = c.post("/messages/5/modify", headers=_auth(), json={"remove_labels": ["UNREAD"]})
+    assert r.status_code == 200 and r.json()["ok"]
+    assert calls[0][:2] == (5, "modify")
+    assert c.post("/messages/5/trash", headers=_auth()).status_code == 200
+    assert calls[1][1] == "trash"
+    assert c.post("/messages/5/trash").status_code == 401

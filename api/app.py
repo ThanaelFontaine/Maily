@@ -21,7 +21,12 @@ class SendPayload(BaseModel):
     thread_id: str | None = None
 
 
-def create_app(store, token, sync_fn=None, send_fn=None, frontend_dir=None) -> FastAPI:
+class ModifyPayload(BaseModel):
+    add_labels: list[str] = []
+    remove_labels: list[str] = []
+
+
+def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None, frontend_dir=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -91,6 +96,26 @@ def create_app(store, token, sync_fn=None, send_fn=None, frontend_dir=None) -> F
             return send_fn(payload.model_dump())
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"envoi echoue: {e}")
+
+    def _act(message_id, action, add=None, remove=None):
+        if act_fn is None:
+            raise HTTPException(status_code=501, detail="actions not wired")
+        try:
+            return act_fn(message_id, action, add, remove)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"action echouee: {e}")
+
+    @app.post("/messages/{message_id}/modify", dependencies=[Depends(guard)])
+    def modify_msg(message_id: int, payload: ModifyPayload):
+        return _act(message_id, "modify", payload.add_labels, payload.remove_labels)
+
+    @app.post("/messages/{message_id}/trash", dependencies=[Depends(guard)])
+    def trash_msg(message_id: int):
+        return _act(message_id, "trash")
+
+    @app.post("/messages/{message_id}/untrash", dependencies=[Depends(guard)])
+    def untrash_msg(message_id: int):
+        return _act(message_id, "untrash")
 
     if frontend_dir:
         fd = pathlib.Path(frontend_dir)

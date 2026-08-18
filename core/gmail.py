@@ -132,3 +132,17 @@ class GmailClient:
         if thread_id:
             body["threadId"] = thread_id
         return self._execute(self.service.users().messages().send(userId="me", body=body))
+
+    def modify(self, gmail_id, add=None, remove=None):
+        body = {}
+        if add:
+            body["addLabelIds"] = list(add)
+        if remove:
+            body["removeLabelIds"] = list(remove)
+        return self._execute(self.service.users().messages().modify(userId="me", id=gmail_id, body=body))
+
+    def trash(self, gmail_id):
+        return self._execute(self.service.users().messages().trash(userId="me", id=gmail_id))
+
+    def untrash(self, gmail_id):
+        return self._execute(self.service.users().messages().untrash(userId="me", id=gmail_id))

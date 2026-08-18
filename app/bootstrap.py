@@ -56,6 +56,26 @@ def make_send_fn(store):
     return _send
 
 
+def make_act_fn(store):
+    from core import accounts_service as svc
+
+    def _act(message_id, action, add=None, remove=None):
+        m = store.get_message(message_id)
+        if not m:
+            raise ValueError("message introuvable")
+        acc = store.get_account(m["account_id"])
+        email = acc["email"]
+        if action == "modify":
+            return svc.modify_message(store, email, message_id, add=add, remove=remove)
+        if action == "trash":
+            return svc.trash_message(store, email, message_id)
+        if action == "untrash":
+            return svc.untrash_message(store, email, message_id)
+        raise ValueError(f"action inconnue: {action}")
+
+    return _act
+
+
 def _frontend_dir() -> pathlib.Path:
     return pathlib.Path(__file__).resolve().parent.parent / "frontend"
 
@@ -84,7 +104,8 @@ def run():
     from core.config import load_settings
     months = load_settings().backfill_months
     app = create_app(store, token, sync_fn=make_sync_fn(store, months),
-                     send_fn=make_send_fn(store), frontend_dir=_frontend_dir())
+                     send_fn=make_send_fn(store), act_fn=make_act_fn(store),
+                     frontend_dir=_frontend_dir())
 
     port = free_port()
     _start_server(app, port)

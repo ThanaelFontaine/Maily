@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from core.db import Database
 
 _MESSAGE_COLS = {
@@ -141,3 +142,26 @@ class Store:
 
     def get_outbox(self, outbox_id):
         return self.db.read().execute("SELECT * FROM outbox WHERE id=?", (outbox_id,)).fetchone()
+
+    def apply_local_labels(self, message_id, add=None, remove=None):
+        add = set(add or [])
+        remove = set(remove or [])
+        with self.db.writer() as c:
+            row = c.execute("SELECT label_ids FROM messages WHERE id=?", (message_id,)).fetchone()
+            if not row:
+                return
+            labels = set(json.loads(row["label_ids"] or "[]"))
+            labels = (labels | add) - remove
+            c.execute(
+                """UPDATE messages SET label_ids=?, is_unread=?, is_starred=?,
+                     updated_at=datetime('now') WHERE id=?""",
+                (json.dumps(sorted(labels)),
+                 1 if "UNREAD" in labels else 0,
+                 1 if "STARRED" in labels else 0,
+                 message_id),
+            )
+
+    def set_trashed(self, message_id, trashed):
+        with self.db.writer() as c:
+            c.execute("UPDATE messages SET is_trashed=?, updated_at=datetime('now') WHERE id=?",
+                      (1 if trashed else 0, message_id))

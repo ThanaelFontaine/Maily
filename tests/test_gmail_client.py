@@ -48,3 +48,30 @@ def test_list_history_raises_on_404():
     client = GmailClient(service=FakeService())
     with pytest.raises(HistoryExpired):
         client.list_history("999")
+
+
+def test_modify_and_trash_build_requests():
+    captured = {}
+
+    class FakeMessages:
+        def modify(self, userId, id, body):
+            captured["modify"] = (id, body)
+            return FakeReq(result={"id": id})
+
+        def trash(self, userId, id):
+            captured["trash"] = id
+            return FakeReq(result={"id": id})
+
+    class FakeUsers:
+        def messages(self):
+            return FakeMessages()
+
+    class FakeService:
+        def users(self):
+            return FakeUsers()
+
+    client = GmailClient(service=FakeService())
+    client.modify("g1", add=["A"], remove=["UNREAD"])
+    assert captured["modify"] == ("g1", {"addLabelIds": ["A"], "removeLabelIds": ["UNREAD"]})
+    client.trash("g2")
+    assert captured["trash"] == "g2"

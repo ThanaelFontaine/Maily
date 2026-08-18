@@ -12,6 +12,33 @@ def build_gmail_client(email) -> GmailClient:
     return GmailClient(service)
 
 
+def modify_message(store, email, message_id, add=None, remove=None) -> dict:
+    m = store.get_message(message_id)
+    if not m:
+        raise ValueError("message introuvable")
+    build_gmail_client(email).modify(m["gmail_id"], add=add, remove=remove)
+    store.apply_local_labels(message_id, add=add, remove=remove)
+    return {"ok": True}
+
+
+def trash_message(store, email, message_id) -> dict:
+    m = store.get_message(message_id)
+    if not m:
+        raise ValueError("message introuvable")
+    build_gmail_client(email).trash(m["gmail_id"])
+    store.set_trashed(message_id, True)
+    return {"ok": True}
+
+
+def untrash_message(store, email, message_id) -> dict:
+    m = store.get_message(message_id)
+    if not m:
+        raise ValueError("message introuvable")
+    build_gmail_client(email).untrash(m["gmail_id"])
+    store.set_trashed(message_id, False)
+    return {"ok": True}
+
+
 def send_from_account(store, email, account_id, payload) -> dict:
     client = build_gmail_client(email)
     return sender.send_message(
