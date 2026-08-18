@@ -76,3 +76,39 @@ class Store:
             (account_id, key),
         ).fetchone()
         return row[0] if row else None
+
+    def list_messages(self, account_id=None, label=None, limit=50, offset=0):
+        sql = "SELECT * FROM messages WHERE is_trashed=0"
+        params = []
+        if account_id is not None:
+            sql += " AND account_id=?"
+            params.append(account_id)
+        if label:
+            sql += " AND label_ids LIKE ?"
+            params.append(f'%"{label}"%')
+        sql += " ORDER BY internal_date DESC, id DESC LIMIT ? OFFSET ?"
+        params += [limit, offset]
+        return self.db.read().execute(sql, params).fetchall()
+
+    def list_threads(self, account_id=None, limit=50, offset=0):
+        sql = ("SELECT thread_id, account_id, MAX(internal_date) AS last_date, "
+               "COUNT(*) AS message_count, "
+               "(SELECT subject FROM messages m2 WHERE m2.thread_id=m.thread_id "
+               " AND m2.is_trashed=0 ORDER BY internal_date DESC LIMIT 1) AS subject "
+               "FROM messages m WHERE is_trashed=0")
+        params = []
+        if account_id is not None:
+            sql += " AND account_id=?"
+            params.append(account_id)
+        sql += " GROUP BY thread_id ORDER BY last_date DESC LIMIT ? OFFSET ?"
+        params += [limit, offset]
+        return self.db.read().execute(sql, params).fetchall()
+
+    def get_thread_messages(self, thread_id, account_id=None):
+        sql = "SELECT * FROM messages WHERE thread_id=? AND is_trashed=0"
+        params = [thread_id]
+        if account_id is not None:
+            sql += " AND account_id=?"
+            params.append(account_id)
+        sql += " ORDER BY internal_date ASC, id ASC"
+        return self.db.read().execute(sql, params).fetchall()
