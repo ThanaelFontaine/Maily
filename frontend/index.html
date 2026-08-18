@@ -46,9 +46,12 @@
         <label class="c-row"><span class="c-lbl">Cc</span><input id="c-cc" placeholder="optionnel"></label>
         <label class="c-row"><span class="c-lbl">Objet</span><input id="c-subject" placeholder="objet du message"></label>
         <textarea id="c-body" placeholder="Votre message…"></textarea>
+        <div class="c-atts" id="c-atts"></div>
+        <input type="file" id="c-file" multiple hidden>
       </div>
       <div class="composer-foot">
         <button class="gel" id="c-send">✈ Envoyer</button>
+        <button class="ghost" id="c-attach">📎 Joindre</button>
         <button class="ghost" id="c-cancel">Annuler</button>
         <span id="c-status" class="c-status"></span>
       </div>

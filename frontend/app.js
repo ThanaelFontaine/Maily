@@ -367,11 +367,36 @@ function openComposer(prefill) {
   const c = el("#composer");
   c.dataset.inReplyTo = prefill.inReplyTo || "";
   c.dataset.threadId = prefill.threadId || "";
+  state.composerAtts = [];
+  renderComposerAtts();
   c.hidden = false;
   el("#c-to").focus();
 }
 
 function closeComposer() { el("#composer").hidden = true; }
+
+function renderComposerAtts() {
+  const wrap = el("#c-atts");
+  const atts = state.composerAtts || [];
+  wrap.innerHTML = atts.map((a, i) =>
+    `<span class="c-att">📎 ${esc(a.filename)}<span class="c-att-x" data-i="${i}">×</span></span>`).join("");
+  wrap.querySelectorAll(".c-att-x").forEach((x) => {
+    x.onclick = () => { state.composerAtts.splice(Number(x.dataset.i), 1); renderComposerAtts(); };
+  });
+}
+
+function addComposerFiles(fileList) {
+  [...fileList].forEach((f) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = String(reader.result).split(",")[1] || "";
+      state.composerAtts.push({ filename: f.name, mime_type: f.type || "application/octet-stream", data });
+      renderComposerAtts();
+    };
+    reader.readAsDataURL(f);
+  });
+  el("#c-file").value = "";
+}
 
 async function sendComposer() {
   const status = el("#c-status");
@@ -385,6 +410,7 @@ async function sendComposer() {
     body_text: el("#c-body").value,
     in_reply_to: el("#composer").dataset.inReplyTo || null,
     thread_id: el("#composer").dataset.threadId || null,
+    attachments: state.composerAtts || [],
   };
   status.textContent = "Envoi…";
   el("#c-send").disabled = true;
@@ -451,6 +477,8 @@ async function main() {
   el("#c-close").onclick = closeComposer;
   el("#c-cancel").onclick = closeComposer;
   el("#c-send").onclick = sendComposer;
+  el("#c-attach").onclick = () => el("#c-file").click();
+  el("#c-file").onchange = (e) => addComposerFiles(e.target.files);
   el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
   initSearch();
   try {

@@ -246,3 +246,11 @@ body {
 :root[data-theme="dedsec"] .mailtab { background: #0f1315; border: 1px solid #202b2c; border-bottom: none;
   border-radius: 6px 6px 0 0; color: #8A8F98; }
 :root[data-theme="dedsec"] .mailtab.on { background: #FF2D78; color: #0a0c0f; font-weight: 800; }
+
+/* ---------- Pieces jointes du composer ---------- */
+.c-atts { display: flex; flex-wrap: wrap; gap: 6px; }
+.c-att { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 12px;
+  border-radius: 8px; background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.85); }
+.c-att-x { cursor: pointer; opacity: .55; font-weight: 700; }
+.c-att-x:hover { opacity: 1; }
+:root[data-theme="dedsec"] .c-att { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; }
