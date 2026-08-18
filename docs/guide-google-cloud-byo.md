@@ -1,56 +1,124 @@
 # Guide : créer tes identifiants Google (BYO credentials) - gratuit, ~10 min
 
-> But : obtenir un `client_id` + `client_secret` de type "Application de bureau" pour que Maily se connecte à tes boîtes Gmail via l'API Gmail. C'est **gratuit**, sans carte bancaire, et **sans vérification Google** (usage personnel). Tu fais ça **une seule fois** ; ensuite tu connecteras chaque boîte d'un clic dans l'app.
+> But : obtenir un `client_id` + `client_secret` de type "Application de bureau" pour que Maily se connecte à tes boîtes Gmail via l'API Gmail. C'est **gratuit**, sans carte bancaire, **sans vérification Google** (usage personnel). Tu fais ça **une seule fois** ; ensuite tu connecteras chaque boîte d'un clic dans l'app.
 >
-> Note : l'interface de Google Cloud Console évolue ; les libellés peuvent varier légèrement. La logique reste la même.
+> ⚠️ Google a récemment renommé cet espace en **"Google Auth Platform"** (au lieu de l'ancien "OAuth consent screen"). Ce guide suit la **nouvelle interface** (onglets : Overview, Branding, Audience, Clients, Data Access). Les libellés exacts peuvent varier légèrement ; la logique reste la même. Tu peux basculer l'interface en anglais (menu en haut à droite) si tes captures ne correspondent pas aux miennes.
+
+---
 
 ## 1. Créer un projet Google Cloud (gratuit)
 
-1. Va sur https://console.cloud.google.com/ (connecte-toi avec un de tes comptes Google, par ex. `work@example.com`).
-2. En haut, ouvre le sélecteur de projet, puis **Nouveau projet**.
-3. Nom : `Maily` (ou ce que tu veux). Pas besoin d'organisation. **Créer**.
-4. Sélectionne bien ce projet dans le sélecteur en haut avant la suite.
+1. Va sur https://console.cloud.google.com/ et connecte-toi avec `work@example.com`.
+2. En haut, sélecteur de projet → **New project / Nouveau projet**.
+3. **Project name** : `Maily Automation Claude` (ou ce que tu veux).
+4. **Organization / Parent** : sélectionne **`example.org`** (c'est normal et obligatoire avec un compte Workspace, ça ne pose aucun souci - voir la note plus bas).
+5. **Create**. Puis assure-toi que ce projet est bien sélectionné en haut.
+
+> Note "No organization" : indisponible pour un compte Workspace, c'est attendu. Attacher le projet à `example.org` n'a aucun impact négatif. `thanaelfontaine.eu` étant dans la même org, tout sera géré au même endroit.
 
 ## 2. Activer l'API Gmail
 
 1. Menu ☰ → **APIs & Services** → **Library** (Bibliothèque).
-2. Cherche **Gmail API**, clique dessus, puis **Enable** (Activer).
+2. Cherche **Gmail API** → clique → **Enable** (Activer).
 
-## 3. Configurer l'écran de consentement OAuth
+---
 
-1. Menu ☰ → **APIs & Services** → **OAuth consent screen** (Écran de consentement OAuth).
-2. Type d'utilisateur : choisis **External** (Externe). *(C'est obligatoire car tu veux connecter aussi des Gmail hors Workspace ; "Internal" ne marcherait que pour un seul domaine Workspace.)* → **Create**.
-3. Renseigne le minimum :
+## 3. Google Auth Platform : l'assistant "Get started"
+
+Va dans Menu ☰ → **APIs & Services** → **OAuth consent screen** (qui ouvre désormais **Google Auth Platform**).
+
+### 3.1 Si tu vois "Google Auth Platform not configured yet"
+Clique **Get started**. Un petit assistant en 4 étapes s'ouvre :
+
+1. **App Information**
    - **App name** : `Maily`
-   - **User support email** : ton email
-   - **Developer contact** : ton email
-   - (Logo, domaines : facultatifs, laisse vide.)
-   - **Save and Continue**.
-4. **Scopes** : tu peux **Save and Continue** sans rien ajouter ici (l'app demandera les scopes elle-même au moment de la connexion). 
-5. **Test users** : ajoute ici **chacune de tes adresses** que tu veux connecter (`work@example.com`, `you@example.com`, ton Gmail perso, etc.). **Save and Continue**.
+   - **User support email** : choisis ton email (`work@example.com`).
+   - **Next**.
+2. **Audience** ← ÉTAPE CLÉ
+   - Choisis **External** (Externe). **Surtout pas Internal.**
+   - Pourquoi : *Internal* ne laisserait se connecter que les comptes de l'org `example.org`. *External* laisse se connecter **tous** tes comptes, y compris ton **Gmail perso** (qui n'est pas dans l'org) et `thanaelfontaine.eu`.
+   - **Next**.
+3. **Contact Information**
+   - Mets ton email. **Next**.
+4. **Finish**
+   - Coche l'acceptation de la *Google API Services User Data Policy*.
+   - **Continue / Create**.
 
-## 4. Passer l'app "En production" (important)
+### 3.2 Si l'assistant est déjà passé (tu vois directement les onglets)
+Pas grave, on va régler chaque onglet ci-dessous (Branding, Audience, Data Access, Clients).
 
-> Pourquoi : en mode "Testing", les connexions expirent au bout de **7 jours** (il faudrait te reconnecter chaque semaine). En "Production", c'est durable. Pour un usage perso (< ~100 utilisateurs), **aucune vérification n'est requise**.
+---
 
-1. Toujours dans **OAuth consent screen**, repère le statut de publication (**Publishing status**).
-2. Clique **Publish App** → **Confirm**. Le statut passe à **In production**.
-3. Si Google affiche "vérification requise / non nécessaire" : ignore, tu peux rester non vérifié pour un usage perso. (Tu verras juste un écran d'avertissement à la première connexion, voir étape 6.)
+## 4. Onglet "Branding" (rapide)
 
-## 5. Créer l'identifiant OAuth "Application de bureau"
+Menu de gauche → **Branding**.
+- **App name** : `Maily` (déjà rempli sûrement).
+- **User support email** : ton email.
+- Logo, domaines autorisés, liens : **facultatifs**, laisse vide.
+- **Save**.
 
-1. Menu ☰ → **APIs & Services** → **Credentials** (Identifiants).
-2. **+ Create Credentials** → **OAuth client ID**.
-3. **Application type** : **Desktop app** (Application de bureau). Nom : `Maily Desktop`. → **Create**.
-4. Une fenêtre affiche ton **Client ID** et **Client secret**. **Télécharge le JSON** (bouton "Download JSON") et/ou copie les deux valeurs.
-   - ⚠️ Garde ce fichier **hors de tout dossier Git** et ne le partage pas. (Dans Maily, tu le colleras dans les réglages ; il sera stocké dans le Trousseau macOS.)
+---
 
-## 6. Ce qui se passera à la première connexion dans Maily
+## 5. Onglet "Audience" : type + test users + passage en Production
+
+Menu de gauche → **Audience**.
+
+1. **User type** : vérifie que c'est bien **External**. (S'il est sur Internal, repasse-le en External.)
+2. **Test users** : clique **Add users** et ajoute **chacune de tes adresses** à connecter :
+   - `work@example.com`
+   - `you@example.com`
+   - ton Gmail perso
+   - **Save**.
+3. **Publishing status** : tu verras "Testing".
+   - Clique **Publish app** → **Confirm**. Le statut passe à **In production**.
+   - Pourquoi c'est important : en "Testing", les connexions **expirent au bout de 7 jours** (tu devrais te reconnecter chaque semaine). En "In production", c'est **durable**.
+   - Pour un usage perso (< ~100 utilisateurs), **aucune vérification n'est requise**. Si Google mentionne la vérification, tu peux l'ignorer et rester non vérifié (tu verras juste un écran d'avertissement à la 1re connexion, voir §8).
+
+> Si tu préfères ne pas publier tout de suite : tu peux rester en "Testing" pour un premier test, mais prévois de re-cliquer "Autoriser" toutes les semaines. Le passage en Production est recommandé.
+
+---
+
+## 6. Onglet "Data Access" : les scopes (facultatif mais propre)
+
+Menu de gauche → **Data Access** → **Add or remove scopes**.
+
+- Dans la barre de filtre, cherche et coche :
+  - `https://www.googleapis.com/auth/gmail.modify` (lire, ranger, libellés, corbeille)
+  - `https://www.googleapis.com/auth/gmail.send` (envoyer)
+- **Update** puis **Save**.
+
+> Ces scopes apparaissent comme **restricted/sensitive** : normal. Pour un usage perso non vérifié, ça reste gratuit et fonctionnel (avertissement à la 1re connexion, §8). Cette étape est **facultative** : si tu la sautes, l'app demandera de toute façon ces autorisations au moment de connecter une boîte. La faire ici rend juste l'écran de consentement plus explicite.
+
+---
+
+## 7. Onglet "Clients" : créer l'identifiant "Application de bureau"
+
+Menu de gauche → **Clients** → **Create client** (ou **+ Create credentials → OAuth client ID** dans l'onglet "Credentials" classique).
+
+1. **Application type** : **Desktop app** (Application de bureau).
+2. **Name** : `Maily Desktop`.
+3. **Create**.
+4. Une fenêtre affiche ton **Client ID** et **Client secret**.
+   - Clique **Download JSON** (recommandé) et garde le fichier **hors de tout dossier Git**, ne le partage pas.
+   - Tu peux aussi juste copier les 2 valeurs.
+
+> Dans Maily, tu colleras ce `client_id` + `client_secret` (ou importeras le JSON) dans les **réglages** ; ils seront stockés dans le **Trousseau macOS**, jamais dans le code ni dans git.
+
+---
+
+## 8. Ce qui se passera à la 1re connexion dans Maily
 
 - Maily ouvrira ton navigateur sur l'écran de consentement Google.
-- Comme l'app n'est pas "vérifiée" (normal pour un projet perso), Google affichera **"Google n'a pas validé cette application"**. Clique sur **Paramètres avancés** → **Accéder à Maily (non sécurisé)**. C'est **attendu** et sans risque (c'est **ta** propre app, tes propres identifiants).
-- Tu autorises les accès (lecture/gestion + envoi), et c'est fini. À répéter une fois par boîte.
+- Comme l'app n'est **pas "vérifiée"** (normal pour un projet perso), Google affichera **"Google n'a pas validé cette application"**.
+  - Clique **Paramètres avancés** (Advanced) → **Accéder à Maily (non sécurisé)** (Go to Maily (unsafe)).
+  - C'est **attendu** et sans risque : c'est **ta** propre app, **tes** identifiants.
+- Tu autorises les accès (gestion + envoi). À répéter **une fois par boîte**.
+- Cas particulier compte Workspace : si un compte `@example.org`/`@thanaelfontaine.eu` est bloqué par une **règle d'administration** ("Accès bloqué"), va dans **Admin console → Sécurité → Contrôles des API → Gérer l'accès des applications tierces**, et autorise l'app par son **Client ID**. (Tu es admin, donc tu peux ; une seule fois pour les deux domaines.)
 
-## Récapitulatif de ce que tu me fourniras
+---
 
-Quand tu auras le `client_id` et le `client_secret` (ou le fichier JSON téléchargé), on les mettra dans les réglages de Maily au moment du test live. **Rien à me coller ici dans le chat** (surtout pas le secret) : on le fera dans l'app, en local, quand elle saura les recevoir.
+## Récapitulatif : ce dont on aura besoin
+
+Le `client_id` + `client_secret` (ou le fichier JSON téléchargé). On les mettra dans les **réglages de Maily**, en local, quand l'app saura les recevoir.
+
+⚠️ **Ne colle jamais le `client_secret` dans le chat.** Dis-moi simplement **"c'est fait"** quand tu l'as, et on le branchera dans l'app.
