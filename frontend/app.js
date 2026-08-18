@@ -172,6 +172,45 @@ function afterAction(msg) {
   loadMessages();
 }
 
+function fmtSize(b) {
+  if (!b) return "";
+  const k = b / 1024;
+  return k < 1024 ? Math.round(k) + " Ko" : (k / 1024).toFixed(1) + " Mo";
+}
+
+async function renderAttachments(id, wrap) {
+  let atts;
+  try { atts = await api(`/messages/${id}/attachments`); }
+  catch { wrap.style.display = "none"; return; }
+  const real = atts.filter((a) => !a.content_id);  // les images inline s'affichent dans le corps
+  if (!real.length) { wrap.style.display = "none"; return; }
+  wrap.innerHTML = real.map((a) =>
+    `<button class="att-chip" data-att="${a.id}">📎 ${esc(a.filename) || "fichier"}` +
+    `<span class="att-size">${fmtSize(a.size)}</span></button>`).join("");
+  wrap.querySelectorAll(".att-chip").forEach((btn) => {
+    const att = real.find((x) => String(x.id) === btn.dataset.att);
+    btn.onclick = () => downloadAttachment(id, btn.dataset.att, att);
+  });
+}
+
+async function downloadAttachment(id, attId, att) {
+  try {
+    const r = await fetch(`/messages/${id}/attachments/${attId}/download`, AUTH);
+    if (!r.ok) throw new Error(r.status);
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (att && att.filename) || "piece-jointe";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (e) {
+    banner("Téléchargement échoué : " + e.message);
+  }
+}
+
 async function openMessage(id) {
   state.currentId = id;
   let m;
@@ -204,6 +243,11 @@ async function openMessage(id) {
     try { await postAction(`/messages/${id}/trash`); afterAction("Déplacé vers la corbeille."); }
     catch (e) { banner("Erreur : " + e.message); }
   };
+
+  const attWrap = document.createElement("div");
+  attWrap.className = "attachments";
+  read.appendChild(attWrap);
+  renderAttachments(id, attWrap);
 
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
