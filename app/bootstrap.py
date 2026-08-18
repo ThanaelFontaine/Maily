@@ -122,21 +122,32 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
-# uids deja traites (la transparence ne doit s'appliquer qu'une fois par fenetre).
+# NSVisualEffectView (vibrancy) : material moderne translucide. Le material 0
+# (AppearanceBased) est DEPRECIE (10.14) et rend opaque sur macOS 26. 21 =
+# UnderWindowBackground, concu pour laisser voir le bureau depoli sous une fenetre.
+_GLASS_MATERIAL = 21       # NSVisualEffectMaterialUnderWindowBackground
+_GLASS_STATE_ACTIVE = 1    # NSVisualEffectStateActive
+_GLASS_BLEND_BEHIND = 0    # NSVisualEffectBlendingModeBehindWindow
+_GLASS_AUTORESIZE = 18     # NSViewWidthSizable(2) | NSViewHeightSizable(16)
+
+# uids deja traites (le re-parentage ne doit se faire qu'une fois par fenetre).
 _GLASS_DONE = set()
 
 
 def _apply_macos_transparency(win):
-    # Rend la fenetre reellement transparente pour voir le bureau NET derriere
-    # (theme Verre). Sur macOS 26, deux choses masquaient le bureau :
+    # Revele le VRAI bureau DEPOLI (flou) derriere le chrome translucide (Verre).
+    #
+    # Sur macOS 26, deux choses masquaient le bureau :
     #   1. La WKWebView peignait une underPageBackgroundColor opaque (forcee clair)
     #      et la cle KVC `drawsTransparentBackground` de pywebview est deprecie/
     #      no-op (on utilise `drawsBackground`).
-    #   2. pywebview ajoute une NSVisualEffectView (vibrancy) avec un material
-    #      deprecie (0) qui, imbriquee dans la WKWebView, rend un APLAT OPAQUE
-    #      (charcoal) au lieu de flouter le bureau. On la RETIRE : la fenetre
-    #      transparente laisse alors voir le bureau net.
-    # Tout se fait sur le thread principal, une seule fois par fenetre.
+    #   2. pywebview ajoute la NSVisualEffectView EN SOUS-VUE de la WKWebView (qui
+    #      EST la contentView). Imbriquee ainsi, la vibrancy "behind window" ne
+    #      compose pas le bureau (aplat opaque) ; en plus son material par defaut
+    #      (0) est deprecie.
+    # Correctif : re-parenter -> contentView = conteneur portant [vibrancy au fond
+    # (material 21), WKWebView transparente devant]. La vibrancy floute alors le
+    # bureau et le contenu web transparent se pose dessus. Thread principal, 1x.
     #
     # Prerequis systeme : Reglages > Accessibilite > Ecran > Reduire la
     # transparence = OFF (sinon macOS force un fond opaque).
@@ -159,26 +170,43 @@ def _apply_macos_transparency(win):
             window = bv.window
             webview = bv.webview  # WKWebView (WebKitHost), la contentView
 
-            # 1) WKWebView reellement transparente (voie moderne ; la cle KVC
-            #    `drawsTransparentBackground` de pywebview est deprecie/no-op sur 26).
+            # 1) WKWebView reellement transparente (voie moderne).
             for setter in (
                 lambda: webview.setValue_forKey_(False, "drawsBackground"),
                 lambda: webview.setUnderPageBackgroundColor_(clear),
-                lambda: webview.setValue_forKey_(False, "opaque"),
             ):
                 try:
                     setter()
                 except Exception:
                     pass
 
-            # 2) Retire la NSVisualEffectView opaque posee par pywebview (material
-            #    deprecie 0 -> aplat opaque). Sans elle, le bureau apparait NET
-            #    derriere la fenetre transparente (rendu le plus lisible du bureau).
+            # 2) Recupere/cree la vibrancy et lui donne un material translucide.
+            vev = None
             for sub in list(webview.subviews()):
                 if sub.isKindOfClass_(AppKit.NSVisualEffectView):
-                    sub.removeFromSuperview()
+                    vev = sub
+                    break
+            if vev is not None:
+                vev.removeFromSuperview()
+            else:
+                vev = AppKit.NSVisualEffectView.new()
+            vev.setMaterial_(_GLASS_MATERIAL)
+            vev.setBlendingMode_(_GLASS_BLEND_BEHIND)
+            vev.setState_(_GLASS_STATE_ACTIVE)
 
-            # 3) Fenetre transparente + active (recompositing live du bureau).
+            # 3) Nouveau contentView = conteneur ; [vibrancy au fond, web devant].
+            container = AppKit.NSView.alloc().initWithFrame_(webview.frame())
+            container.setAutoresizesSubviews_(True)
+            window.setContentView_(container)
+            vev.setFrame_(container.bounds())
+            vev.setAutoresizingMask_(_GLASS_AUTORESIZE)
+            container.addSubview_(vev)
+            webview.setFrame_(container.bounds())
+            webview.setAutoresizingMask_(_GLASS_AUTORESIZE)
+            container.addSubview_positioned_relativeTo_(webview, AppKit.NSWindowAbove, vev)
+
+            # 4) Fenetre transparente + active (recompositing live du bureau).
+            window.makeFirstResponder_(webview)
             window.setOpaque_(False)
             window.setBackgroundColor_(clear)
             window.makeKeyAndOrderFront_(None)
@@ -186,7 +214,7 @@ def _apply_macos_transparency(win):
                 AppKit.NSApp.activateIgnoringOtherApps_(True)
             except Exception:
                 pass
-            webview.setNeedsDisplay_(True)
+            container.setNeedsDisplay_(True)
         except Exception:
             pass
 

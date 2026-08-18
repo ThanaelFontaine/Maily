@@ -352,46 +352,72 @@ body {
 /* ============================================================= */
 /* ==============  THÈME GLASSMORPHISME PUR  =================== */
 /* ============================================================= */
+/* Verre SOMBRE facon "rice" : le depoli natif (vibrancy) floute le bureau ; le
+   chrome est un verre sombre translucide a texte clair, comme des terminaux
+   ricing. Pas de backdrop-filter CSS (le flou vient du natif). */
 :root[data-theme="glass"] {
-  --ink: #1f2937; --ink-soft: rgba(31,41,55,.58); --accent: #6d5ef6; --unread: #6d5ef6;
-  --hairline: rgba(255,255,255,.6);
+  --ink: #eef1f6; --ink-soft: rgba(233,238,246,.58); --accent: #8b7cff; --unread: #8b7cff;
+  --hairline: rgba(255,255,255,.14);
   --font: -apple-system, "Segoe UI", system-ui, sans-serif;
 }
-/* Verre reel : le body est transparent -> le bureau apparait (flou natif :
-   vibrancy macOS / compositeur Linux). Pas de faux fond peint, pas de
-   backdrop-filter CSS (bug WebKit de fond noir au-dessus d'une fenetre transparente). */
 :root[data-theme="glass"] body { background: transparent; }
 :root[data-theme="glass"] .sun,
 :root[data-theme="glass"] .hill,
 :root[data-theme="glass"] .bokeh { display: none; }
 :root[data-theme="glass"] .win {
-  background: rgba(255,255,255,.04);
+  background: rgba(255,255,255,.03); color: var(--ink);
   -webkit-backdrop-filter: none; backdrop-filter: none;
-  border: 1px solid rgba(255,255,255,.35);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 20px 60px rgba(20,20,40,.28);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 24px 70px rgba(0,0,0,.45);
 }
 :root[data-theme="glass"] .top,
 :root[data-theme="glass"] .rail,
 :root[data-theme="glass"] .listbar,
 :root[data-theme="glass"] .cats,
-:root[data-theme="glass"] .list { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.28); }
-:root[data-theme="glass"] .search { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.7); box-shadow: inset 0 1px 3px rgba(60,50,120,.12); }
+:root[data-theme="glass"] .list { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.08); }
+:root[data-theme="glass"] .search {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: var(--ink); box-shadow: none;
+}
+:root[data-theme="glass"] .search::placeholder { color: rgba(233,238,246,.42); }
 :root[data-theme="glass"] .gel {
-  background: rgba(109,94,246,.92); border: 1px solid rgba(255,255,255,.5); border-radius: 999px;
-  box-shadow: 0 4px 14px rgba(109,94,246,.35), inset 0 1px 0 rgba(255,255,255,.5); text-shadow: none;
+  background: rgba(139,124,255,.82); border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+  color: #fff; box-shadow: 0 6px 18px rgba(70,55,180,.4), inset 0 1px 0 rgba(255,255,255,.28); text-shadow: none;
 }
 :root[data-theme="glass"] .gel::after { display: none; }
-:root[data-theme="glass"] .ghost { background: rgba(255,255,255,.45); border: 1px solid rgba(255,255,255,.7); box-shadow: inset 0 1px 0 rgba(255,255,255,.7); }
+:root[data-theme="glass"] .ghost {
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  color: var(--ink); box-shadow: none;
+}
+:root[data-theme="glass"] .ghost:hover { background: rgba(255,255,255,.13); }
+:root[data-theme="glass"] .nav { color: var(--ink); }
+:root[data-theme="glass"] .nav:hover { background: rgba(255,255,255,.07); }
+:root[data-theme="glass"] .rail-sep,
+:root[data-theme="glass"] .cat,
+:root[data-theme="glass"] .listbar-title,
+:root[data-theme="glass"] .li-time,
+:root[data-theme="glass"] .li-subj { color: var(--ink-soft); }
+:root[data-theme="glass"] .cat:hover { background: rgba(255,255,255,.07); }
+:root[data-theme="glass"] .li { border-bottom-color: rgba(255,255,255,.06); }
+:root[data-theme="glass"] .li:hover { background: rgba(255,255,255,.06); }
 :root[data-theme="glass"] .nav.on,
 :root[data-theme="glass"] .li.on,
-:root[data-theme="glass"] .cat.on { background: rgba(255,255,255,.6); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); }
-:root[data-theme="glass"] .read { background: rgba(255,255,255,.78); }
-:root[data-theme="glass"] .orb { box-shadow: inset 0 -2px 4px rgba(0,0,0,.2), 0 1px 2px rgba(0,0,0,.15); }
-:root[data-theme="glass"] ::-webkit-scrollbar-thumb { background: rgba(109,94,246,.45); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+:root[data-theme="glass"] .cat.on { background: rgba(255,255,255,.14); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
+:root[data-theme="glass"] .read { background: rgba(18,20,28,.55); }
+:root[data-theme="glass"] .read-head { border-bottom-color: rgba(255,255,255,.10); }
+:root[data-theme="glass"] .read-close:hover { background: rgba(255,255,255,.10); color: var(--ink); }
+:root[data-theme="glass"] .att-chip {
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none;
+}
+:root[data-theme="glass"] .orb { box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.3); }
+:root[data-theme="glass"] .mailtab { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: var(--ink-soft); }
+:root[data-theme="glass"] .mailtab.on { background: rgba(255,255,255,.14); color: var(--ink); }
+:root[data-theme="glass"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+:root[data-theme="glass"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); background-clip: padding-box; border: 2px solid transparent; }
 
-/* Repli verre : moteurs sans transparence/flou natif -> panneau clair lisible. */
+/* Repli verre : moteurs sans transparence/flou natif -> panneau sombre lisible. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  :root[data-theme="glass"] .win { background: rgba(237,240,251,.85); }
+  :root[data-theme="glass"] .win { background: rgba(24,26,34,.88); }
 }
 
 /* ---------- Sélecteur de thème (modale) ---------- */
