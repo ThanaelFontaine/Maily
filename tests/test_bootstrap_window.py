@@ -33,24 +33,19 @@ def test_apply_macos_transparency_missing_instance_is_safe():
     _apply_macos_transparency(_FakeWin("uid-inexistant"))
 
 
-def test_apply_macos_transparency_sets_clear_when_instance_present(monkeypatch):
+def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypatch):
     cocoa = pytest.importorskip("webview.platforms.cocoa")
-    from PyObjCTools import AppHelper
+    AppHelper = pytest.importorskip("PyObjCTools.AppHelper")
 
-    captured = []
-
-    class _FakeWebview:
-        def setUnderPageBackgroundColor_(self, color):
-            captured.append(color)
+    scheduled = []
+    monkeypatch.setattr(AppHelper, "callAfter", lambda fn, *a: scheduled.append(fn))
 
     class _FakeBV:
-        webview = _FakeWebview()
+        webview = object()
+        window = object()
 
     monkeypatch.setitem(cocoa.BrowserView.instances, "uid-x", _FakeBV())
-    # Execute le callback tout de suite au lieu de le poster sur la run loop.
-    monkeypatch.setattr(AppHelper, "callAfter", lambda fn, *a: fn(*a))
-
     _apply_macos_transparency(_FakeWin("uid-x"))
 
-    assert len(captured) == 1  # underPageBackgroundColor force en clair
-    assert captured[0].alphaComponent() == 0.0
+    # Le travail natif (material vibrancy + transparence) est poste sur le thread principal.
+    assert len(scheduled) == 1

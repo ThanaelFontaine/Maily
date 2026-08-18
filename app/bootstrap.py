@@ -122,12 +122,29 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
+# NSVisualEffectView : material moderne translucide. Le material 0
+# (AppearanceBased) est DEPRECIE depuis 10.14 et, sur macOS 26, se replie sur un
+# remplissage OPAQUE sombre. 21 = UnderWindowBackground, le plus translucide,
+# concu pour laisser voir le bureau depoli sous le fond de la fenetre.
+_GLASS_MATERIAL = 21       # NSVisualEffectMaterialUnderWindowBackground
+_GLASS_STATE_ACTIVE = 1    # NSVisualEffectStateActive
+_GLASS_BLEND_BEHIND = 0    # NSVisualEffectBlendingModeBehindWindow
+
+
 def _apply_macos_transparency(win):
-    # Sur macOS, la WKWebView peint une `underPageBackgroundColor` OPAQUE sous la
-    # page. Meme avec la fenetre transparente, la page transparente et la vibrancy
-    # derriere, ce fond opaque masque le bureau. pywebview ne l'expose pas et pose
-    # une cle obsolete (`drawsTransparentBackground`, ignoree par WKWebView), donc
-    # on force la couleur en transparent nous-memes, sur le thread principal.
+    # Revele le VRAI bureau depoli derriere le chrome translucide (theme Verre).
+    #
+    # Cause racine du fond charcoal opaque : pywebview cree une NSVisualEffectView
+    # (sous-vue de la WKWebView, qui EST la contentView) mais n'appelle jamais
+    # setMaterial_. Elle reste donc sur material=0 (AppearanceBased, deprecie
+    # 10.14), qui sur macOS 26 se replie sur un remplissage opaque sombre = le
+    # charcoal observe. Correctif : forcer un material moderne translucide +
+    # apparence claire, IN PLACE, sur le thread principal. On renforce aussi la
+    # transparence de la WKWebView par la voie moderne (la cle KVC
+    # `drawsTransparentBackground` posee par pywebview est deprecie/no-op sur 26).
+    #
+    # Prerequis systeme (sinon aucun material ne laisse voir le bureau) :
+    # Reglages > Accessibilite > Ecran > Reduire la transparence = OFF.
     try:
         import webview.platforms.cocoa as cocoa
         import AppKit
@@ -139,8 +156,64 @@ def _apply_macos_transparency(win):
         return
 
     def _set():
+        clear = AppKit.NSColor.clearColor()
+        window = bv.window
+        webview = bv.webview  # WKWebView (WebKitHost) == window.contentView()
+
+        # 1) Fenetre transparente (re-assure ; deja pose par pywebview).
         try:
-            bv.webview.setUnderPageBackgroundColor_(AppKit.NSColor.clearColor())
+            window.setOpaque_(False)
+            window.setBackgroundColor_(clear)
+        except Exception:
+            pass
+
+        # 2) WKWebView transparente (voie moderne).
+        for setter in (
+            lambda: webview.setUnderPageBackgroundColor_(clear),
+            lambda: webview.setValue_forKey_(False, "drawsBackground"),
+        ):
+            try:
+                setter()
+            except Exception:
+                pass
+
+        # 3) Recupere la NSVisualEffectView existante (celle a material=0).
+        vev = None
+        try:
+            for sub in webview.subviews():
+                if sub.isKindOfClass_(AppKit.NSVisualEffectView):
+                    vev = sub
+                    break
+        except Exception:
+            pass
+        if vev is None:
+            return
+
+        # 4) LE correctif : material moderne translucide -> bureau depoli visible.
+        for setter in (
+            lambda: vev.setMaterial_(_GLASS_MATERIAL),       # 0 (opaque) -> 21
+            lambda: vev.setBlendingMode_(_GLASS_BLEND_BEHIND),
+            lambda: vev.setState_(_GLASS_STATE_ACTIVE),
+            lambda: vev.setEmphasized_(True),
+        ):
+            try:
+                setter()
+            except Exception:
+                pass
+
+        # 5) Depoli CLAIR meme en mode sombre : apparence claire sur la seule vibrancy.
+        try:
+            light = AppKit.NSAppearance.appearanceNamed_(AppKit.NSAppearanceNameVibrantLight)
+            if light is not None:
+                vev.setAppearance_(light)
+        except Exception:
+            pass
+
+        # 6) Remplit / suit la fenetre et force un redraw.
+        try:
+            vev.setAutoresizingMask_(AppKit.NSViewWidthSizable | AppKit.NSViewHeightSizable)
+            vev.setFrame_(webview.bounds())
+            vev.setNeedsDisplay_(True)
         except Exception:
             pass
 
