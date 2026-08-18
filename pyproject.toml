@@ -9,6 +9,7 @@ dependencies = [
     "google-auth-oauthlib>=1.2",
     "google-api-python-client>=2.140",
     "keyring>=25.4",
+    "nh3>=0.2.18",
 ]
 
 [dependency-groups]
