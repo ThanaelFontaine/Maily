@@ -48,6 +48,7 @@ function orb(color) {
 
 async function loadAccounts() {
   const accs = await api("/accounts");
+  state.accounts = accs;
   accs.forEach((a, i) => { accountColors[a.id] = a.color || PALETTE[i % PALETTE.length]; });
   const rail = el("#rail");
   rail.innerHTML = "";
@@ -163,12 +164,15 @@ async function openMessage(id) {
     `<h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
-       <button class="gel">↩︎ Répondre</button>
-       <button class="ghost">➦ Transférer</button>
+       <button class="gel" id="replybtn">↩︎ Répondre</button>
+       <button class="ghost" id="fwdbtn">➦ Transférer</button>
        <button class="ghost">🗄️ Archiver</button>
        <button class="ghost" id="imgbtn">🖼️ Charger les images</button>
      </div>`;
   read.appendChild(head);
+
+  head.querySelector("#replybtn").onclick = () => replyTo(m);
+  head.querySelector("#fwdbtn").onclick = () => forward(m);
 
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
@@ -214,9 +218,97 @@ function initSearch() {
   });
 }
 
+function emailOnly(addr) {
+  const m = (addr || "").match(/<([^>]+)>/);
+  return (m ? m[1] : addr || "").trim();
+}
+
+function openComposer(prefill) {
+  const fromSel = el("#c-from");
+  fromSel.innerHTML = "";
+  (state.accounts || []).forEach((a) => {
+    const o = document.createElement("option");
+    o.value = a.id;
+    o.textContent = a.display_name || a.email;
+    fromSel.appendChild(o);
+  });
+  if (prefill.accountId) fromSel.value = prefill.accountId;
+  el("#composer-title").textContent = prefill.title || "Nouveau message";
+  el("#c-to").value = prefill.to || "";
+  el("#c-cc").value = "";
+  el("#c-subject").value = prefill.subject || "";
+  el("#c-body").value = prefill.body || "";
+  el("#c-status").textContent = "";
+  const c = el("#composer");
+  c.dataset.inReplyTo = prefill.inReplyTo || "";
+  c.dataset.threadId = prefill.threadId || "";
+  c.hidden = false;
+  el("#c-to").focus();
+}
+
+function closeComposer() { el("#composer").hidden = true; }
+
+async function sendComposer() {
+  const status = el("#c-status");
+  const to = el("#c-to").value.trim();
+  if (!to) { status.textContent = "Ajoute au moins un destinataire."; return; }
+  const payload = {
+    account_id: Number(el("#c-from").value),
+    to,
+    cc: el("#c-cc").value.trim() || null,
+    subject: el("#c-subject").value,
+    body_text: el("#c-body").value,
+    in_reply_to: el("#composer").dataset.inReplyTo || null,
+    thread_id: el("#composer").dataset.threadId || null,
+  };
+  status.textContent = "Envoi…";
+  el("#c-send").disabled = true;
+  try {
+    const r = await fetch("/send", {
+      method: "POST",
+      headers: { ...AUTH.headers, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+    closeComposer();
+    banner("Message envoyé.");
+    fetch("/accounts/" + payload.account_id + "/sync", { method: "POST", ...AUTH })
+      .then(loadMessages).catch(() => {});
+  } catch (e) {
+    status.textContent = "Échec de l'envoi : " + e.message;
+  }
+  el("#c-send").disabled = false;
+}
+
+function replyTo(m) {
+  openComposer({
+    title: "Répondre",
+    accountId: m.account_id,
+    to: emailOnly(m.addr_from),
+    subject: /^re\s*:/i.test(m.subject || "") ? m.subject : "Re: " + (m.subject || ""),
+    inReplyTo: m.rfc822_message_id || "",
+    threadId: m.thread_id || "",
+    body: "\n\n----- Message d'origine -----\n" + (m.body_text || ""),
+  });
+}
+
+function forward(m) {
+  openComposer({
+    title: "Transférer",
+    accountId: m.account_id,
+    subject: /^tr\s*:/i.test(m.subject || "") ? m.subject : "Tr: " + (m.subject || ""),
+    body: "\n\n----- Message transféré -----\nDe : " + (m.addr_from || "") +
+      "\nObjet : " + (m.subject || "") + "\n\n" + (m.body_text || ""),
+  });
+}
+
 async function main() {
   el("#sync").onclick = syncAll;
-  el("#compose").onclick = () => banner("La composition arrive bientôt (prochaine étape).");
+  el("#compose").onclick = () => openComposer({});
+  el("#c-close").onclick = closeComposer;
+  el("#c-cancel").onclick = closeComposer;
+  el("#c-send").onclick = sendComposer;
+  el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
   initSearch();
   try {
     await loadAccounts();

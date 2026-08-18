@@ -32,6 +32,27 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="composer" hidden>
+    <div class="composer">
+      <div class="composer-head">
+        <span id="composer-title">Nouveau message</span>
+        <button class="icon-btn" id="c-close" title="Fermer">✕</button>
+      </div>
+      <div class="composer-body">
+        <label class="c-row"><span class="c-lbl">De</span><select id="c-from"></select></label>
+        <label class="c-row"><span class="c-lbl">À</span><input id="c-to" placeholder="destinataires, séparés par des virgules"></label>
+        <label class="c-row"><span class="c-lbl">Cc</span><input id="c-cc" placeholder="optionnel"></label>
+        <label class="c-row"><span class="c-lbl">Objet</span><input id="c-subject" placeholder="objet du message"></label>
+        <textarea id="c-body" placeholder="Votre message…"></textarea>
+      </div>
+      <div class="composer-foot">
+        <button class="gel" id="c-send">✈ Envoyer</button>
+        <button class="ghost" id="c-cancel">Annuler</button>
+        <span id="c-status" class="c-status"></span>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>
