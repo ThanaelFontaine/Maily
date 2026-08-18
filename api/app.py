@@ -38,7 +38,7 @@ class ModifyPayload(BaseModel):
 
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None,
-               glass_fn=None) -> FastAPI:
+               glass_fn=None, glass_get_fn=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -58,6 +58,11 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/glass", dependencies=[Depends(guard)])
+    def glass_get():
+        a = glass_get_fn() if glass_get_fn else 0.6
+        return {"alpha": max(0.0, min(1.0, float(a)))}
 
     @app.post("/glass", dependencies=[Depends(guard)])
     async def glass(request: Request):

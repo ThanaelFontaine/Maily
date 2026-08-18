@@ -179,7 +179,7 @@ body {
   border-radius: 16px; overflow: hidden; border: 1px solid var(--hairline);
   background: rgba(255, 255, 255, .82); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
   box-shadow: 0 24px 60px rgba(8, 45, 80, .40), inset 0 1px 0 rgba(255,255,255,.85); }
-.composer-head { display: flex; align-items: center; padding: 12px 16px; font-weight: 800; color: #0e6f97;
+.composer-head { display: flex; align-items: center; padding: 12px 16px; font-weight: 800; color: var(--ink);
   background: rgba(255,255,255,.35); border-bottom: 1px solid rgba(255,255,255,.5); }
 .icon-btn { margin-left: auto; border: 0; background: transparent; font-size: 16px; cursor: pointer; color: var(--ink-soft); }
 .composer-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
@@ -431,6 +431,20 @@ body {
 :root[data-theme="glass"] .read-frame {
   width: calc(100% - 32px); margin: 6px 16px 16px; border-radius: 14px;
   box-shadow: 0 12px 36px rgba(0,0,0,.45); }
+
+/* Composer (Nouveau message) en Verre : modale sombre translucide, texte lisible. */
+:root[data-theme="glass"] .composer {
+  background: rgba(20,22,30,.92); border: 1px solid rgba(255,255,255,.12); color: var(--ink);
+  -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: 0 24px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); }
+:root[data-theme="glass"] .composer-head { color: var(--ink); background: rgba(255,255,255,.05); border-bottom-color: rgba(255,255,255,.10); }
+:root[data-theme="glass"] .composer input,
+:root[data-theme="glass"] .composer select,
+:root[data-theme="glass"] .composer textarea {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none; }
+:root[data-theme="glass"] .composer input::placeholder,
+:root[data-theme="glass"] .composer textarea::placeholder { color: rgba(233,238,246,.42); }
+:root[data-theme="glass"] .composer-foot { background: rgba(255,255,255,.04); border-top-color: rgba(255,255,255,.10); }
 :root[data-theme="glass"] .att-chip {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none;
 }

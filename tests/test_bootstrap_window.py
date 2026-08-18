@@ -33,6 +33,18 @@ def test_apply_macos_transparency_missing_instance_is_safe():
     _apply_macos_transparency(_FakeWin("uid-inexistant"))
 
 
+def test_glass_alpha_persists_to_file(tmp_path, monkeypatch):
+    import app.bootstrap as b
+    monkeypatch.setattr(b, "_glass_alpha_path", lambda: tmp_path / "glass_alpha")
+    assert b.get_glass_alpha() == 0.6            # defaut si fichier absent
+    b.set_glass_alpha(0.95)
+    assert abs(b.get_glass_alpha() - 0.95) < 1e-6
+    b.set_glass_alpha(5)                          # borne haute
+    assert b.get_glass_alpha() == 1.0
+    b.set_glass_alpha("pas-un-nombre")           # invalide -> inchange
+    assert b.get_glass_alpha() == 1.0
+
+
 def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypatch):
     cocoa = pytest.importorskip("webview.platforms.cocoa")
     AppHelper = pytest.importorskip("PyObjCTools.AppHelper")

@@ -9,6 +9,8 @@ import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # racine du repo
+ICNS = os.path.join(ROOT, "packaging", "Maily.icns")
+ICON = ICNS if os.path.exists(ICNS) else None
 
 datas = [(os.path.join(ROOT, "frontend"), "frontend"),
          (os.path.join(ROOT, "migrations"), "migrations")]
@@ -56,7 +58,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="Maily.app",
-        icon=None,
+        icon=ICON,
         bundle_identifier="org.example.maily",
         info_plist={
             "NSHighResolutionCapable": True,

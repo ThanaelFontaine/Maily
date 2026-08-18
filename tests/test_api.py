@@ -149,3 +149,16 @@ def test_patch_account_unknown_is_404(client):
 def test_patch_account_requires_auth(client):
     c, a = client
     assert c.patch(f"/accounts/{a}", json={"display_name": "Z"}).status_code == 401
+
+
+def test_glass_get_returns_value(database):
+    app = create_app(Store(database), TOKEN, glass_get_fn=lambda: 0.42)
+    c = TestClient(app)
+    r = c.get("/glass", headers=_auth())
+    assert r.status_code == 200 and r.json()["alpha"] == 0.42
+
+
+def test_glass_get_default_and_auth(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    assert c.get("/glass").status_code == 401
+    assert c.get("/glass", headers=_auth()).json()["alpha"] == 0.6

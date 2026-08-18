@@ -562,6 +562,15 @@ function afterAction(msg) {
 
 /* ------------------------- Composition ------------------------- */
 
+// Bouton "Envoyer" a la couleur du profil expediteur selectionne.
+function syncSendColor() {
+  const btn = el("#c-send");
+  if (!btn) return;
+  const color = accountColors[Number(el("#c-from").value)];
+  btn.style.background = color || "";
+  btn.style.borderColor = color ? "transparent" : "";
+}
+
 function openComposer(prefill) {
   const fromSel = el("#c-from");
   fromSel.innerHTML = "";
@@ -571,6 +580,8 @@ function openComposer(prefill) {
     fromSel.appendChild(o);
   });
   if (prefill.accountId) fromSel.value = prefill.accountId;
+  fromSel.onchange = syncSendColor;
+  syncSendColor();
   el("#composer-title").textContent = prefill.title || "Nouveau message";
   el("#c-to").value = prefill.to || "";
   el("#c-cc").value = "";
@@ -754,8 +765,6 @@ function openSettings() {
 function closeSettings() { el("#settingsmodal").hidden = true; }
 
 /* ------- Densité du fond (thème Verre) : slider -> vibrancy native ------- */
-const GLASS_ALPHA_KEY = "maily_glass_alpha";
-
 function applyGlassAlpha(a) {
   fetch("/glass", {
     method: "POST",
@@ -795,21 +804,21 @@ function initSplitter() {
   });
 }
 
-function initGlassSlider() {
+async function initGlassSlider() {
   const s = el("#glass-alpha");
   const val = el("#glass-alpha-val");
   if (!s) return;
-  const saved = parseFloat(localStorage.getItem(GLASS_ALPHA_KEY));
-  const a0 = isNaN(saved) ? 0.6 : Math.max(0, Math.min(1, saved));
+  let a0 = 0.6;
+  try {                                    // valeur persistee cote backend (fichier)
+    const r = await fetch("/glass", { headers: { Authorization: "Bearer " + TOKEN } });
+    if (r.ok) a0 = Math.max(0, Math.min(1, (await r.json()).alpha));
+  } catch { /* pas de backend natif : sans effet */ }
   s.value = Math.round(a0 * 100);
   if (val) val.textContent = s.value + "%";
-  applyGlassAlpha(a0);
+  // (le natif a deja applique la valeur persistee a la creation de la fenetre)
   s.addEventListener("input", () => {
     if (val) val.textContent = s.value + "%";
-    applyGlassAlpha(s.value / 100);                       // aperçu en direct
-  });
-  s.addEventListener("change", () => {
-    localStorage.setItem(GLASS_ALPHA_KEY, (s.value / 100).toString());  // sauvegarde au relâchement
+    applyGlassAlpha(s.value / 100);        // applique en direct ET persiste
   });
 }
 

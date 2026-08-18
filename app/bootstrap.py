@@ -141,11 +141,33 @@ _GLASS_VEV = {}
 _GLASS_ALPHA_DEFAULT = 0.6
 
 
+def _glass_alpha_path():
+    from core import paths
+    return paths.runtime_dir() / "glass_alpha"
+
+
+def get_glass_alpha():
+    """Densite du depoli persistee (0..1), defaut 0.6 - lue au demarrage."""
+    try:
+        return max(0.0, min(1.0, float(_glass_alpha_path().read_text().strip())))
+    except Exception:
+        return _GLASS_ALPHA_DEFAULT
+
+
 def set_glass_alpha(alpha):
-    """Regle la densite du depoli (vibrancy) - appele par l'API depuis le slider."""
+    """Regle la densite du depoli (vibrancy) + persiste - appele par l'API."""
+    try:
+        a = max(0.0, min(1.0, float(alpha)))
+    except Exception:
+        return
+    try:  # persistance robuste (independante du localStorage / mode prive)
+        p = _glass_alpha_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(str(a))
+    except Exception:
+        pass
     try:
         from PyObjCTools import AppHelper
-        a = max(0.0, min(1.0, float(alpha)))
     except Exception:
         return
 
@@ -230,9 +252,9 @@ def _apply_macos_transparency(win):
             webview.setAutoresizingMask_(_GLASS_AUTORESIZE)
             container.addSubview_positioned_relativeTo_(webview, AppKit.NSWindowAbove, vev)
 
-            # Densite reglable du depoli (le slider frontend ajustera via l'API).
+            # Densite reglable du depoli, restauree depuis la valeur persistee.
             _GLASS_VEV[win.uid] = vev
-            vev.setAlphaValue_(_GLASS_ALPHA_DEFAULT)
+            vev.setAlphaValue_(get_glass_alpha())
 
             # 4) Fenetre transparente + active (recompositing live du bureau).
             window.makeFirstResponder_(webview)
@@ -283,7 +305,7 @@ def run():
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
                      download_fn=download_fn, inline_fn=inline_fn,
                      labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
-                     glass_fn=set_glass_alpha)
+                     glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha)
 
     port = free_port()
     _start_server(app, port)
