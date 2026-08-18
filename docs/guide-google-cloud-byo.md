@@ -87,10 +87,13 @@ Menu de gauche → **Audience**.
 
 Menu de gauche → **Data Access** → **Add or remove scopes**.
 
-- Dans la barre de filtre, cherche et coche :
-  - `https://www.googleapis.com/auth/gmail.modify` (lire, ranger, libellés, corbeille)
-  - `https://www.googleapis.com/auth/gmail.send` (envoyer)
-- **Update** puis **Save**.
+- ⚠️ Le tableau du haut (avec le filtre) **n'affiche généralement pas** les scopes Gmail : filtrer par l'URL renvoie "No rows to display". C'est **normal**, ne cherche pas.
+- Utilise la zone **"Manually add scopes"** en bas de la fenêtre : colle les **deux** scopes, **un par ligne** :
+  ```
+  https://www.googleapis.com/auth/gmail.modify
+  https://www.googleapis.com/auth/gmail.send
+  ```
+- Clique **Add to table** → ils apparaissent cochés dans le tableau → **Update** → **Save**.
 
 > Ces scopes apparaissent comme **restricted/sensitive** : normal. Pour un usage perso non vérifié, ça reste gratuit et fonctionnel (avertissement à la 1re connexion, §8). Cette étape est **facultative** : si tu la sautes, l'app demandera de toute façon ces autorisations au moment de connecter une boîte. La faire ici rend juste l'écran de consentement plus explicite.
 
