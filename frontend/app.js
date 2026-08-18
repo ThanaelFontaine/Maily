@@ -155,7 +155,7 @@ function openColorPicker(accountId, anchor) {
   pop.className = "colorpop";
   const cur = (accountColors[accountId] || "").toLowerCase();
   pop.innerHTML = paletteForTheme().map((c) =>
-    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background:${c}" data-c="${c}" title="${c}"></button>`
+    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background-color:${c}" data-c="${c}" title="${c}"></button>`
   ).join("");
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
@@ -718,7 +718,7 @@ function renderSettings() {
   wrap.innerHTML = state.accounts.map((a) => {
     const cur = (accountColors[a.id] || "").toLowerCase();
     const sw = pal.map((c) =>
-      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background:${c}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
+      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background-color:${c}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
     ).join("");
     return `<div class="settings-row">
       <div class="settings-row-top">
@@ -755,6 +755,37 @@ function applyGlassAlpha(a) {
     headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
     body: JSON.stringify({ alpha: a }),
   }).catch(() => { /* pas de vibrancy (non-macOS) : sans effet */ });
+}
+
+const LIST_WIDTH_KEY = "maily_list_width";
+function initSplitter() {
+  const sp = el("#splitter");
+  const listcol = document.querySelector(".listcol");
+  if (!sp || !listcol) return;
+  const setW = (w) => document.documentElement.style.setProperty("--list-w", w + "px");
+  const saved = parseInt(localStorage.getItem(LIST_WIDTH_KEY), 10);
+  if (saved) setW(saved);
+  let startX = 0, startW = 0;
+  const onMove = (e) => {
+    const w = Math.max(260, Math.min(720, startW + (e.clientX - startX)));
+    setW(w);
+  };
+  const onUp = () => {
+    sp.classList.remove("dragging");
+    document.body.style.userSelect = "";
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+    localStorage.setItem(LIST_WIDTH_KEY, String(listcol.offsetWidth));
+  };
+  sp.addEventListener("mousedown", (e) => {
+    startX = e.clientX;
+    startW = listcol.offsetWidth;
+    sp.classList.add("dragging");
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    e.preventDefault();
+  });
 }
 
 function initGlassSlider() {
@@ -810,6 +841,7 @@ async function main() {
   el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
   initSearch();
   initGlassSlider();
+  initSplitter();
   updateLayout();
   renderCats();
   try {

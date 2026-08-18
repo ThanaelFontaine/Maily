@@ -110,10 +110,18 @@ body {
   background: radial-gradient(circle at 40% 40%, rgba(255,255,255,.95), rgba(255,255,255,0)); }
 .rail-sep { margin: 10px 6px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); }
 
-.listcol { width: 360px; display: flex; flex-direction: column; min-width: 0;
+.listcol { width: var(--list-w, 360px); display: flex; flex-direction: column; min-width: 0;
   border-right: 1px solid rgba(255,255,255,.45); }
 .body.no-read .listcol { width: auto; flex: 1; }
 .body.no-read .read { display: none; }
+
+/* Séparateur redimensionnable liste / mail */
+.splitter { flex: none; width: 7px; cursor: col-resize; position: relative; background: transparent; }
+.splitter::before { content: ""; position: absolute; inset: 0 2px; border-radius: 3px; background: transparent; transition: background .15s; }
+.splitter:hover::before, .splitter.dragging::before { background: rgba(0,0,0,.18); }
+.body.no-read .splitter { display: none; }
+:root[data-theme="glass"] .splitter:hover::before, :root[data-theme="glass"] .splitter.dragging::before,
+:root[data-theme="dedsec"] .splitter:hover::before, :root[data-theme="dedsec"] .splitter.dragging::before { background: rgba(255,255,255,.24); }
 
 .listbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
   background: rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.4); }
@@ -471,10 +479,24 @@ body {
 .colorpop { position: fixed; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px;
   border-radius: 12px; background: rgba(20,22,30,.92); border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 16px 40px rgba(0,0,0,.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
-.swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; padding: 0; border: 2px solid transparent;
+.swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; padding: 0; border: 2px solid transparent; position: relative;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); transition: transform .1s; }
 .swatch:hover { transform: scale(1.12); }
 .swatch.on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.4); }
+
+/* Frutiger Aero : swatches en bulle brillante (même DA que les pastilles de profil) */
+:root[data-theme="aero"] .swatch {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 55%);
+  box-shadow: inset 0 -3px 5px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.25);
+}
+:root[data-theme="aero"] .swatch::after {
+  content: ""; position: absolute; left: 20%; top: 10%; width: 44%; height: 34%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 40% 40%, rgba(255,255,255,.95), rgba(255,255,255,0));
+}
+:root[data-theme="aero"] .swatch.on { border-color: #fff; box-shadow: inset 0 -3px 5px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.25); }
+
+/* DedSec : swatches carrés (même DA que les pastilles de profil) */
+:root[data-theme="dedsec"] .swatch { border-radius: 3px; }
 
 /* Page réglages des profils */
 .settingsmenu { width: min(460px, 92vw); max-height: 86vh; overflow-y: auto; border-radius: 16px;

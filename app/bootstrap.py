@@ -294,7 +294,10 @@ def run():
         # Applique la correction de transparence une fois la webview native prete
         # (l'evenement `loaded` garantit son existence).
         win.events.loaded += lambda: _apply_macos_transparency(win)
-    webview.start()
+    # Stockage persistant (pas de mode prive) : localStorage conserve entre deux
+    # lancements -> theme, opacite du verre, largeur de la liste memorises.
+    storage = str(paths.runtime_dir() / "webview")
+    webview.start(private_mode=False, storage_path=storage)
 
 
 if __name__ == "__main__":
