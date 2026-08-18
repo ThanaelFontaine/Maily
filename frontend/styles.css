@@ -87,6 +87,14 @@ body {
 .ghost:active { transform: translateY(1px); }
 .ghost.spinning { opacity: .6; pointer-events: none; }
 
+/* ---------- Icônes SVG (trait, héritent de la couleur du texte) ---------- */
+.ico { width: 15px; height: 15px; flex: none; vertical-align: -3px;
+  stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.nav-ico { display: inline-flex; align-items: center; }
+.nav-ico .ico { width: 17px; height: 17px; vertical-align: middle; }
+.icon-btn .ico { width: 16px; height: 16px; vertical-align: -3px; }
+.cat .ico { vertical-align: -3px; }
+
 /* ---------- Corps (3 panneaux) ---------- */
 .body { flex: 1; display: flex; min-height: 0; }
 

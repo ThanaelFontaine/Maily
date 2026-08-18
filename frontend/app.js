@@ -5,11 +5,34 @@ const AUTH = { headers: { Authorization: "Bearer " + TOKEN } };
 const PALETTE = ["#2e5fff", "#18c07a", "#f5a524", "#c159f5", "#ef476f", "#0e91d8"];
 const TZ = "Europe/Paris";
 
+/* Icônes SVG épurées (style trait, currentColor) - cohérentes avec la DA verre. */
+const ICONS = {
+  theme: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+  refresh: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  send: '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+  paperclip: '<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  reply: '<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+  forward: '<polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>',
+  archive: '<polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  restore: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  inbox: '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+};
+function ico(name) {
+  return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+}
+
 const CATEGORIES = [
-  { key: "primary", label: "Principale", icon: "📥" },
-  { key: "promotions", label: "Promotions", icon: "🏷️" },
-  { key: "social", label: "Réseaux sociaux", icon: "👥" },
-  { key: "updates", label: "Notifications", icon: "🔔" },
+  { key: "primary", label: "Principale", icon: "inbox" },
+  { key: "promotions", label: "Promotions", icon: "tag" },
+  { key: "social", label: "Réseaux sociaux", icon: "users" },
+  { key: "updates", label: "Notifications", icon: "bell" },
 ];
 
 const state = {
@@ -93,7 +116,7 @@ async function loadAccounts() {
 
   const all = document.createElement("div");
   all.className = "nav" + (state.accountId === null ? " on" : "");
-  all.innerHTML = `<span class="nav-ico">📥</span> Tout (unifié)`;
+  all.innerHTML = `<span class="nav-ico">${ico("inbox")}</span> Tout (unifié)`;
   all.onclick = () => selectAccount(null);
   rail.appendChild(all);
 
@@ -121,9 +144,9 @@ async function loadFolders(accountId) {
   rail.appendChild(sep);
 
   const special = [
-    { name: "Boîte de réception", icon: "📥", folder: { type: "inbox" } },
-    { name: "Archivés", icon: "🗄️", folder: { type: "archived" } },
-    { name: "Corbeille", icon: "🗑️", folder: { type: "trash" } },
+    { name: "Boîte de réception", icon: "inbox", folder: { type: "inbox" } },
+    { name: "Archivés", icon: "archive", folder: { type: "archived" } },
+    { name: "Corbeille", icon: "trash", folder: { type: "trash" } },
   ];
   special.forEach((s) => rail.appendChild(folderNav(s.icon, s.name, s.folder)));
 
@@ -134,7 +157,7 @@ async function loadFolders(accountId) {
     sep2.textContent = "Libellés";
     rail.appendChild(sep2);
     userLabels.forEach((l) =>
-      rail.appendChild(folderNav("🏷️", l.name, { type: "label", id: l.gmail_label_id, name: l.name })));
+      rail.appendChild(folderNav("tag", l.name, { type: "label", id: l.gmail_label_id, name: l.name })));
   }
 }
 
@@ -142,7 +165,7 @@ function folderNav(icon, name, folder) {
   const n = document.createElement("div");
   const active = JSON.stringify(state.folder) === JSON.stringify(folder);
   n.className = "nav nav-folder" + (active ? " on" : "");
-  n.innerHTML = `<span class="nav-ico">${icon}</span><span class="nav-lbl">${esc(name)}</span>`;
+  n.innerHTML = `<span class="nav-ico">${ico(icon)}</span><span class="nav-lbl">${esc(name)}</span>`;
   n.onclick = () => selectFolder(folder);
   return n;
 }
@@ -179,7 +202,7 @@ function renderCats() {
   CATEGORIES.forEach((c) => {
     const t = document.createElement("div");
     t.className = "cat" + (state.category === c.key ? " on" : "");
-    t.innerHTML = `<span>${c.icon}</span> ${c.label}`;
+    t.innerHTML = `${ico(c.icon)} ${c.label}`;
     t.onclick = () => { state.category = c.key; renderCats(); loadMessages(); };
     cats.appendChild(t);
   });
@@ -301,7 +324,7 @@ async function renderAttachments(id, wrap) {
   const real = atts.filter((a) => !a.content_id);
   if (!real.length) { wrap.style.display = "none"; return; }
   wrap.innerHTML = real.map((a) =>
-    `<button class="att-chip" data-att="${a.id}">📎 ${esc(a.filename) || "fichier"}` +
+    `<button class="att-chip" data-att="${a.id}">${ico("paperclip")} ${esc(a.filename) || "fichier"}` +
     `<span class="att-size">${fmtSize(a.size)}</span></button>`).join("");
   wrap.querySelectorAll(".att-chip").forEach((btn) => {
     const att = real.find((x) => String(x.id) === btn.dataset.att);
@@ -389,16 +412,16 @@ async function openMessage(id) {
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
   head.innerHTML =
-    `<button class="read-close" id="read-close" title="Fermer">✕</button>
+    `<button class="read-close" id="read-close" title="Fermer">${ico("x")}</button>
      <h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
-       <button class="gel" id="replybtn">↩︎ Répondre</button>
-       <button class="ghost" id="fwdbtn">➦ Transférer</button>
+       <button class="gel" id="replybtn">${ico("reply")} Répondre</button>
+       <button class="ghost" id="fwdbtn">${ico("forward")} Transférer</button>
        ${inTrash
-        ? `<button class="ghost" id="untrashbtn">♻️ Restaurer</button>`
-        : `<button class="ghost" id="archbtn">🗄️ Archiver</button>
-           <button class="ghost" id="trashbtn">🗑️ Corbeille</button>`}
+        ? `<button class="ghost" id="untrashbtn">${ico("restore")} Restaurer</button>`
+        : `<button class="ghost" id="archbtn">${ico("archive")} Archiver</button>
+           <button class="ghost" id="trashbtn">${ico("trash")} Corbeille</button>`}
      </div>`;
   read.appendChild(head);
 
@@ -491,7 +514,7 @@ function renderComposerAtts() {
   const wrap = el("#c-atts");
   const atts = state.composerAtts || [];
   wrap.innerHTML = atts.map((a, i) =>
-    `<span class="c-att">📎 ${esc(a.filename)}<span class="c-att-x" data-i="${i}">×</span></span>`).join("");
+    `<span class="c-att">${ico("paperclip")} ${esc(a.filename)}<span class="c-att-x" data-i="${i}">×</span></span>`).join("");
   wrap.querySelectorAll(".c-att-x").forEach((x) => {
     x.onclick = () => { state.composerAtts.splice(Number(x.dataset.i), 1); renderComposerAtts(); };
   });
@@ -582,8 +605,8 @@ function initSearch() {
 async function syncAll() {
   const btn = el("#sync");
   btn.disabled = true;
-  const label = btn.textContent;
-  btn.textContent = "⟳ Synchro…";
+  const label = btn.innerHTML;
+  btn.innerHTML = `${ico("refresh")} Synchro…`;
   try {
     const accs = await api("/accounts");
     for (const a of accs) {
@@ -593,7 +616,7 @@ async function syncAll() {
     }
   } catch (e) { banner("Erreur de synchro : " + e.message); }
   btn.disabled = false;
-  btn.textContent = label;
+  btn.innerHTML = label;
 }
 
 /* ------------------------- Init ------------------------- */
@@ -612,8 +635,21 @@ function openThemeMenu() {
 
 function closeThemeMenu() { el("#thememodal").hidden = true; }
 
+function paintStaticIcons() {
+  const map = {
+    "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
+    "#sync": ["refresh", "Synchroniser"], "#markread": ["check", "Tout marquer lu"],
+    "#c-send": ["send", "Envoyer"], "#c-attach": ["paperclip", "Joindre"],
+  };
+  for (const [sel, [name, label]] of Object.entries(map)) {
+    const b = el(sel); if (b) b.innerHTML = `${ico(name)} ${label}`;
+  }
+  ["#c-close", "#theme-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
+}
+
 async function main() {
   setTheme(localStorage.getItem("maily_theme") || "glass");
+  paintStaticIcons();
   el("#themebtn").onclick = openThemeMenu;
   el("#theme-close").onclick = closeThemeMenu;
   el("#thememodal").addEventListener("click", (e) => { if (e.target.id === "thememodal") closeThemeMenu(); });
