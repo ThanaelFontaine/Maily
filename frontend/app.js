@@ -99,7 +99,8 @@ async function loadMessages() {
         (state.accountId ? "&account_id=" + state.accountId : "");
       msgs = await api(q);
     } else {
-      const q = "/messages" + (state.accountId ? "?account_id=" + state.accountId : "");
+      let q = "/messages?label=INBOX";
+      if (state.accountId) q += "&account_id=" + state.accountId;
       msgs = await api(q);
     }
   } catch (e) { banner("Erreur de chargement : " + e.message); return; }
@@ -152,6 +153,25 @@ async function fetchHtml(id, allowRemote) {
   return await r.text();
 }
 
+async function postAction(path, body) {
+  const headers = { ...AUTH.headers };
+  const opts = { method: "POST", headers };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+  return r.json();
+}
+
+function afterAction(msg) {
+  banner(msg);
+  el("#read").innerHTML = `<div class="read-empty">${msg}</div>`;
+  state.currentId = null;
+  loadMessages();
+}
+
 async function openMessage(id) {
   state.currentId = id;
   let m;
@@ -168,13 +188,22 @@ async function openMessage(id) {
      <div class="read-actions">
        <button class="gel" id="replybtn">↩︎ Répondre</button>
        <button class="ghost" id="fwdbtn">➦ Transférer</button>
-       <button class="ghost">🗄️ Archiver</button>
+       <button class="ghost" id="archbtn">🗄️ Archiver</button>
+       <button class="ghost" id="trashbtn">🗑️ Corbeille</button>
        <button class="ghost" id="imgbtn">🖼️ Charger les images</button>
      </div>`;
   read.appendChild(head);
 
   head.querySelector("#replybtn").onclick = () => replyTo(m);
   head.querySelector("#fwdbtn").onclick = () => forward(m);
+  head.querySelector("#archbtn").onclick = async () => {
+    try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction("Archivé."); }
+    catch (e) { banner("Erreur : " + e.message); }
+  };
+  head.querySelector("#trashbtn").onclick = async () => {
+    try { await postAction(`/messages/${id}/trash`); afterAction("Déplacé vers la corbeille."); }
+    catch (e) { banner("Erreur : " + e.message); }
+  };
 
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
@@ -193,7 +222,11 @@ async function openMessage(id) {
   imgbtn.onclick = () => { imgbtn.textContent = "🖼️ Images affichées"; imgbtn.disabled = true; render(true); };
   render(false);
 
-  loadMessages();
+  if (m.is_unread) {
+    postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] }).then(loadMessages).catch(() => {});
+  } else {
+    loadMessages();
+  }
 }
 
 async function syncAll() {
