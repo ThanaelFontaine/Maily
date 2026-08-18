@@ -264,7 +264,8 @@ async function openMessage(id) {
 
   const imgbtn = head.querySelector("#imgbtn");
   imgbtn.onclick = () => { imgbtn.textContent = "🖼️ Images affichées"; imgbtn.disabled = true; render(true); };
-  render(false);
+  if (state.loadImages) imgbtn.style.display = "none";
+  render(state.loadImages);
 
   if (m.is_unread) {
     postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] }).then(loadMessages).catch(() => {});
@@ -381,7 +382,19 @@ function forward(m) {
   });
 }
 
+function refreshImgPref() {
+  el("#imgpref").textContent = state.loadImages ? "🖼️ Images : auto" : "🖼️ Images : bloquées";
+}
+
 async function main() {
+  state.loadImages = localStorage.getItem("maily_loadImages") === "1";
+  refreshImgPref();
+  el("#imgpref").onclick = () => {
+    state.loadImages = !state.loadImages;
+    localStorage.setItem("maily_loadImages", state.loadImages ? "1" : "0");
+    refreshImgPref();
+    if (state.currentId) openMessage(state.currentId);
+  };
   el("#sync").onclick = syncAll;
   el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });
   el("#c-close").onclick = closeComposer;
