@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 import pathlib
 from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from core.sanitize import sanitize_html
@@ -26,7 +26,8 @@ class ModifyPayload(BaseModel):
     remove_labels: list[str] = []
 
 
-def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None, frontend_dir=None) -> FastAPI:
+def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
+               download_fn=None, inline_fn=None, frontend_dir=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -76,7 +77,34 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None, frontend_d
         m = store.get_message(message_id)
         if not m:
             raise HTTPException(status_code=404, detail="not found")
-        return HTMLResponse(sanitize_html(m["body_html"] or "", allow_remote=allow_remote))
+        html = sanitize_html(m["body_html"] or "", allow_remote=allow_remote)
+        if inline_fn:
+            for att in store.list_attachments(message_id):
+                cid = att["content_id"]
+                if cid and f"cid:{cid}" in html:
+                    try:
+                        uri = inline_fn(message_id, att["id"])
+                    except Exception:
+                        uri = None
+                    if uri:
+                        html = html.replace(f"cid:{cid}", uri)
+        return HTMLResponse(html)
+
+    @app.get("/messages/{message_id}/attachments", dependencies=[Depends(guard)])
+    def attachments(message_id: int):
+        return rows(store.list_attachments(message_id))
+
+    @app.get("/messages/{message_id}/attachments/{att_id}/download", dependencies=[Depends(guard)])
+    def download_att(message_id: int, att_id: int):
+        if download_fn is None:
+            raise HTTPException(status_code=501, detail="download not wired")
+        try:
+            data, mime, filename = download_fn(message_id, att_id)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"telechargement echoue: {e}")
+        safe = (filename or "piece-jointe").replace('"', "").replace("\n", " ")
+        return Response(content=data, media_type="application/octet-stream",
+                        headers={"Content-Disposition": f'attachment; filename="{safe}"'})
 
     @app.get("/search", dependencies=[Depends(guard)])
     def search(q: str, account_id: int | None = None, limit: int = 50):

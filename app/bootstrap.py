@@ -90,6 +90,25 @@ def _start_server(app, port):
     return server
 
 
+def make_attachment_fns(store, attachments_dir):
+    import base64
+    from core import accounts_service as svc
+
+    def _email(message_id):
+        m = store.get_message(message_id)
+        acc = store.get_account(m["account_id"])
+        return acc["email"]
+
+    def download_fn(message_id, att_id):
+        return svc.fetch_attachment(store, _email(message_id), message_id, att_id, attachments_dir)
+
+    def inline_fn(message_id, att_id):
+        data, mime, _filename = svc.fetch_attachment(store, _email(message_id), message_id, att_id, attachments_dir)
+        return f"data:{mime or 'application/octet-stream'};base64,{base64.b64encode(data).decode()}"
+
+    return download_fn, inline_fn
+
+
 def run():
     import webview
     from core import paths, runtime
@@ -103,8 +122,10 @@ def run():
     token = runtime.get_or_create_api_token()
     from core.config import load_settings
     months = load_settings().backfill_months
+    download_fn, inline_fn = make_attachment_fns(store, layout["attachments"])
     app = create_app(store, token, sync_fn=make_sync_fn(store, months),
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
+                     download_fn=download_fn, inline_fn=inline_fn,
                      frontend_dir=_frontend_dir())
 
     port = free_port()

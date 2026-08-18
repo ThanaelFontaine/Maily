@@ -1,9 +1,37 @@
 from __future__ import annotations
+import base64
+import os
+import re
 from googleapiclient.discovery import build
 from core.auth import load_credentials
 from core.gmail import GmailClient
 from core.sync import Syncer
 from core import sender
+
+
+def _safe_name(name: str) -> str:
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name or "file")
+    return name[:120] or "file"
+
+
+def fetch_attachment(store, email, message_id, att_id, attachments_dir):
+    att = store.get_attachment(att_id)
+    if not att or att["owner_id"] != message_id or att["owner_kind"] != "message":
+        raise ValueError("piece jointe introuvable")
+    lp = att["local_path"]
+    if lp and os.path.exists(lp):
+        with open(lp, "rb") as f:
+            return f.read(), att["mime_type"], att["filename"]
+    m = store.get_message(message_id)
+    client = build_gmail_client(email)
+    resp = client.get_attachment(m["gmail_id"], att["gmail_attachment_id"])
+    data = base64.urlsafe_b64decode(resp["data"])
+    os.makedirs(attachments_dir, exist_ok=True)
+    path = os.path.join(attachments_dir, f"{att_id}_{_safe_name(att['filename'])}")
+    with open(path, "wb") as f:
+        f.write(data)
+    store.set_attachment_path(att_id, path)
+    return data, att["mime_type"], att["filename"]
 
 
 def build_gmail_client(email) -> GmailClient:

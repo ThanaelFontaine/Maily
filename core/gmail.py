@@ -146,3 +146,7 @@ class GmailClient:
 
     def untrash(self, gmail_id):
         return self._execute(self.service.users().messages().untrash(userId="me", id=gmail_id))
+
+    def get_attachment(self, gmail_id, attachment_id):
+        return self._execute(self.service.users().messages().attachments().get(
+            userId="me", messageId=gmail_id, id=attachment_id))

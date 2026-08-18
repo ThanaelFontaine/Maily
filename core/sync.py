@@ -8,10 +8,15 @@ class Syncer:
         self.client = client
         self.account_id = account_id
 
+    def _store_message(self, raw) -> int:
+        fields, atts = parse_gmail_message(raw)
+        mid = self.store.upsert_message(self.account_id, raw["id"], **fields)
+        self.store.replace_attachments(mid, atts)
+        return mid
+
     def _import(self, gid) -> None:
         raw = self.client.get_message(gid)
-        fields, _atts = parse_gmail_message(raw)
-        self.store.upsert_message(self.account_id, gid, **fields)
+        self._store_message(raw)
 
     def backfill(self, query=None, page_size=100) -> int:
         acc = self.account_id
@@ -25,8 +30,7 @@ class Syncer:
                 raw = self.client.get_message(gid)
                 if first_history_id is None and raw.get("historyId"):
                     first_history_id = raw["historyId"]
-                fields, _atts = parse_gmail_message(raw)
-                self.store.upsert_message(acc, gid, **fields)
+                self._store_message(raw)
                 count += 1
             page_token = next_token
             self.store.set_sync_state(acc, "backfill_page_token", page_token or "")

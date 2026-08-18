@@ -165,3 +165,27 @@ class Store:
         with self.db.writer() as c:
             c.execute("UPDATE messages SET is_trashed=?, updated_at=datetime('now') WHERE id=?",
                       (1 if trashed else 0, message_id))
+
+    def replace_attachments(self, message_id, attachments):
+        with self.db.writer() as c:
+            c.execute("DELETE FROM attachments WHERE owner_kind='message' AND owner_id=?", (message_id,))
+            for a in attachments or []:
+                c.execute(
+                    """INSERT INTO attachments(owner_kind, owner_id, content_id, filename,
+                         mime_type, size, gmail_attachment_id)
+                       VALUES('message',?,?,?,?,?,?)""",
+                    (message_id, a.get("content_id"), a.get("filename"),
+                     a.get("mime_type"), a.get("size"), a.get("gmail_attachment_id")),
+                )
+
+    def list_attachments(self, message_id):
+        return self.db.read().execute(
+            "SELECT * FROM attachments WHERE owner_kind='message' AND owner_id=? ORDER BY id",
+            (message_id,)).fetchall()
+
+    def get_attachment(self, attachment_id):
+        return self.db.read().execute("SELECT * FROM attachments WHERE id=?", (attachment_id,)).fetchone()
+
+    def set_attachment_path(self, attachment_id, local_path):
+        with self.db.writer() as c:
+            c.execute("UPDATE attachments SET local_path=? WHERE id=?", (local_path, attachment_id))
