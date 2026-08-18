@@ -148,7 +148,9 @@ body {
 .li.on { background: rgba(255,255,255,.62); }
 .li-top { display: flex; align-items: center; gap: 8px; }
 .li-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--unread)); box-shadow: 0 0 6px var(--dot, var(--unread)); flex: none; }
-.li-dot.seen { background: transparent; box-shadow: none; }
+/* Mail lu : la pastille disparait ET libere sa place (le titre se realigne).
+   display:none l'emporte aussi sur la couleur DedSec (specificite). */
+.li-dot.seen { display: none; }
 .li-from { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .li-time { margin-left: auto; font-size: 11px; color: var(--ink-soft); flex: none; }
 .li-subj { font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
