@@ -1,10 +1,12 @@
-"""Genere le logo/icone de Maily (enveloppe sur pastille violette dégradée)
-en PNG 1024. Voir scripts/make_icns.sh pour la conversion en .icns macOS."""
+"""Logo/icone Maily : squircle "liquid glass" (Apple) a teinte aqua/lavande
+discrete (Frutiger Aero), avec une enveloppe minimale. Rend un PNG 1024 ;
+voir scripts/build_macos.sh (ou make_icns) pour le .icns."""
 from __future__ import annotations
 import pathlib
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 S = 1024
+R = 236  # rayon du squircle
 OUT = pathlib.Path(__file__).resolve().parent / "maily.png"
 
 
@@ -12,54 +14,71 @@ def lerp(a, b, t):
     return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
 
 
-def rounded_mask(size, radius):
-    m = Image.new("L", (size, size), 0)
-    d = ImageDraw.Draw(m)
-    d.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=255)
+def squircle_mask():
+    m = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(m).rounded_rectangle([0, 0, S - 1, S - 1], radius=R, fill=255)
     return m
 
 
+def clip(layer, mask):
+    out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    out.paste(layer, (0, 0), mask)
+    return out
+
+
 def main():
-    # Fond : dégradé vertical violet (famille accent du thème Verre)
-    top, bot = (0x9D, 0x86, 0xFF), (0x63, 0x49, 0xE8)
+    mask = squircle_mask()
+
+    # Fond : degrade vertical doux aqua -> lavande (Frutiger Aero discret).
+    top, bot = (214, 236, 255), (232, 227, 251)
     grad = Image.new("RGB", (S, S))
     gd = ImageDraw.Draw(grad)
     for y in range(S):
         gd.line([(0, y), (S, y)], fill=lerp(top, bot, y / (S - 1)))
+    icon = clip(grad.convert("RGBA"), mask)
 
-    icon = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    icon.paste(grad, (0, 0), rounded_mask(S, 228))  # squircle-ish
+    # Profondeur : legere vignette sombre en bas (verre epais).
+    vg = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(vg).ellipse([-160, S - 360, S + 160, S + 260], fill=(60, 70, 120, 60))
+    icon.alpha_composite(clip(vg.filter(ImageFilter.GaussianBlur(80)), mask))
+
+    # Sheen : grande brillance blanche en haut (bulle de verre).
+    sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(sh).ellipse([-120, -300, S + 120, 430], fill=(255, 255, 255, 135))
+    icon.alpha_composite(clip(sh.filter(ImageFilter.GaussianBlur(55)), mask))
+
+    # Liseré lumineux sur le bord haut (lumiere Apple glass).
+    rim = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(rim).rounded_rectangle([3, 3, S - 4, S - 4], radius=R - 2,
+                                          outline=(255, 255, 255, 150), width=4)
+    icon.alpha_composite(clip(rim, mask))
 
     d = ImageDraw.Draw(icon)
 
-    # Reflet doux en haut
-    hi = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    hd = ImageDraw.Draw(hi)
-    hd.rounded_rectangle([60, 40, S - 60, S // 2], radius=200, fill=(255, 255, 255, 26))
-    icon.alpha_composite(Image.composite(hi, Image.new("RGBA", (S, S), (0, 0, 0, 0)),
-                                         rounded_mask(S, 228)))
+    # Ombre douce sous l'enveloppe.
+    bx0, by0, bx1, by1 = 258, 372, 766, 690
+    shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle([bx0, by0 + 20, bx1, by1 + 22], radius=58,
+                                             fill=(70, 90, 150, 120))
+    icon.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(22)))
 
-    # Corps de l'enveloppe (blanc, coins arrondis) + ombre portée douce
-    bx0, by0, bx1, by1 = 258, 356, 766, 700
-    sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(sh).rounded_rectangle([bx0, by0 + 16, bx1, by1 + 16], radius=54,
-                                         fill=(40, 20, 90, 90))
-    icon.alpha_composite(sh)
-    d.rounded_rectangle([bx0, by0, bx1, by1], radius=54, fill=(255, 255, 255, 255))
+    # Enveloppe minimale : blanc translucide + fin liseré bleu-gris.
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=58,
+                        fill=(255, 255, 255, 238), outline=(150, 172, 208, 170), width=3)
 
-    # Rabat en "V" (trait violet, jonctions arrondies)
-    purple = (0x6D, 0x5E, 0xF6, 255)
-    apex = (S // 2, by0 + 210)
-    p_left = (bx0 + 46, by0 + 40)
-    p_right = (bx1 - 46, by0 + 40)
-    d.line([p_left, apex, p_right], fill=purple, width=46, joint="curve")
-    for p in (p_left, apex, p_right):
-        d.ellipse([p[0] - 23, p[1] - 23, p[0] + 23, p[1] + 23], fill=purple)
+    # Rabat en "V" (bleu doux, jonctions arrondies).
+    blue = (108, 138, 190, 230)
+    apex = (S // 2, by0 + 186)
+    pl, pr = (bx0 + 48, by0 + 44), (bx1 - 48, by0 + 44)
+    d.line([pl, apex, pr], fill=blue, width=30, joint="curve")
+    for p in (pl, apex, pr):
+        d.ellipse([p[0] - 15, p[1] - 15, p[0] + 15, p[1] + 15], fill=blue)
 
-    # Badge "non lu" (accent) en haut a droite de l'enveloppe
-    bd = (bx1 - 40, by0 - 40)
-    d.ellipse([bd[0] - 62, bd[1] - 62, bd[0] + 62, bd[1] + 62], fill=(255, 255, 255, 255))
-    d.ellipse([bd[0] - 44, bd[1] - 44, bd[0] + 44, bd[1] + 44], fill=(0xFF, 0x4D, 0x8D, 255))
+    # Reflet glossy sur le haut de l'enveloppe.
+    gloss = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(gloss).rounded_rectangle([bx0 + 16, by0 + 12, bx1 - 16, by0 + 96],
+                                            radius=44, fill=(255, 255, 255, 90))
+    icon.alpha_composite(gloss.filter(ImageFilter.GaussianBlur(10)))
 
     icon.save(OUT)
     print("wrote", OUT)
