@@ -14,7 +14,8 @@ const CATEGORIES = [
 
 const state = {
   accountId: null, currentId: null, query: "", tabs: [],
-  folder: { type: "inbox" }, category: "primary", accounts: [], currentMsgs: [], composerAtts: [],
+  folder: { type: "inbox" }, category: "primary", accounts: [], currentMsgs: [],
+  composerAtts: [], pendingReads: [], composerKey: null, openSeq: 0, listSeq: 0,
 };
 const accountColors = {};
 const el = (sel) => document.querySelector(sel);
@@ -41,7 +42,10 @@ function banner(msg) {
   b.classList.add("show");
 }
 
-function esc(s) { return (s || "").replace(/</g, "&lt;"); }
+function esc(s) {
+  return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 
 function fromName(addr) {
   if (!addr) return "(inconnu)";
@@ -208,10 +212,12 @@ function messagesQuery() {
 
 async function loadMessages() {
   const list = el("#list");
+  const seq = ++state.listSeq;
   el("#listbar-title").textContent = listTitle();
   let msgs;
   try { msgs = await api(messagesQuery()); }
   catch (e) { banner("Erreur de chargement : " + e.message); return; }
+  if (seq !== state.listSeq) return;  // une requete plus recente a pris le relais
   state.currentMsgs = msgs;
 
   list.innerHTML = "";
@@ -243,14 +249,19 @@ async function markAllRead() {
   if (!unread.length) { banner("Aucun message non lu ici."); return; }
   const btn = el("#markread");
   btn.disabled = true;
+  let ok = 0;
   try {
     for (const m of unread) {
       await postAction(`/messages/${m.id}/modify`, { remove_labels: ["UNREAD"] });
+      ok++;
     }
-    banner(`${unread.length} message(s) marqué(s) comme lu(s).`);
+    banner(`${ok} message(s) marqué(s) comme lu(s).`);
+  } catch (e) {
+    banner(`Erreur après ${ok} marqué(s) : ` + e.message);
+  } finally {
     await loadMessages();
-  } catch (e) { banner("Erreur : " + e.message); }
-  btn.disabled = false;
+    btn.disabled = false;
+  }
 }
 
 /* ------------------------- Lecture d'un message ------------------------- */
@@ -319,16 +330,16 @@ function openInTab(id, subject) {
 }
 
 function closeTab(id) {
+  const wasCurrent = state.currentId === id;
   state.tabs = state.tabs.filter((t) => t.id !== id);
-  if (state.currentId === id) {
-    if (state.tabs.length) openMessage(state.tabs[state.tabs.length - 1].id);
-    else {
-      state.currentId = null;
-      el("#read").innerHTML = `<div class="read-empty">Sélectionne un message pour le lire.</div>`;
-      updateLayout();
-      loadMessages();
-    }
-  } else if (state.currentId) openMessage(state.currentId);
+  if (state.tabs.length === 0) { closeReading(); return; }
+  if (state.tabs.length === 1) {
+    const only = state.tabs[0].id;
+    state.tabs = [];  // 1 seul mail restant = pas de barre d'onglets
+    openMessage(wasCurrent ? only : state.currentId);
+    return;
+  }
+  openMessage(wasCurrent ? state.tabs[state.tabs.length - 1].id : state.currentId);
 }
 
 function renderTabBar() {
@@ -355,6 +366,7 @@ function closeReading() {
 }
 
 async function openMessage(id) {
+  const seq = ++state.openSeq;
   state.currentId = id;
   updateLayout();
   // MAJ optimiste : la pastille non-lu disparait immediatement au clic
@@ -367,6 +379,7 @@ async function openMessage(id) {
   let m;
   try { m = await api("/messages/" + id); }
   catch (e) { banner("Erreur : " + e.message); return; }
+  if (seq !== state.openSeq) return;  // un autre mail a ete ouvert entre-temps
 
   const read = el("#read");
   read.innerHTML = "";
@@ -420,12 +433,15 @@ async function openMessage(id) {
 
   try {
     const html = await fetchHtml(id);
+    if (seq !== state.openSeq) return;
     const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || "(vide)"}</pre>`;
     frame.srcdoc = buildDoc(body);
   } catch (e) { banner("Erreur : " + e.message); }
 
   if (m.is_unread) {
-    postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] }).then(loadMessages).catch(() => {});
+    postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] })
+      .then(loadMessages)
+      .catch(() => { banner("Impossible de marquer comme lu."); loadMessages(); });
   } else {
     loadMessages();
   }
@@ -461,6 +477,9 @@ function openComposer(prefill) {
   c.dataset.inReplyTo = prefill.inReplyTo || "";
   c.dataset.threadId = prefill.threadId || "";
   state.composerAtts = [];
+  state.pendingReads = [];
+  state.composerKey = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+    : "k" + Date.now() + Math.random().toString(16).slice(2);
   renderComposerAtts();
   c.hidden = false;
   el("#c-to").focus();
@@ -480,13 +499,18 @@ function renderComposerAtts() {
 
 function addComposerFiles(fileList) {
   [...fileList].forEach((f) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = String(reader.result).split(",")[1] || "";
-      state.composerAtts.push({ filename: f.name, mime_type: f.type || "application/octet-stream", data });
-      renderComposerAtts();
-    };
-    reader.readAsDataURL(f);
+    const p = new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = String(reader.result).split(",")[1] || "";
+        state.composerAtts.push({ filename: f.name, mime_type: f.type || "application/octet-stream", data });
+        renderComposerAtts();
+        resolve();
+      };
+      reader.onerror = () => { banner("Lecture du fichier échouée : " + f.name); resolve(); };
+      reader.readAsDataURL(f);
+    });
+    state.pendingReads.push(p);
   });
   el("#c-file").value = "";
 }
@@ -495,6 +519,9 @@ async function sendComposer() {
   const status = el("#c-status");
   const to = el("#c-to").value.trim();
   if (!to) { status.textContent = "Ajoute au moins un destinataire."; return; }
+  el("#c-send").disabled = true;
+  status.textContent = "Préparation…";
+  await Promise.allSettled(state.pendingReads);  // attendre que les PJ soient lues
   const payload = {
     account_id: Number(el("#c-from").value),
     to, cc: el("#c-cc").value.trim() || null,
@@ -503,9 +530,9 @@ async function sendComposer() {
     in_reply_to: el("#composer").dataset.inReplyTo || null,
     thread_id: el("#composer").dataset.threadId || null,
     attachments: state.composerAtts || [],
+    idempotency_key: state.composerKey,
   };
   status.textContent = "Envoi…";
-  el("#c-send").disabled = true;
   try {
     const r = await fetch("/send", {
       method: "POST", headers: { ...AUTH.headers, "Content-Type": "application/json" },
