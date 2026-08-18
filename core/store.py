@@ -1,0 +1,78 @@
+from __future__ import annotations
+from core.db import Database
+
+_MESSAGE_COLS = {
+    "thread_id", "rfc822_message_id", "direction", "addr_from", "addr_to",
+    "addr_cc", "addr_bcc", "subject", "snippet", "body_text", "body_html",
+    "internal_date", "label_ids", "is_unread", "is_starred", "has_attachments",
+    "is_trashed",
+}
+
+
+class Store:
+    def __init__(self, database: Database):
+        self.db = database
+
+    def upsert_account(self, email, display_name=None, color=None) -> int:
+        with self.db.writer() as c:
+            c.execute(
+                """INSERT INTO accounts(email, display_name, color) VALUES(?,?,?)
+                   ON CONFLICT(email) DO UPDATE SET
+                     display_name=COALESCE(excluded.display_name, accounts.display_name),
+                     color=COALESCE(excluded.color, accounts.color)""",
+                (email, display_name, color),
+            )
+            return c.execute("SELECT id FROM accounts WHERE email=?", (email,)).fetchone()[0]
+
+    def list_accounts(self):
+        return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
+
+    def upsert_message(self, account_id, gmail_id, **fields) -> int:
+        cols = {k: v for k, v in fields.items() if k in _MESSAGE_COLS}
+        with self.db.writer() as c:
+            row = c.execute(
+                "SELECT id FROM messages WHERE account_id=? AND gmail_id=?",
+                (account_id, gmail_id),
+            ).fetchone()
+            if row is None:
+                keys = ["account_id", "gmail_id"] + list(cols.keys())
+                vals = [account_id, gmail_id] + list(cols.values())
+                ph = ",".join("?" * len(keys))
+                c.execute(f"INSERT INTO messages({','.join(keys)}) VALUES({ph})", vals)
+                return c.execute(
+                    "SELECT id FROM messages WHERE account_id=? AND gmail_id=?",
+                    (account_id, gmail_id),
+                ).fetchone()[0]
+            if cols:
+                sets = ",".join(f"{k}=?" for k in cols) + ", updated_at=datetime('now')"
+                c.execute(f"UPDATE messages SET {sets} WHERE id=?", list(cols.values()) + [row[0]])
+            return row[0]
+
+    def get_message(self, message_id):
+        return self.db.read().execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
+
+    def search_messages(self, query, account_id=None, limit=50):
+        sql = ("SELECT m.* FROM messages_fts f JOIN messages m ON m.id=f.rowid "
+               "WHERE messages_fts MATCH ? AND m.is_trashed=0")
+        params = [query]
+        if account_id is not None:
+            sql += " AND m.account_id=?"
+            params.append(account_id)
+        sql += " ORDER BY f.rank LIMIT ?"
+        params.append(limit)
+        return self.db.read().execute(sql, params).fetchall()
+
+    def set_sync_state(self, account_id, key, value):
+        with self.db.writer() as c:
+            c.execute(
+                """INSERT INTO sync_state(account_id, key, value) VALUES(?,?,?)
+                   ON CONFLICT(account_id, key) DO UPDATE SET value=excluded.value""",
+                (account_id, key, str(value)),
+            )
+
+    def get_sync_state(self, account_id, key):
+        row = self.db.read().execute(
+            "SELECT value FROM sync_state WHERE account_id=? AND key=?",
+            (account_id, key),
+        ).fetchone()
+        return row[0] if row else None
