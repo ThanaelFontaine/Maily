@@ -122,36 +122,24 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
-# NSVisualEffectView : material moderne translucide. Le material 0
-# (AppearanceBased) est DEPRECIE depuis 10.14 et, sur macOS 26, se replie sur un
-# remplissage OPAQUE. 21 = UnderWindowBackground, concu pour laisser voir le
-# bureau depoli sous le fond d'une fenetre.
-_GLASS_MATERIAL = 21       # NSVisualEffectMaterialUnderWindowBackground
-_GLASS_STATE_ACTIVE = 1    # NSVisualEffectStateActive
-_GLASS_BLEND_BEHIND = 0    # NSVisualEffectBlendingModeBehindWindow
-_GLASS_AUTORESIZE = 18     # NSViewWidthSizable(2) | NSViewHeightSizable(16)
-
-# uids deja traites (le re-parentage ne doit se faire qu'une fois par fenetre).
+# uids deja traites (la transparence ne doit s'appliquer qu'une fois par fenetre).
 _GLASS_DONE = set()
 
 
 def _apply_macos_transparency(win):
-    # Revele le VRAI bureau depoli derriere le chrome translucide (theme Verre).
+    # Rend la fenetre reellement transparente pour voir le bureau NET derriere
+    # (theme Verre). Sur macOS 26, deux choses masquaient le bureau :
+    #   1. La WKWebView peignait une underPageBackgroundColor opaque (forcee clair)
+    #      et la cle KVC `drawsTransparentBackground` de pywebview est deprecie/
+    #      no-op (on utilise `drawsBackground`).
+    #   2. pywebview ajoute une NSVisualEffectView (vibrancy) avec un material
+    #      deprecie (0) qui, imbriquee dans la WKWebView, rend un APLAT OPAQUE
+    #      (charcoal) au lieu de flouter le bureau. On la RETIRE : la fenetre
+    #      transparente laisse alors voir le bureau net.
+    # Tout se fait sur le thread principal, une seule fois par fenetre.
     #
-    # Deux causes empechaient de voir le bureau sur macOS 26 :
-    #   1. La WKWebView peignait une underPageBackgroundColor opaque (corrige en
-    #      la forcant a clair) ; la cle KVC `drawsTransparentBackground` posee par
-    #      pywebview est deprecie/no-op sur 26 (on utilise `drawsBackground`).
-    #   2. pywebview place sa NSVisualEffectView (vibrancy) EN SOUS-VUE de la
-    #      WKWebView, qui EST la contentView. Imbriquee ainsi, la vibrancy
-    #      "behind window" ne compose pas le bureau : elle rend un aplat opaque.
-    # Correctif : re-parenter la hierarchie -> contentView = conteneur portant
-    # [NSVisualEffectView au fond (material 21), WKWebView transparente devant].
-    # Ainsi la vibrancy floute reellement le bureau et le contenu web transparent
-    # se pose par-dessus. Tout se fait sur le thread principal, une seule fois.
-    #
-    # Prerequis systeme (sinon aucun material ne laisse voir le bureau) :
-    # Reglages > Accessibilite > Ecran > Reduire la transparence = OFF.
+    # Prerequis systeme : Reglages > Accessibilite > Ecran > Reduire la
+    # transparence = OFF (sinon macOS force un fond opaque).
     if win.uid in _GLASS_DONE:
         return
     try:
@@ -169,59 +157,36 @@ def _apply_macos_transparency(win):
         try:
             clear = AppKit.NSColor.clearColor()
             window = bv.window
-            webview = bv.webview  # WKWebView (WebKitHost), actuelle contentView
+            webview = bv.webview  # WKWebView (WebKitHost), la contentView
 
-            # WKWebView transparente (voie moderne).
+            # 1) WKWebView reellement transparente (voie moderne ; la cle KVC
+            #    `drawsTransparentBackground` de pywebview est deprecie/no-op sur 26).
             for setter in (
                 lambda: webview.setValue_forKey_(False, "drawsBackground"),
                 lambda: webview.setUnderPageBackgroundColor_(clear),
+                lambda: webview.setValue_forKey_(False, "opaque"),
             ):
                 try:
                     setter()
                 except Exception:
                     pass
 
-            # Recupere la NSVisualEffectView posee par pywebview (ou en cree une).
-            vev = None
+            # 2) Retire la NSVisualEffectView opaque posee par pywebview (material
+            #    deprecie 0 -> aplat opaque). Sans elle, le bureau apparait NET
+            #    derriere la fenetre transparente (rendu le plus lisible du bureau).
             for sub in list(webview.subviews()):
                 if sub.isKindOfClass_(AppKit.NSVisualEffectView):
-                    vev = sub
-                    break
-            if vev is not None:
-                vev.removeFromSuperview()
-            else:
-                vev = AppKit.NSVisualEffectView.new()
-            vev.setMaterial_(_GLASS_MATERIAL)
-            vev.setBlendingMode_(_GLASS_BLEND_BEHIND)
-            vev.setState_(_GLASS_STATE_ACTIVE)
+                    sub.removeFromSuperview()
 
-            # Nouveau contentView = conteneur ; empile [vibrancy au fond, web devant].
-            container = AppKit.NSView.alloc().initWithFrame_(webview.frame())
-            container.setAutoresizesSubviews_(True)
-            window.setContentView_(container)   # detache la webview de la contentView
-
-            vev.setFrame_(container.bounds())
-            vev.setAutoresizingMask_(_GLASS_AUTORESIZE)
-            container.addSubview_(vev)
-
-            webview.setFrame_(container.bounds())
-            webview.setAutoresizingMask_(_GLASS_AUTORESIZE)
-            container.addSubview_positioned_relativeTo_(webview, AppKit.NSWindowAbove, vev)
-
-            window.makeFirstResponder_(webview)
+            # 3) Fenetre transparente + active (recompositing live du bureau).
             window.setOpaque_(False)
             window.setBackgroundColor_(clear)
-
-            # Rendre la fenetre "key"/active et forcer un recompositing : sur
-            # macOS 26 la vibrancy behind-window n'echantillonne le bureau en
-            # direct que fenetre active -> sinon elle reste en aplat atténué.
             window.makeKeyAndOrderFront_(None)
             try:
                 AppKit.NSApp.activateIgnoringOtherApps_(True)
             except Exception:
                 pass
-            container.displayIfNeeded()
-            container.setNeedsDisplay_(True)
+            webview.setNeedsDisplay_(True)
         except Exception:
             pass
 
