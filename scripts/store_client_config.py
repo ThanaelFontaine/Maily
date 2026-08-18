@@ -13,6 +13,11 @@ from __future__ import annotations
 import json
 import sys
 import getpass
+import pathlib
+
+# Rendre le script lançable directement (ajoute la racine du projet au path).
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
 from core import secrets_store
 
 
