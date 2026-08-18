@@ -287,3 +287,45 @@ body {
 :root[data-theme="dedsec"] .cat:hover { background: #12161a; }
 :root[data-theme="dedsec"] .cat.on { background: #12191b; color: #22E6DC; box-shadow: inset 0 -2px 0 #FF2D78; }
 :root[data-theme="dedsec"] .list-empty { color: #5b616a; }
+
+/* ============================================================= */
+/* ============  DA renforcée : Aero + DedSec  ================= */
+/* ============================================================= */
+
+/* --- Frutiger Aero : aurore + grain + ciel plus vif --- */
+:root[data-theme="aero"] body {
+  background: linear-gradient(180deg, #2fa8ee 0%, #6fcbf3 34%, #bfe9ff 62%, #86cf62 100%);
+}
+:root[data-theme="aero"] .bg::before {
+  content: ""; position: absolute; top: -25%; left: -15%; width: 90%; height: 90%; pointer-events: none;
+  background: radial-gradient(circle at 30% 30%, rgba(120,220,255,.55), transparent 60%),
+              radial-gradient(circle at 75% 65%, rgba(150,240,190,.5), transparent 60%),
+              radial-gradient(circle at 60% 20%, rgba(255,240,190,.4), transparent 55%);
+  filter: blur(90px); opacity: .75;
+}
+:root[data-theme="aero"] .bg::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="aero"] .win { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 60px rgba(120,200,255,.25); }
+:root[data-theme="aero"] .cat.on { background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(210,240,255,.75)); }
+
+/* --- Ligne terminal DedSec (cachée en Aero) --- */
+.dedsec-term { display: none; }
+:root[data-theme="dedsec"] .dedsec-term {
+  display: flex; align-items: center; gap: 8px; padding: 3px 14px; z-index: 2;
+  font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .05em;
+  color: #4AF626; background: #08090c; border-bottom: 1px solid #202b2c;
+}
+.dedsec-term .ok { color: #22E6DC; }
+.dedsec-term .caret { width: .55ch; height: 1.05em; background: #4AF626; display: inline-block; animation: dsblink 1s steps(1) infinite; }
+
+/* --- DedSec : scanlines + vignette renforcées, glow accents --- */
+:root[data-theme="dedsec"] .bg::after { opacity: .6; }
+:root[data-theme="dedsec"] .bg::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 40%, transparent 60%, rgba(0,0,0,.5) 100%);
+}
+:root[data-theme="dedsec"] .brand { text-shadow: 0 0 8px rgba(255,45,120,.5); }
+:root[data-theme="dedsec"] .li.on { box-shadow: inset 3px 0 0 #FF2D78, 0 0 18px rgba(255,45,120,.10); }
+:root[data-theme="dedsec"] .li-dot:not(.seen) { box-shadow: 0 0 8px #22E6DC, 0 0 2px #22E6DC; }
