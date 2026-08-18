@@ -122,37 +122,70 @@ async function loadMessages() {
   });
 }
 
+const BASE_CSS = `
+  :root { color-scheme: light; }
+  html, body { margin: 0; background: #fff; }
+  body { font: 14px/1.55 -apple-system, 'Segoe UI', system-ui, sans-serif; color: #14323F;
+    padding: 18px 22px; word-wrap: break-word; overflow-wrap: break-word; }
+  img { max-width: 100%; height: auto; }
+  img:not([src]), img[src=""] { display: none; }
+  a { color: #0e6f97; }
+  table { max-width: 100%; }
+  blockquote { margin: 0 0 0 12px; padding-left: 12px; border-left: 3px solid rgba(20,50,63,.2); color: rgba(20,50,63,.75); }
+  pre { white-space: pre-wrap; word-wrap: break-word; font: 14px/1.55 -apple-system, 'Segoe UI', system-ui, sans-serif; }
+`;
+
+function esc(s) { return (s || "").replace(/</g, "&lt;"); }
+
+function buildDoc(fragment) {
+  return `<!doctype html><html><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+    `<style>${BASE_CSS}</style></head><body>${fragment}</body></html>`;
+}
+
+async function fetchHtml(id, allowRemote) {
+  const url = "/messages/" + id + "/html" + (allowRemote ? "?allow_remote=true" : "");
+  const r = await fetch(url, AUTH);
+  return await r.text();
+}
+
 async function openMessage(id) {
   state.currentId = id;
-  document.querySelectorAll(".li").forEach((r) => r.classList.remove("on"));
-  let m, html;
-  try {
-    m = await api("/messages/" + id);
-    const r = await fetch("/messages/" + id + "/html", AUTH);
-    html = await r.text();
-  } catch (e) { banner("Erreur : " + e.message); return; }
+  let m;
+  try { m = await api("/messages/" + id); }
+  catch (e) { banner("Erreur : " + e.message); return; }
 
   const read = el("#read");
   read.innerHTML = "";
   const head = document.createElement("div");
   head.className = "read-head";
   head.innerHTML =
-    `<h1 class="read-subj">${(m.subject || "(sans sujet)").replace(/</g, "&lt;")}</h1>
-     <div class="read-meta">${(m.addr_from || "").replace(/</g, "&lt;")} · ${fmtDate(m.internal_date)}</div>
+    `<h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
+     <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
        <button class="gel">↩︎ Répondre</button>
        <button class="ghost">➦ Transférer</button>
        <button class="ghost">🗄️ Archiver</button>
+       <button class="ghost" id="imgbtn">🖼️ Charger les images</button>
      </div>`;
   read.appendChild(head);
 
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
   frame.setAttribute("sandbox", "");
-  frame.srcdoc = html && html.trim()
-    ? html
-    : `<pre style="font-family:system-ui;white-space:pre-wrap;padding:16px;color:#14323F">${(m.body_text || "(vide)").replace(/</g, "&lt;")}</pre>`;
   read.appendChild(frame);
+
+  async function render(allowRemote) {
+    let html;
+    try { html = await fetchHtml(id, allowRemote); }
+    catch (e) { banner("Erreur : " + e.message); return; }
+    const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || "(vide)"}</pre>`;
+    frame.srcdoc = buildDoc(body);
+  }
+
+  const imgbtn = head.querySelector("#imgbtn");
+  imgbtn.onclick = () => { imgbtn.textContent = "🖼️ Images affichées"; imgbtn.disabled = true; render(true); };
+  render(false);
 
   loadMessages();
 }
