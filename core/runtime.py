@@ -18,6 +18,10 @@ def get_or_create_api_token() -> str:
     return tok
 
 
+def read_api_token() -> str | None:
+    return keyring.get_password(SERVICE, _TOKEN_KEY)
+
+
 def write_runtime_file(path, host: str, port: int, token: str | None = None) -> dict:
     path = pathlib.Path(path)
     data = {

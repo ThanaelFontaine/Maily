@@ -1,6 +1,8 @@
 from __future__ import annotations
 import json
+import re
 import pathlib
+import urllib.parse
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -26,6 +28,7 @@ class SendPayload(BaseModel):
     in_reply_to: str | None = None
     thread_id: str | None = None
     attachments: list[dict] = []
+    idempotency_key: str | None = None
 
 
 class ModifyPayload(BaseModel):
@@ -116,13 +119,16 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         if inline_fn:
             for att in store.list_attachments(message_id):
                 cid = att["content_id"]
-                if cid and f"cid:{cid}" in html:
+                if not cid:
+                    continue
+                pattern = re.compile("cid:" + re.escape(cid) + r"(?=[\"'\s>)]|$)")
+                if pattern.search(html):
                     try:
                         uri = inline_fn(message_id, att["id"])
                     except Exception:
                         uri = None
                     if uri:
-                        html = html.replace(f"cid:{cid}", uri)
+                        html = pattern.sub(lambda m: uri, html)
         return HTMLResponse(html)
 
     @app.get("/messages/{message_id}/attachments", dependencies=[Depends(guard)])
@@ -137,9 +143,12 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
             data, mime, filename = download_fn(message_id, att_id)
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"telechargement echoue: {e}")
-        safe = (filename or "piece-jointe").replace('"', "").replace("\n", " ")
+        fname = filename or "piece-jointe"
+        ascii_fallback = re.sub(r'[\r\n"]', "", fname.encode("ascii", "ignore").decode("ascii")) or "piece-jointe"
+        utf8_star = urllib.parse.quote(fname, safe="")
+        cd = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{utf8_star}"
         return Response(content=data, media_type="application/octet-stream",
-                        headers={"Content-Disposition": f'attachment; filename="{safe}"'})
+                        headers={"Content-Disposition": cd})
 
     @app.get("/search", dependencies=[Depends(guard)])
     def search(q: str, account_id: int | None = None, limit: int = 50):
@@ -185,7 +194,9 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         app.mount("/static", StaticFiles(directory=str(fd)), name="static")
 
         @app.get("/", response_class=HTMLResponse)
-        def index():
+        def index(request: Request):
+            if not _host_ok(request):
+                raise HTTPException(status_code=403, detail="host not allowed")
             html = (fd / "index.html").read_text(encoding="utf-8")
             inject = f"<script>window.MAILY_TOKEN={json.dumps(token)};</script>"
             return HTMLResponse(html.replace("</head>", inject + "</head>"))

@@ -1,5 +1,10 @@
 from __future__ import annotations
+from googleapiclient.errors import HttpError
 from core.gmail import parse_gmail_message, HistoryExpired
+
+
+def _status(e):
+    return getattr(e, "status_code", None) or getattr(getattr(e, "resp", None), "status", None)
 
 
 class Syncer:
@@ -14,30 +19,47 @@ class Syncer:
         self.store.replace_attachments(mid, atts)
         return mid
 
-    def _import(self, gid) -> None:
-        raw = self.client.get_message(gid)
+    def _import(self, gid) -> bool:
+        """Refetch + upsert un message. Retourne False si le message a disparu (404)."""
+        try:
+            raw = self.client.get_message(gid)
+        except HttpError as e:
+            if _status(e) in (404, 410):
+                return False
+            raise
         self._store_message(raw)
+        return True
+
+    def _profile_history_id(self):
+        get_profile = getattr(self.client, "get_profile", None)
+        if not get_profile:
+            return None
+        try:
+            return (get_profile() or {}).get("historyId")
+        except Exception:
+            return None
 
     def backfill(self, query=None, page_size=100) -> int:
         acc = self.account_id
         page_token = self.store.get_sync_state(acc, "backfill_page_token") or None
         count = 0
-        first_history_id = self.store.get_sync_state(acc, "last_history_id") or None
+        # Checkpoint fiable = historyId courant de la boite (fonctionne meme si 0 message).
+        checkpoint = self.store.get_sync_state(acc, "last_history_id") or self._profile_history_id() or None
         while True:
             ids, next_token = self.client.list_message_ids(
                 query=query, page_token=page_token, max_results=page_size)
             for gid in ids:
                 raw = self.client.get_message(gid)
-                if first_history_id is None and raw.get("historyId"):
-                    first_history_id = raw["historyId"]
+                if checkpoint is None and raw.get("historyId"):
+                    checkpoint = raw["historyId"]
                 self._store_message(raw)
                 count += 1
             page_token = next_token
             self.store.set_sync_state(acc, "backfill_page_token", page_token or "")
             if not next_token:
                 break
-        if first_history_id:
-            self.store.set_sync_state(acc, "last_history_id", first_history_id)
+        if checkpoint:
+            self.store.set_sync_state(acc, "last_history_id", checkpoint)
         self.store.set_sync_state(acc, "backfill_done", "1")
         return count
 
@@ -53,13 +75,21 @@ class Syncer:
             while True:
                 records, next_token, hist_id = self.client.list_history(start, page_token)
                 for rec in records:
-                    for added in rec.get("messagesAdded", []):
-                        self._import(added["message"]["id"])
-                        changed += 1
-                    for deleted in rec.get("messagesDeleted", []):
-                        gid = deleted["message"]["id"]
-                        self.store.upsert_message(acc, gid, is_trashed=1)
-                        changed += 1
+                    # messagesAdded + labelsAdded + labelsRemoved => refetch complet du message
+                    refetch = set()
+                    for a in rec.get("messagesAdded", []):
+                        refetch.add(a["message"]["id"])
+                    for x in rec.get("labelsAdded", []):
+                        refetch.add(x["message"]["id"])
+                    for x in rec.get("labelsRemoved", []):
+                        refetch.add(x["message"]["id"])
+                    for gid in refetch:
+                        if self._import(gid):
+                            changed += 1
+                    # messagesDeleted = purge definitive => marquer corbeille SI le message existe
+                    for d in rec.get("messagesDeleted", []):
+                        if self.store.mark_trashed_by_gmail_id(acc, d["message"]["id"]):
+                            changed += 1
                 if hist_id:
                     latest = hist_id
                 if not next_token:

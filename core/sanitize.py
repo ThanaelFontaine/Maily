@@ -34,9 +34,14 @@ def sanitize_html(html: str, allow_remote: bool = False) -> str:
         return ""
 
     def attr_filter(tag: str, attr: str, value: str):
-        if attr in _RESOURCE_ATTRS:
-            low = value.strip().lower()
-            if low.startswith(("http://", "https://")) and not allow_remote:
+        low = value.strip().lower()
+        # Liens : jamais de data:/javascript:/vbscript: (phishing/XSS)
+        if attr == "href" and low.startswith(("data:", "javascript:", "vbscript:")):
+            return None
+        # Ressources (images...) : si contenu distant bloque, n'autoriser QUE le local
+        # (cid: images integrees, data: images inline). Bloque http(s), //host, et relatif.
+        if attr in _RESOURCE_ATTRS and not allow_remote:
+            if not low.startswith(("cid:", "data:")):
                 return None
         return value
 

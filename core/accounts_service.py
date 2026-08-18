@@ -92,7 +92,7 @@ def send_from_account(store, email, account_id, payload) -> dict:
         payload["to"], payload.get("subject", ""), payload.get("body_text", ""),
         body_html=payload.get("body_html"), cc=payload.get("cc"),
         in_reply_to=payload.get("in_reply_to"), thread_id=payload.get("thread_id"),
-        attachments=attachments,
+        attachments=attachments, idempotency_key=payload.get("idempotency_key"),
     )
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import sqlite3
 from core.db import Database
 
 _MESSAGE_COLS = {
@@ -56,15 +57,24 @@ class Store:
         return self.db.read().execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
 
     def search_messages(self, query, account_id=None, limit=50):
+        # Rendre la requete sure pour FTS5 : chaque mot devient une phrase quotee
+        # (les caracteres speciaux comme @ : " * ne cassent plus la syntaxe MATCH).
+        terms = [t for t in (query or "").split() if t]
+        if not terms:
+            return []
+        fts = " ".join('"' + t.replace('"', '""') + '"' for t in terms)
         sql = ("SELECT m.* FROM messages_fts f JOIN messages m ON m.id=f.rowid "
                "WHERE messages_fts MATCH ? AND m.is_trashed=0")
-        params = [query]
+        params = [fts]
         if account_id is not None:
             sql += " AND m.account_id=?"
             params.append(account_id)
         sql += " ORDER BY f.rank LIMIT ?"
         params.append(limit)
-        return self.db.read().execute(sql, params).fetchall()
+        try:
+            return self.db.read().execute(sql, params).fetchall()
+        except sqlite3.OperationalError:
+            return []
 
     def set_sync_state(self, account_id, key, value):
         with self.db.writer() as c:
@@ -115,13 +125,14 @@ class Store:
         sql = ("SELECT thread_id, account_id, MAX(internal_date) AS last_date, "
                "COUNT(*) AS message_count, "
                "(SELECT subject FROM messages m2 WHERE m2.thread_id=m.thread_id "
-               " AND m2.is_trashed=0 ORDER BY internal_date DESC LIMIT 1) AS subject "
+               " AND m2.account_id=m.account_id AND m2.is_trashed=0 "
+               " ORDER BY internal_date DESC LIMIT 1) AS subject "
                "FROM messages m WHERE is_trashed=0")
         params = []
         if account_id is not None:
             sql += " AND account_id=?"
             params.append(account_id)
-        sql += " GROUP BY thread_id ORDER BY last_date DESC LIMIT ? OFFSET ?"
+        sql += " GROUP BY account_id, thread_id ORDER BY last_date DESC LIMIT ? OFFSET ?"
         params += [limit, offset]
         return self.db.read().execute(sql, params).fetchall()
 
@@ -160,6 +171,10 @@ class Store:
     def get_outbox(self, outbox_id):
         return self.db.read().execute("SELECT * FROM outbox WHERE id=?", (outbox_id,)).fetchone()
 
+    def get_outbox_by_key(self, idempotency_key):
+        return self.db.read().execute(
+            "SELECT * FROM outbox WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+
     def apply_local_labels(self, message_id, add=None, remove=None):
         add = set(add or [])
         remove = set(remove or [])
@@ -183,16 +198,32 @@ class Store:
             c.execute("UPDATE messages SET is_trashed=?, updated_at=datetime('now') WHERE id=?",
                       (1 if trashed else 0, message_id))
 
+    def mark_trashed_by_gmail_id(self, account_id, gmail_id) -> bool:
+        """Marque corbeille par gmail_id, UNIQUEMENT si la ligne existe (pas de ligne fantome)."""
+        with self.db.writer() as c:
+            cur = c.execute(
+                "UPDATE messages SET is_trashed=1, updated_at=datetime('now') "
+                "WHERE account_id=? AND gmail_id=?", (account_id, gmail_id))
+            return cur.rowcount > 0
+
     def replace_attachments(self, message_id, attachments):
         with self.db.writer() as c:
+            existing = {
+                r["gmail_attachment_id"]: r["local_path"]
+                for r in c.execute(
+                    "SELECT gmail_attachment_id, local_path FROM attachments "
+                    "WHERE owner_kind='message' AND owner_id=?", (message_id,)).fetchall()
+                if r["gmail_attachment_id"]
+            }
             c.execute("DELETE FROM attachments WHERE owner_kind='message' AND owner_id=?", (message_id,))
             for a in attachments or []:
+                lp = existing.get(a.get("gmail_attachment_id"))  # conserve le cache disque
                 c.execute(
                     """INSERT INTO attachments(owner_kind, owner_id, content_id, filename,
-                         mime_type, size, gmail_attachment_id)
-                       VALUES('message',?,?,?,?,?,?)""",
+                         mime_type, size, gmail_attachment_id, local_path)
+                       VALUES('message',?,?,?,?,?,?,?)""",
                     (message_id, a.get("content_id"), a.get("filename"),
-                     a.get("mime_type"), a.get("size"), a.get("gmail_attachment_id")),
+                     a.get("mime_type"), a.get("size"), a.get("gmail_attachment_id"), lp),
                 )
 
     def list_attachments(self, message_id):

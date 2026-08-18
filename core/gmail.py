@@ -1,6 +1,7 @@
 from __future__ import annotations
 import base64
 import json
+import re
 import time
 from googleapiclient.errors import HttpError
 
@@ -11,15 +12,25 @@ _RETRYABLE = {429, 500, 502, 503}
 # Parsing (fonction pure, sans reseau)
 # --------------------------------------------------------------------------- #
 
-def _b64url_decode(data: str) -> str:
+def _b64url_decode(data: str, charset: str = "utf-8") -> str:
     if not data:
         return ""
     padding = "=" * (-len(data) % 4)
-    return base64.urlsafe_b64decode(data + padding).decode("utf-8", errors="replace")
+    raw = base64.urlsafe_b64decode(data + padding)
+    try:
+        return raw.decode(charset or "utf-8", errors="replace")
+    except (LookupError, TypeError):
+        return raw.decode("utf-8", errors="replace")
 
 
 def _headers_map(part: dict) -> dict:
     return {h["name"].lower(): h["value"] for h in part.get("headers", [])}
+
+
+def _charset_of(part: dict) -> str:
+    ct = _headers_map(part).get("content-type", "")
+    m = re.search(r'charset=["\']?([\w\-]+)', ct, re.I)
+    return m.group(1) if m else "utf-8"
 
 
 def _walk(part, bodies, attachments):
@@ -37,9 +48,9 @@ def _walk(part, bodies, attachments):
             "content_id": cid,
         })
     elif mime == "text/plain" and body.get("data"):
-        bodies.setdefault("text", _b64url_decode(body["data"]))
+        bodies.setdefault("text", _b64url_decode(body["data"], _charset_of(part)))
     elif mime == "text/html" and body.get("data"):
-        bodies.setdefault("html", _b64url_decode(body["data"]))
+        bodies.setdefault("html", _b64url_decode(body["data"], _charset_of(part)))
     for sub in part.get("parts", []) or []:
         _walk(sub, bodies, attachments)
 
@@ -67,6 +78,7 @@ def parse_gmail_message(raw: dict) -> tuple[dict, list[dict]]:
         "label_ids": json.dumps(labels),
         "is_unread": 1 if "UNREAD" in labels else 0,
         "is_starred": 1 if "STARRED" in labels else 0,
+        "is_trashed": 1 if "TRASH" in labels else 0,
         "has_attachments": 1 if attachments else 0,
     }
     return fields, attachments
