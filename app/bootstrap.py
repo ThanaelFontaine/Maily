@@ -1,0 +1,88 @@
+from __future__ import annotations
+import socket
+import threading
+import time
+import pathlib
+import urllib.request
+
+
+def free_port() -> int:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def wait_for_health(base_url, timeout=15.0, interval=0.3, _sleep=time.sleep, _opener=None):
+    opener = _opener or urllib.request.urlopen
+    attempts = int(timeout / interval) + 1
+    for _ in range(attempts):
+        try:
+            with opener(base_url + "/health", timeout=2) as resp:
+                if getattr(resp, "status", 200) == 200:
+                    return True
+        except Exception:
+            pass
+        _sleep(interval)
+    return False
+
+
+def make_sync_fn(store, backfill_months=12):
+    from core.accounts_service import sync_account
+
+    def _sync(account_id):
+        acc = store.get_account(account_id)
+        if not acc:
+            raise ValueError(f"compte {account_id} introuvable")
+        # Premiere synchro : backfill borne (fenetre en mois) ; ensuite incremental.
+        if not store.get_sync_state(account_id, "backfill_done"):
+            return sync_account(store, acc["email"], account_id,
+                                full=True, query=f"newer_than:{backfill_months}m")
+        return sync_account(store, acc["email"], account_id)
+
+    return _sync
+
+
+def _frontend_dir() -> pathlib.Path:
+    return pathlib.Path(__file__).resolve().parent.parent / "frontend"
+
+
+def _start_server(app, port):
+    import uvicorn
+
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+    server = uvicorn.Server(config)
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    return server
+
+
+def run():
+    import webview
+    from core import paths, runtime
+    from core.db import Database
+    from core.store import Store
+    from api.app import create_app
+
+    layout = paths.ensure_runtime_dirs(paths.runtime_dir())
+    db = Database(layout["db"])
+    store = Store(db)
+    token = runtime.get_or_create_api_token()
+    from core.config import load_settings
+    months = load_settings().backfill_months
+    app = create_app(store, token, sync_fn=make_sync_fn(store, months), frontend_dir=_frontend_dir())
+
+    port = free_port()
+    _start_server(app, port)
+    base = f"http://127.0.0.1:{port}"
+    if not wait_for_health(base):
+        raise RuntimeError("Le serveur local n'a pas demarre a temps.")
+    runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port)
+
+    webview.create_window("Maily", base, width=1240, height=820)
+    webview.start()
+
+
+if __name__ == "__main__":
+    run()
