@@ -37,3 +37,36 @@ def test_send_failure_marks_failed(store):
         sender.send_message(store, client, acc, "me@example.org", "d@x.co", "S", "c")
     row = store.db.read().execute("SELECT status, error FROM outbox").fetchone()
     assert row["status"] == "failed" and "boom" in row["error"]
+
+
+def test_send_from_account_decodes_attachments(store, monkeypatch):
+    import base64
+    from core import accounts_service as svc
+    acc = store.upsert_account("me@example.org")
+    captured = {}
+
+    class FakeClient2:
+        def send(self, raw, thread_id=None):
+            captured["raw"] = raw
+            return {"id": "g1"}
+
+    monkeypatch.setattr(svc, "build_gmail_client", lambda e: FakeClient2())
+    payload = {"to": "d@x.co", "subject": "S", "body_text": "c",
+               "attachments": [{"filename": "a.txt", "mime_type": "text/plain",
+                                "data": base64.b64encode(b"hi").decode()}]}
+    res = svc.send_from_account(store, "me@example.org", acc, payload)
+    assert res["gmail_id"] == "g1"
+    decoded = base64.urlsafe_b64decode(captured["raw"]).decode(errors="ignore")
+    assert "a.txt" in decoded
+
+
+def test_send_from_account_size_guard(store, monkeypatch):
+    import base64
+    from core import accounts_service as svc
+    monkeypatch.setattr(svc, "_MAX_SEND_BYTES", 3)
+    monkeypatch.setattr(svc, "build_gmail_client", lambda e: None)
+    acc = store.upsert_account("me@example.org")
+    payload = {"to": "d@x.co", "attachments": [{"filename": "b", "mime_type": "x/y",
+               "data": base64.b64encode(b"toolong").decode()}]}
+    with pytest.raises(ValueError):
+        svc.send_from_account(store, "me@example.org", acc, payload)

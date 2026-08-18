@@ -67,13 +67,25 @@ def untrash_message(store, email, message_id) -> dict:
     return {"ok": True}
 
 
+_MAX_SEND_BYTES = 25 * 1024 * 1024
+
+
 def send_from_account(store, email, account_id, payload) -> dict:
+    attachments = []
+    total = 0
+    for a in payload.get("attachments") or []:
+        data = base64.b64decode(a["data"])
+        total += len(data)
+        attachments.append({"filename": a.get("filename"), "mime_type": a.get("mime_type"), "data": data})
+    if total > _MAX_SEND_BYTES:
+        raise ValueError("Pieces jointes trop volumineuses (max 25 Mo au total pour l'envoi simple).")
     client = build_gmail_client(email)
     return sender.send_message(
         store, client, account_id, email,
         payload["to"], payload.get("subject", ""), payload.get("body_text", ""),
         body_html=payload.get("body_html"), cc=payload.get("cc"),
         in_reply_to=payload.get("in_reply_to"), thread_id=payload.get("thread_id"),
+        attachments=attachments,
     )
 
 

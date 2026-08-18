@@ -25,6 +25,15 @@ def test_build_reply_headers():
     assert msg["References"] == "<orig@mail>"
 
 
+def test_build_with_attachment():
+    raw, mid = build_mime("me@x.co", "d@x.co", "S", "corps",
+                          attachments=[{"filename": "a.txt", "mime_type": "text/plain", "data": b"hello"}])
+    msg = _parse(raw)
+    assert msg.is_multipart()
+    names = [p.get_filename() for p in msg.walk() if p.get_filename()]
+    assert "a.txt" in names
+
+
 def test_build_multipart_html():
     raw, mid = build_mime("me@example.org", "d@x.co", "S", "texte", body_html="<b>html</b>", cc="c@x.co")
     msg = _parse(raw)
