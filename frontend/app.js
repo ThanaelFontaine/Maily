@@ -32,14 +32,16 @@ function fromName(addr) {
   return (m ? m[1] : addr).trim();
 }
 
+const TZ = "Europe/Paris";
+
 function fmtDate(ms) {
   if (!ms) return "";
   const d = new Date(Number(ms));
-  const now = new Date();
-  const sameDay = d.toDateString() === now.toDateString();
-  return sameDay
-    ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-    : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+  const dParis = d.toLocaleDateString("fr-FR", { timeZone: TZ });
+  const nowParis = new Date().toLocaleDateString("fr-FR", { timeZone: TZ });
+  return dParis === nowParis
+    ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TZ })
+    : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TZ });
 }
 
 function orb(color) {
@@ -304,7 +306,7 @@ function forward(m) {
 
 async function main() {
   el("#sync").onclick = syncAll;
-  el("#compose").onclick = () => openComposer({});
+  el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });
   el("#c-close").onclick = closeComposer;
   el("#c-cancel").onclick = closeComposer;
   el("#c-send").onclick = sendComposer;
