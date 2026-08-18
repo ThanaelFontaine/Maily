@@ -1,4 +1,5 @@
 from __future__ import annotations
+import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
@@ -24,10 +25,13 @@ def creds_to_dict(creds: Credentials) -> dict:
         "client_id": creds.client_id,
         "client_secret": creds.client_secret,
         "scopes": list(creds.scopes) if creds.scopes else SCOPES,
+        "expiry": creds.expiry.isoformat() if creds.expiry else None,
     }
 
 
 def dict_to_creds(d: dict) -> Credentials:
+    exp = d.get("expiry")
+    expiry = datetime.datetime.fromisoformat(exp) if exp else None
     return Credentials(
         token=d.get("token"),
         refresh_token=d.get("refresh_token"),
@@ -35,6 +39,7 @@ def dict_to_creds(d: dict) -> Credentials:
         client_id=d.get("client_id"),
         client_secret=d.get("client_secret"),
         scopes=d.get("scopes", SCOPES),
+        expiry=expiry,
     )
 
 
