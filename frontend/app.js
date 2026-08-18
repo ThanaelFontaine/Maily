@@ -165,8 +165,8 @@ async function syncAll() {
     const accs = await api("/accounts");
     for (const a of accs) {
       await fetch("/accounts/" + a.id + "/sync", { method: "POST", ...AUTH });
+      await loadMessages();  // affichage progressif compte par compte
     }
-    await loadMessages();
   } catch (e) { banner("Erreur de synchro : " + e.message); }
   btn.classList.remove("spinning");
   btn.textContent = "⟳ Synchroniser";
