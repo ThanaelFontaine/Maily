@@ -1,0 +1,70 @@
+import pytest
+from core.store import Store
+from core.sync import Syncer
+from core.gmail import HistoryExpired
+
+
+def _msg(gid, subject, labels=None, hist="10"):
+    return {
+        "id": gid, "threadId": "t-" + gid, "snippet": "s", "internalDate": "1700000000000",
+        "historyId": hist, "labelIds": labels or ["INBOX"],
+        "payload": {"mimeType": "text/plain",
+                    "headers": [{"name": "Subject", "value": subject}],
+                    "body": {"data": ""}},
+    }
+
+
+class FakeClient:
+    def __init__(self, messages, history=None, history_raises=False):
+        self.messages = messages
+        self.history = history or []
+        self.history_raises = history_raises
+
+    def list_message_ids(self, query=None, page_token=None, max_results=100):
+        return list(self.messages.keys()), None
+
+    def get_message(self, gid, fmt="full"):
+        return self.messages[gid]
+
+    def list_history(self, start_history_id, page_token=None):
+        if self.history_raises:
+            raise HistoryExpired("too old")
+        return self.history, None, "999"
+
+
+@pytest.fixture
+def store(database):
+    return Store(database)
+
+
+def test_backfill_imports_messages(store):
+    acc = store.upsert_account("me@example.org")
+    client = FakeClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")})
+    n = Syncer(store, client, acc).backfill()
+    assert n == 2
+    assert store.get_sync_state(acc, "backfill_done") == "1"
+    assert store.get_sync_state(acc, "last_history_id") == "10"
+    assert len(store.search_messages("Deux")) == 1
+
+
+def test_incremental_adds_and_trashes(store):
+    acc = store.upsert_account("me@example.org")
+    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    hist = [
+        {"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]},
+        {"id": "12", "messagesDeleted": [{"message": {"id": "g1"}}]},
+    ]
+    client = FakeClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")}, history=hist)
+    n = Syncer(store, client, acc).incremental()
+    assert n == 2
+    assert store.get_sync_state(acc, "last_history_id") == "999"
+    g1 = store.db.read().execute("SELECT is_trashed FROM messages WHERE gmail_id='g1'").fetchone()
+    assert g1["is_trashed"] == 1
+
+
+def test_incremental_resyncs_on_history_expired(store):
+    acc = store.upsert_account("me@example.org")
+    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    client = FakeClient({"g1": _msg("g1", "Un"), "g9": _msg("g9", "Neuf")}, history_raises=True)
+    Syncer(store, client, acc).incremental()
+    assert store.search_messages("Neuf")
