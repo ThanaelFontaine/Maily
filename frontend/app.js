@@ -111,6 +111,13 @@ const THEME_PALETTES = {
 function paletteForTheme() {
   return THEME_PALETTES[document.documentElement.dataset.theme] || THEME_PALETTES.aero;
 }
+// Fond d'un swatch : même DA que les pastilles de profil (dégradé brillant en
+// Aero, à-plat ailleurs) pour une couleur fidèle.
+function swatchBg(c) {
+  return document.documentElement.dataset.theme === "aero"
+    ? `background:linear-gradient(180deg, ${c}cc, ${c})`
+    : `background-color:${c}`;
+}
 
 // Met a jour un profil (nom et/ou couleur) en base, puis recolore/renomme en place.
 async function updateAccount(id, patch) {
@@ -155,7 +162,7 @@ function openColorPicker(accountId, anchor) {
   pop.className = "colorpop";
   const cur = (accountColors[accountId] || "").toLowerCase();
   pop.innerHTML = paletteForTheme().map((c) =>
-    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background-color:${c}" data-c="${c}" title="${c}"></button>`
+    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" title="${c}"></button>`
   ).join("");
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
@@ -718,7 +725,7 @@ function renderSettings() {
   wrap.innerHTML = state.accounts.map((a) => {
     const cur = (accountColors[a.id] || "").toLowerCase();
     const sw = pal.map((c) =>
-      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background-color:${c}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
+      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
     ).join("");
     return `<div class="settings-row">
       <div class="settings-row-top">

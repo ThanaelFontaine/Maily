@@ -484,9 +484,10 @@ body {
 .swatch:hover { transform: scale(1.12); }
 .swatch.on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.4); }
 
-/* Frutiger Aero : swatches en bulle brillante (même DA que les pastilles de profil) */
+/* Frutiger Aero : swatches en bulle brillante (même DA que les pastilles de profil).
+   Le dégradé de couleur vient du style inline (couleur fidèle) ; ici juste le
+   volume (ombre) + le reflet via ::after. */
 :root[data-theme="aero"] .swatch {
-  background-image: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 55%);
   box-shadow: inset 0 -3px 5px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.25);
 }
 :root[data-theme="aero"] .swatch::after {
