@@ -122,6 +122,31 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
+def _apply_macos_transparency(win):
+    # Sur macOS, la WKWebView peint une `underPageBackgroundColor` OPAQUE sous la
+    # page. Meme avec la fenetre transparente, la page transparente et la vibrancy
+    # derriere, ce fond opaque masque le bureau. pywebview ne l'expose pas et pose
+    # une cle obsolete (`drawsTransparentBackground`, ignoree par WKWebView), donc
+    # on force la couleur en transparent nous-memes, sur le thread principal.
+    try:
+        import webview.platforms.cocoa as cocoa
+        import AppKit
+        from PyObjCTools import AppHelper
+    except Exception:
+        return
+    bv = cocoa.BrowserView.instances.get(win.uid)
+    if bv is None:
+        return
+
+    def _set():
+        try:
+            bv.webview.setUnderPageBackgroundColor_(AppKit.NSColor.clearColor())
+        except Exception:
+            pass
+
+    AppHelper.callAfter(_set)
+
+
 def window_kwargs(platform: str, width: int = 1240, height: int = 820) -> dict:
     # Transparence de la fenetre native selon la plateforme :
     # macOS -> vibrancy (flou depoli natif du bureau) ; Linux -> transparent
@@ -163,7 +188,11 @@ def run():
         raise RuntimeError("Le serveur local n'a pas demarre a temps.")
     runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port)
 
-    webview.create_window("Maily", base, **window_kwargs(sys.platform))
+    win = webview.create_window("Maily", base, **window_kwargs(sys.platform))
+    if sys.platform == "darwin":
+        # Applique la correction de transparence une fois la webview native prete
+        # (l'evenement `loaded` garantit son existence).
+        win.events.loaded += lambda: _apply_macos_transparency(win)
     webview.start()
 
 
