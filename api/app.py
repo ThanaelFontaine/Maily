@@ -1,12 +1,15 @@
 from __future__ import annotations
+import json
+import pathlib
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from core.sanitize import sanitize_html
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 
 
-def create_app(store, token, sync_fn=None) -> FastAPI:
+def create_app(store, token, sync_fn=None, frontend_dir=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -67,5 +70,15 @@ def create_app(store, token, sync_fn=None) -> FastAPI:
         if sync_fn is None:
             raise HTTPException(status_code=501, detail="sync not wired")
         return {"changed": sync_fn(account_id)}
+
+    if frontend_dir:
+        fd = pathlib.Path(frontend_dir)
+        app.mount("/static", StaticFiles(directory=str(fd)), name="static")
+
+        @app.get("/", response_class=HTMLResponse)
+        def index():
+            html = (fd / "index.html").read_text(encoding="utf-8")
+            inject = f"<script>window.MAILY_TOKEN={json.dumps(token)};</script>"
+            return HTMLResponse(html.replace("</head>", inject + "</head>"))
 
     return app

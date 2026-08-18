@@ -27,6 +27,9 @@ class Store:
     def list_accounts(self):
         return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
 
+    def get_account(self, account_id):
+        return self.db.read().execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()
+
     def upsert_message(self, account_id, gmail_id, **fields) -> int:
         cols = {k: v for k, v in fields.items() if k in _MESSAGE_COLS}
         with self.db.writer() as c:
