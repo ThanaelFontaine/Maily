@@ -211,6 +211,17 @@ def _apply_macos_transparency(win):
             window.makeFirstResponder_(webview)
             window.setOpaque_(False)
             window.setBackgroundColor_(clear)
+
+            # Rendre la fenetre "key"/active et forcer un recompositing : sur
+            # macOS 26 la vibrancy behind-window n'echantillonne le bureau en
+            # direct que fenetre active -> sinon elle reste en aplat atténué.
+            window.makeKeyAndOrderFront_(None)
+            try:
+                AppKit.NSApp.activateIgnoringOtherApps_(True)
+            except Exception:
+                pass
+            container.displayIfNeeded()
+            container.setNeedsDisplay_(True)
         except Exception:
             pass
 
