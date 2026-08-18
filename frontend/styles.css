@@ -95,6 +95,22 @@ body {
 .icon-btn .ico { width: 16px; height: 16px; vertical-align: -3px; }
 .cat .ico { vertical-align: -3px; }
 
+/* Boutons en icone seule (compacts, responsive) */
+.io { display: inline-flex; align-items: center; justify-content: center; }
+.listbar .io, .read-actions .io { padding: 7px 9px; }
+.io .ico { vertical-align: 0; }
+@keyframes maily-spin { to { transform: rotate(360deg); } }
+.spinning .ico { animation: maily-spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spinning .ico { animation: none; } }
+
+/* Tooltip au survol (reprend le libelle du bouton) */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 7px); transform: translateX(-50%);
+  white-space: nowrap; padding: 4px 9px; border-radius: 7px; font-size: 11px; font-weight: 600;
+  background: rgba(20,22,30,.96); color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.45); z-index: 40; pointer-events: none;
+}
+
 /* ---------- Corps (3 panneaux) ---------- */
 .body { flex: 1; display: flex; min-height: 0; }
 

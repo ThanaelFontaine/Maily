@@ -24,6 +24,8 @@ const ICONS = {
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  // "mark_email_read" facon Google : enveloppe + coche.
+  mail_read: '<path d="M22 12.2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9.5"/><path d="m2 7 10 6 10-6"/><path d="m16 18.5 2 2 4-4"/>',
 };
 function ico(name) {
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -426,6 +428,12 @@ async function downloadAttachment(id, attId, att) {
 function openSingle(id) { state.tabs = []; openMessage(id); }
 
 function openInTab(id, subject) {
+  // Un mail deja ouvert seul (hors onglets) doit devenir un onglet, sinon le
+  // Cmd+clic ne cree qu'un onglet (longueur 1 -> pas de barre) au 1er coup.
+  if (state.currentId && !state.tabs.some((t) => t.id === state.currentId)) {
+    const cur = (state.currentMsgs || []).find((m) => m.id === state.currentId);
+    state.tabs.push({ id: state.currentId, subject: cur ? cur.subject : "" });
+  }
   if (!state.tabs.some((t) => t.id === id)) state.tabs.push({ id, subject });
   openMessage(id);
 }
@@ -495,11 +503,11 @@ async function openMessage(id) {
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
        <button class="gel" id="replybtn">${ico("reply")} Répondre</button>
-       <button class="ghost" id="fwdbtn">${ico("forward")} Transférer</button>
+       <button class="ghost io" id="fwdbtn" title="Transférer" data-tip="Transférer">${ico("forward")}</button>
        ${inTrash
-        ? `<button class="ghost" id="untrashbtn">${ico("restore")} Restaurer</button>`
-        : `<button class="ghost" id="archbtn">${ico("archive")} Archiver</button>
-           <button class="ghost" id="trashbtn">${ico("trash")} Corbeille</button>`}
+        ? `<button class="ghost io" id="untrashbtn" title="Restaurer" data-tip="Restaurer">${ico("restore")}</button>`
+        : `<button class="ghost io" id="archbtn" title="Archiver" data-tip="Archiver">${ico("archive")}</button>
+           <button class="ghost io" id="trashbtn" title="Corbeille" data-tip="Corbeille">${ico("trash")}</button>`}
      </div>`;
   read.appendChild(head);
 
@@ -698,7 +706,8 @@ async function syncAll() {
   const btn = el("#sync");
   btn.disabled = true;
   const label = btn.innerHTML;
-  btn.innerHTML = `${ico("refresh")} Synchro…`;
+  btn.innerHTML = ico("refresh");
+  btn.classList.add("spinning");
   try {
     const accs = await api("/accounts");
     for (const a of accs) {
@@ -708,6 +717,7 @@ async function syncAll() {
     }
   } catch (e) { banner("Erreur de synchro : " + e.message); }
   btn.disabled = false;
+  btn.classList.remove("spinning");
   btn.innerHTML = label;
 }
 
@@ -781,27 +791,34 @@ function initSplitter() {
   const setW = (w) => document.documentElement.style.setProperty("--list-w", w + "px");
   const saved = parseInt(localStorage.getItem(LIST_WIDTH_KEY), 10);
   if (saved) setW(saved);
-  let startX = 0, startW = 0;
-  const onMove = (e) => {
-    const w = Math.max(260, Math.min(720, startW + (e.clientX - startX)));
-    setW(w);
-  };
-  const onUp = () => {
-    sp.classList.remove("dragging");
-    document.body.style.userSelect = "";
-    document.removeEventListener("mousemove", onMove);
-    document.removeEventListener("mouseup", onUp);
-    localStorage.setItem(LIST_WIDTH_KEY, String(listcol.offsetWidth));
-  };
-  sp.addEventListener("mousedown", (e) => {
+  let startX = 0, startW = 0, dragging = false;
+
+  // Pointer Events + capture : on ne redimensionne QUE tant que le clic est
+  // maintenu, et le relachement est fiable meme hors de la fenetre.
+  sp.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    dragging = true;
     startX = e.clientX;
     startW = listcol.offsetWidth;
+    sp.setPointerCapture(e.pointerId);
     sp.classList.add("dragging");
     document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
     e.preventDefault();
   });
+  sp.addEventListener("pointermove", (e) => {
+    if (!dragging) return;                       // rien sans clic maintenu
+    setW(Math.max(260, Math.min(720, startW + (e.clientX - startX))));
+  });
+  const end = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    try { sp.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    sp.classList.remove("dragging");
+    document.body.style.userSelect = "";
+    localStorage.setItem(LIST_WIDTH_KEY, String(listcol.offsetWidth));
+  };
+  sp.addEventListener("pointerup", end);
+  sp.addEventListener("pointercancel", end);
 }
 
 async function initGlassSlider() {
@@ -823,13 +840,18 @@ async function initGlassSlider() {
 }
 
 function paintStaticIcons() {
-  const map = {
+  const labeled = {
     "#settingsbtn": ["settings", "Réglages"], "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
-    "#sync": ["refresh", "Synchroniser"], "#markread": ["check", "Tout marquer lu"],
     "#c-send": ["send", "Envoyer"], "#c-attach": ["paperclip", "Joindre"],
   };
-  for (const [sel, [name, label]] of Object.entries(map)) {
+  for (const [sel, [name, label]] of Object.entries(labeled)) {
     const b = el(sel); if (b) b.innerHTML = `${ico(name)} ${label}`;
+  }
+  // Barre liste : icone seule + tooltip au survol (compact, responsive).
+  const iconOnly = { "#sync": ["refresh", "Synchroniser"], "#markread": ["mail_read", "Tout marquer lu"] };
+  for (const [sel, [name, tip]] of Object.entries(iconOnly)) {
+    const b = el(sel);
+    if (b) { b.innerHTML = ico(name); b.classList.add("io"); b.dataset.tip = tip; b.title = tip; }
   }
   ["#c-close", "#theme-close", "#settings-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
 }
