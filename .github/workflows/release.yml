@@ -39,7 +39,9 @@ jobs:
 
       - name: Binding GTK (Linux)
         if: runner.os == 'Linux'
-        run: uv pip install pygobject
+        # PyGObject >=3.52 exige girepository-2.0 (absent d'Ubuntu 24.04) : on pin
+        # la derniere serie compatible girepository-1.0.
+        run: uv pip install pycairo "pygobject==3.50.0"
 
       - name: Build PyInstaller
         run: uv run pyinstaller packaging/maily.spec --noconfirm
