@@ -233,3 +233,16 @@ body {
   :root[data-theme="dedsec"] .read-subj:hover { animation: none; }
   :root[data-theme="dedsec"] .bg::after { background: none; }
 }
+
+/* ---------- Onglets de mails ---------- */
+.mailtabs { display: flex; gap: 4px; padding: 8px 12px 0; overflow-x: auto; }
+.mailtab { display: flex; align-items: center; gap: 8px; max-width: 200px; padding: 6px 10px; cursor: pointer;
+  font-size: 12px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.5);
+  border: 1px solid rgba(255,255,255,.7); border-bottom: none; }
+.mailtab.on { background: rgba(255,255,255,.9); font-weight: 700; }
+.mailtab-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mailtab-x { opacity: .55; }
+.mailtab-x:hover { opacity: 1; }
+:root[data-theme="dedsec"] .mailtab { background: #0f1315; border: 1px solid #202b2c; border-bottom: none;
+  border-radius: 6px 6px 0 0; color: #8A8F98; }
+:root[data-theme="dedsec"] .mailtab.on { background: #FF2D78; color: #0a0c0f; font-weight: 800; }

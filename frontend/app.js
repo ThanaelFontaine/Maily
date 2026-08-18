@@ -4,7 +4,7 @@ const TOKEN = window.MAILY_TOKEN || "";
 const AUTH = { headers: { Authorization: "Bearer " + TOKEN } };
 const PALETTE = ["#2e5fff", "#18c07a", "#f5a524", "#c159f5", "#ef476f", "#0e91d8"];
 
-const state = { accountId: null, currentId: null, query: "" };
+const state = { accountId: null, currentId: null, query: "", tabs: [] };
 const accountColors = {};
 
 const el = (sel) => document.querySelector(sel);
@@ -121,7 +121,10 @@ async function loadMessages() {
          <span class="li-time">${fmtDate(m.internal_date)}</span>
        </div>
        <div class="li-subj">${(m.subject || "(sans sujet)").replace(/</g, "&lt;")}</div>`;
-    row.onclick = () => openMessage(m.id);
+    row.onclick = (e) => {
+      if (e.metaKey || e.ctrlKey) openInTab(m.id, m.subject);
+      else openSingle(m.id);
+    };
     list.appendChild(row);
   });
 }
@@ -211,6 +214,47 @@ async function downloadAttachment(id, attId, att) {
   }
 }
 
+function openSingle(id) {
+  state.tabs = [];
+  openMessage(id);
+}
+
+function openInTab(id, subject) {
+  if (!state.tabs.some((t) => t.id === id)) {
+    state.tabs.push({ id, subject });
+  }
+  openMessage(id);
+}
+
+function closeTab(id) {
+  state.tabs = state.tabs.filter((t) => t.id !== id);
+  if (state.currentId === id) {
+    if (state.tabs.length) {
+      openMessage(state.tabs[state.tabs.length - 1].id);
+    } else {
+      el("#read").innerHTML = `<div class="read-empty">Sélectionne un message pour le lire.</div>`;
+      state.currentId = null;
+    }
+  } else if (state.currentId) {
+    openMessage(state.currentId);
+  }
+}
+
+function renderTabBar() {
+  const bar = document.createElement("div");
+  bar.className = "mailtabs";
+  state.tabs.forEach((t) => {
+    const chip = document.createElement("div");
+    chip.className = "mailtab" + (t.id === state.currentId ? " on" : "");
+    chip.innerHTML = `<span class="mailtab-lbl">${esc(t.subject) || "(sans sujet)"}</span>` +
+      `<span class="mailtab-x" title="Fermer l'onglet">×</span>`;
+    chip.querySelector(".mailtab-lbl").onclick = () => openMessage(t.id);
+    chip.querySelector(".mailtab-x").onclick = (e) => { e.stopPropagation(); closeTab(t.id); };
+    bar.appendChild(chip);
+  });
+  return bar;
+}
+
 async function openMessage(id) {
   state.currentId = id;
   let m;
@@ -219,6 +263,7 @@ async function openMessage(id) {
 
   const read = el("#read");
   read.innerHTML = "";
+  if (state.tabs.length >= 2) read.appendChild(renderTabBar());
   const head = document.createElement("div");
   head.className = "read-head";
   head.innerHTML =
