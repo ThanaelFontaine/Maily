@@ -55,7 +55,7 @@ body {
   display: flex; align-items: center; gap: 12px; padding: 10px 16px;
   background: rgba(255,255,255,.28); border-bottom: 1px solid rgba(255,255,255,.5);
 }
-.brand { font-weight: 800; color: #0e6f97; font-size: 16px; }
+.top #themebtn { margin-left: auto; }
 .search {
   flex: 1; max-width: 520px; padding: 8px 14px; font-size: 13px; color: var(--ink);
   background: rgba(255,255,255,.65); border: 1px solid rgba(255,255,255,.85); border-radius: 999px;
@@ -209,7 +209,6 @@ body {
   border: 1px solid #202b2c; box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,45,120,.08);
 }
 :root[data-theme="dedsec"] .top { background: #0f1315; border-bottom: 1px solid #202b2c; text-transform: uppercase; letter-spacing: .05em; }
-:root[data-theme="dedsec"] .brand { color: #fff; }
 :root[data-theme="dedsec"] .search { background: #08090c; border: 1px solid #2A2D33; color: #cdd3d0; border-radius: 6px; box-shadow: none; }
 :root[data-theme="dedsec"] .search::placeholder { color: #5b616a; }
 :root[data-theme="dedsec"] .gel {
@@ -326,7 +325,6 @@ body {
   content: ""; position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(120% 90% at 50% 40%, transparent 60%, rgba(0,0,0,.5) 100%);
 }
-:root[data-theme="dedsec"] .brand { text-shadow: 0 0 8px rgba(255,45,120,.5); }
 :root[data-theme="dedsec"] .li.on { box-shadow: inset 3px 0 0 #FF2D78, 0 0 18px rgba(255,45,120,.10); }
 :root[data-theme="dedsec"] .li-dot:not(.seen) { box-shadow: 0 0 8px #22E6DC, 0 0 2px #22E6DC; }
 
@@ -379,7 +377,6 @@ body {
 :root[data-theme="glass"] .listbar,
 :root[data-theme="glass"] .cats,
 :root[data-theme="glass"] .list { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.4); }
-:root[data-theme="glass"] .brand { color: #4b3fd6; }
 :root[data-theme="glass"] .search { background: rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.7); box-shadow: inset 0 1px 3px rgba(60,50,120,.12); }
 :root[data-theme="glass"] .gel {
   background: rgba(109,94,246,.92); border: 1px solid rgba(255,255,255,.5); border-radius: 999px;

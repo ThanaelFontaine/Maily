@@ -613,7 +613,7 @@ function openThemeMenu() {
 function closeThemeMenu() { el("#thememodal").hidden = true; }
 
 async function main() {
-  setTheme(localStorage.getItem("maily_theme") || "aero");
+  setTheme(localStorage.getItem("maily_theme") || "glass");
   el("#themebtn").onclick = openThemeMenu;
   el("#theme-close").onclick = closeThemeMenu;
   el("#thememodal").addEventListener("click", (e) => { if (e.target.id === "thememodal") closeThemeMenu(); });
