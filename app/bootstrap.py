@@ -90,6 +90,9 @@ def make_act_fn(store):
 
 
 def _frontend_dir() -> pathlib.Path:
+    # En binaire figé (PyInstaller), le frontend est embarque a la racine.
+    if getattr(sys, "frozen", False):
+        return pathlib.Path(getattr(sys, "_MEIPASS", ".")) / "frontend"
     return pathlib.Path(__file__).resolve().parent.parent / "frontend"
 
 

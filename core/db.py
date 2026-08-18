@@ -1,5 +1,6 @@
 from __future__ import annotations
 import re
+import sys
 import sqlite3
 import threading
 import pathlib
@@ -9,6 +10,9 @@ _MIGRATION_RE = re.compile(r"^(\d{4})_.*\.sql$")
 
 
 def migrations_dir() -> pathlib.Path:
+    # En binaire figé (PyInstaller), les migrations sont embarquees a la racine.
+    if getattr(sys, "frozen", False):
+        return pathlib.Path(getattr(sys, "_MEIPASS", ".")) / "migrations"
     return pathlib.Path(__file__).resolve().parent.parent / "migrations"
 
 
