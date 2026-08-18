@@ -60,6 +60,25 @@ def test_send_from_account_decodes_attachments(store, monkeypatch):
     assert "a.txt" in decoded
 
 
+def test_idempotency_dedup(store):
+    acc = store.upsert_account("me@example.org")
+
+    class Counting:
+        def __init__(self):
+            self.n = 0
+
+        def send(self, raw, thread_id=None):
+            self.n += 1
+            return {"id": "g%d" % self.n}
+
+    client = Counting()
+    r1 = sender.send_message(store, client, acc, "me@x.co", "d@x.co", "S", "b", idempotency_key="K")
+    r2 = sender.send_message(store, client, acc, "me@x.co", "d@x.co", "S", "b", idempotency_key="K")
+    assert client.n == 1  # deuxieme appel dedupe, aucun re-envoi
+    assert r2.get("deduped") is True
+    assert r1["outbox_id"] == r2["outbox_id"]
+
+
 def test_send_from_account_size_guard(store, monkeypatch):
     import base64
     from core import accounts_service as svc

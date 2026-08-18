@@ -65,6 +65,13 @@ Le cœur (moteur Python + SQLite) est la source de vérité ; l'UI n'en est qu'u
 
 - **Lire** : interroger les vues stables `v1_messages` / `v1_threads` / `v1_accounts` dans `app.sqlite`.
 - **Agir** : appeler l'API HTTP locale (voir port + `base_url` dans `runtime.json`, jeton d'API dans le Trousseau, à passer en en-tête `Authorization: Bearer …`). Endpoints : `/accounts`, `/messages`, `/threads`, `/search`, `/send`, `/messages/{id}/modify|trash|untrash`, `/accounts/{id}/sync`, etc.
+- **Client prêt à l'emploi** : `scripts/claude_client.py` (l'app doit être lancée) lit `runtime.json` + le jeton et expose `accounts()`, `messages()`, `read_message()`, `search()`, `send()`, `modify()`, `trash()`, `sync()`. En ligne de commande :
+  ```bash
+  uv run python scripts/claude_client.py accounts
+  uv run python scripts/claude_client.py inbox --account 1
+  uv run python scripts/claude_client.py send --account 1 --to dest@x.co --subject "Coucou" --body "Salut"
+  ```
+  Pour agir **sans lancer l'app** (headless), Claude peut aussi importer directement le moteur : `from core import accounts_service` puis `sync_account(...)`, `send_from_account(...)`, `modify_message(...)` (les identifiants restent au Trousseau).
 
 ## Développement
 

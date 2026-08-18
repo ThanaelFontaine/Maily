@@ -47,3 +47,20 @@ def test_preserves_links_href():
 def test_keeps_table_structure():
     out = sanitize_html('<table><tr><td style="padding:8px">c</td></tr></table>')
     assert "<td" in out and "padding:8px" in out or "padding: 8px" in out
+
+
+def test_blocks_protocol_relative_remote():
+    out = sanitize_html('<img src="//evil.example/pixel.png">', allow_remote=False)
+    assert "evil.example" not in out
+    out2 = sanitize_html('<img src="//ok.example/i.png">', allow_remote=True)
+    assert "ok.example" in out2
+
+
+def test_blocks_data_and_js_href():
+    assert "data:text/html" not in sanitize_html('<a href="data:text/html,evil">x</a>')
+    assert "javascript:" not in sanitize_html('<a href="javascript:alert(1)">x</a>')
+
+
+def test_keeps_data_image_src():
+    out = sanitize_html('<img src="data:image/png;base64,AAAA">')
+    assert "data:image/png;base64,AAAA" in out
