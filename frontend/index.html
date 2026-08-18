@@ -20,14 +20,20 @@
       <span class="brand">✉ Maily</span>
       <input id="search" class="search" type="search" placeholder="Rechercher dans les mails…" autocomplete="off">
       <button id="themebtn" class="ghost" title="Changer de thème (Frutiger Aero / DedSec)">🎨 Thème</button>
-      <button id="imgpref" class="ghost" title="Charger automatiquement les images distantes (désactive la protection anti-pixel espion)">🖼️ Images</button>
-      <button id="sync" class="ghost" title="Synchroniser">⟳ Synchroniser</button>
       <button id="compose" class="gel">✎ Écrire</button>
     </header>
 
-    <div class="body">
-      <nav class="rail" id="rail" aria-label="Comptes"></nav>
-      <section class="list" id="list" aria-label="Messages"></section>
+    <div class="body" id="appbody">
+      <nav class="rail" id="rail" aria-label="Comptes et dossiers"></nav>
+      <section class="listcol">
+        <div class="listbar">
+          <button id="sync" class="ghost" title="Synchroniser">⟳ Synchroniser</button>
+          <button id="markread" class="ghost" title="Tout marquer comme lu">✓ Tout marquer lu</button>
+          <span class="listbar-title" id="listbar-title"></span>
+        </div>
+        <div class="cats" id="cats"></div>
+        <div class="list" id="list" aria-label="Messages"></div>
+      </section>
       <section class="read" id="read" aria-label="Lecture">
         <div class="read-empty">Sélectionne un message pour le lire.</div>
       </section>
