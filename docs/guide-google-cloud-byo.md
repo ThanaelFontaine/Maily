@@ -8,13 +8,16 @@
 
 ## 1. Créer un projet Google Cloud (gratuit)
 
-1. Va sur https://console.cloud.google.com/ et connecte-toi avec `work@example.com`.
-2. En haut, sélecteur de projet → **New project / Nouveau projet**.
-3. **Project name** : `Maily Automation Claude` (ou ce que tu veux).
-4. **Organization / Parent** : sélectionne **`example.org`** (c'est normal et obligatoire avec un compte Workspace, ça ne pose aucun souci - voir la note plus bas).
-5. **Create**. Puis assure-toi que ce projet est bien sélectionné en haut.
+> **Quel compte utiliser ?** Celui que tu veux, ça n'a pas d'importance. Le compte qui crée le projet en est juste le **propriétaire** (l'admin du projet Cloud) ; ça ne limite **pas** quelles boîtes tu pourras connecter ensuite (c'est le choix **External**, plus bas, qui ouvre l'accès à tous tes comptes). Tu peux très bien tout faire depuis `you@example.com`.
 
-> Note "No organization" : indisponible pour un compte Workspace, c'est attendu. Attacher le projet à `example.org` n'a aucun impact négatif. `thanaelfontaine.eu` étant dans la même org, tout sera géré au même endroit.
+1. Va sur https://console.cloud.google.com/ et connecte-toi avec **le compte de ton choix** (par ex. `you@example.com`).
+2. En haut, sélecteur de projet → **New project / Nouveau projet**.
+3. **Project name** : ce que tu veux (par ex. `Maily`).
+4. **Organization / Parent** :
+   - Si tu es connecté avec un compte **Workspace** (`thanaelfontaine.eu` ou `example.org`, tous deux dans la même org), Google t'**imposera** de choisir ton organisation (affichée `example.org`). C'est **normal**, tu n'as pas le choix, et ça ne gêne rien.
+   - Si tu utilisais un **Gmail perso** (`@gmail.com`), tu pourrais choisir **No organization**. C'est bien aussi.
+   - En clair : **aucune obligation d'utiliser un compte précis** ; l'organisation qui s'affiche dépend juste du compte avec lequel tu es connecté.
+5. **Create**. Puis assure-toi que ce projet est bien sélectionné en haut.
 
 ## 2. Activer l'API Gmail
 
@@ -32,7 +35,7 @@ Clique **Get started**. Un petit assistant en 4 étapes s'ouvre :
 
 1. **App Information**
    - **App name** : `Maily`
-   - **User support email** : choisis ton email (`work@example.com`).
+   - **User support email** : choisis **un de tes emails** (n'importe lequel, c'est juste un contact affiché).
    - **Next**.
 2. **Audience** ← ÉTAPE CLÉ
    - Choisis **External** (Externe). **Surtout pas Internal.**
@@ -64,11 +67,13 @@ Menu de gauche → **Branding**.
 Menu de gauche → **Audience**.
 
 1. **User type** : vérifie que c'est bien **External**. (S'il est sur Internal, repasse-le en External.)
-2. **Test users** : clique **Add users** et ajoute **chacune de tes adresses** à connecter :
-   - `work@example.com`
+2. **Test users** : clique **Add users** et ajoute **toutes les adresses que tu veux utiliser dans Maily** (quel que soit le compte propriétaire du projet), par exemple :
    - `you@example.com`
+   - `work@example.com`
    - ton Gmail perso
+   - toute autre boîte à connecter
    - **Save**.
+   - *(Après passage en Production à l'étape suivante, cette liste devient facultative ; mais l'ajouter ne coûte rien.)*
 3. **Publishing status** : tu verras "Testing".
    - Clique **Publish app** → **Confirm**. Le statut passe à **In production**.
    - Pourquoi c'est important : en "Testing", les connexions **expirent au bout de 7 jours** (tu devrais te reconnecter chaque semaine). En "In production", c'est **durable**.
