@@ -4,12 +4,24 @@ import pathlib
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from core.sanitize import sanitize_html
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 
 
-def create_app(store, token, sync_fn=None, frontend_dir=None) -> FastAPI:
+class SendPayload(BaseModel):
+    account_id: int
+    to: str
+    subject: str = ""
+    body_text: str = ""
+    body_html: str | None = None
+    cc: str | None = None
+    in_reply_to: str | None = None
+    thread_id: str | None = None
+
+
+def create_app(store, token, sync_fn=None, send_fn=None, frontend_dir=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -70,6 +82,15 @@ def create_app(store, token, sync_fn=None, frontend_dir=None) -> FastAPI:
         if sync_fn is None:
             raise HTTPException(status_code=501, detail="sync not wired")
         return {"changed": sync_fn(account_id)}
+
+    @app.post("/send", dependencies=[Depends(guard)])
+    def send_endpoint(payload: SendPayload):
+        if send_fn is None:
+            raise HTTPException(status_code=501, detail="send not wired")
+        try:
+            return send_fn(payload.model_dump())
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"envoi echoue: {e}")
 
     if frontend_dir:
         fd = pathlib.Path(frontend_dir)

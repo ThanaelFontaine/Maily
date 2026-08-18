@@ -56,3 +56,21 @@ def test_sync_endpoint(client):
     c, a = client
     r = c.post(f"/accounts/{a}/sync", headers=_auth())
     assert r.status_code == 200 and r.json()["changed"] == 7
+
+
+def test_send_endpoint(database):
+    store = Store(database)
+    store.upsert_account("me@example.org")
+    captured = {}
+
+    def send_fn(payload):
+        captured.update(payload)
+        return {"gmail_id": "gX", "outbox_id": 1}
+
+    app = create_app(store, TOKEN, send_fn=send_fn)
+    c = TestClient(app)
+    r = c.post("/send", headers=_auth(),
+               json={"account_id": 1, "to": "d@x.co", "subject": "Hi", "body_text": "yo"})
+    assert r.status_code == 200 and r.json()["gmail_id"] == "gX"
+    assert captured["to"] == "d@x.co"
+    assert c.post("/send", json={"account_id": 1, "to": "d@x.co"}).status_code == 401

@@ -126,3 +126,9 @@ class GmailClient:
     def list_labels(self):
         resp = self._execute(self.service.users().labels().list(userId="me"))
         return resp.get("labels", [])
+
+    def send(self, raw, thread_id=None):
+        body = {"raw": raw}
+        if thread_id:
+            body["threadId"] = thread_id
+        return self._execute(self.service.users().messages().send(userId="me", body=body))

@@ -115,3 +115,29 @@ class Store:
             params.append(account_id)
         sql += " ORDER BY internal_date ASC, id ASC"
         return self.db.read().execute(sql, params).fetchall()
+
+    def add_outbox(self, account_id, addr_to, subject, body_text, body_html,
+                   idempotency_key, addr_cc=None, in_reply_to=None, thread_id=None) -> int:
+        with self.db.writer() as c:
+            c.execute(
+                """INSERT INTO outbox(account_id, addr_to, addr_cc, subject, body_text,
+                     body_html, in_reply_to, thread_id, idempotency_key, status)
+                   VALUES(?,?,?,?,?,?,?,?,?,'queued')""",
+                (account_id, addr_to, addr_cc, subject, body_text, body_html,
+                 in_reply_to, thread_id, idempotency_key),
+            )
+            return c.execute("SELECT id FROM outbox WHERE idempotency_key=?",
+                             (idempotency_key,)).fetchone()[0]
+
+    def mark_outbox(self, outbox_id, status, gmail_id=None, error=None):
+        with self.db.writer() as c:
+            c.execute(
+                """UPDATE outbox SET status=?, gmail_id=COALESCE(?, gmail_id),
+                     error=?, attempts=attempts+1,
+                     sent_at=CASE WHEN ?='sent' THEN datetime('now') ELSE sent_at END
+                   WHERE id=?""",
+                (status, gmail_id, error, status, outbox_id),
+            )
+
+    def get_outbox(self, outbox_id):
+        return self.db.read().execute("SELECT * FROM outbox WHERE id=?", (outbox_id,)).fetchone()
