@@ -36,6 +36,9 @@ def test_apply_macos_transparency_missing_instance_is_safe():
 def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypatch):
     cocoa = pytest.importorskip("webview.platforms.cocoa")
     AppHelper = pytest.importorskip("PyObjCTools.AppHelper")
+    import app.bootstrap as b
+
+    b._GLASS_DONE.discard("uid-x")  # garde-fou "une fois par fenetre" : repart propre
 
     scheduled = []
     monkeypatch.setattr(AppHelper, "callAfter", lambda fn, *a: scheduled.append(fn))
@@ -47,5 +50,8 @@ def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypa
     monkeypatch.setitem(cocoa.BrowserView.instances, "uid-x", _FakeBV())
     _apply_macos_transparency(_FakeWin("uid-x"))
 
-    # Le travail natif (material vibrancy + transparence) est poste sur le thread principal.
+    # Le travail natif (re-parentage vibrancy + transparence) est poste sur le thread principal...
+    assert len(scheduled) == 1
+    # ... et une 2e invocation ne re-planifie pas (re-parentage idempotent).
+    _apply_macos_transparency(_FakeWin("uid-x"))
     assert len(scheduled) == 1
