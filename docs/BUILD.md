@@ -4,11 +4,9 @@ Maily est empaqueté avec **PyInstaller** (spec : [`packaging/maily.spec`](../pa
 Le `frontend/` et les `migrations/` sont embarqués dans le binaire ; les chemins sont
 « frozen-aware » (`sys._MEIPASS`). Point d'entrée : [`run_maily.py`](../run_maily.py).
 
-> ⚠️ **Pas de cross-compilation.** Chaque plateforme se construit **sur elle-même**
-> (un binaire macOS se construit sur un Mac, etc.). La CI GitHub Actions
-> ([`.github/workflows/release.yml`](../.github/workflows/release.yml)) le fait
-> automatiquement pour Linux et Windows à chaque tag `v*` ; le binaire **macOS ARM**
-> est fourni depuis un Mac Apple Silicon.
+> ⚠️ **Pas de cross-compilation.** Chaque plateforme se construit **sur elle-même** :
+> un binaire macOS se construit sur un Mac, un binaire Windows sur Windows, etc.
+> Suis la section correspondant à ta plateforme ci-dessous.
 
 ## Prérequis communs
 
@@ -64,15 +62,13 @@ Compress-Archive -Path dist\Maily -DestinationPath Maily-windows-x64.zip
 
 ## Publication d'une release
 
-Pousser un tag `vX.Y.Z` déclenche la CI qui construit Linux + Windows et les attache à
-la release GitHub :
+Créer la release et y attacher le(s) binaire(s) construits sur chaque plateforme :
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
-```
-
-Le binaire macOS ARM est construit localement et ajouté à la même release :
-
-```bash
-gh release upload v0.1.0 Maily-macos-arm64.zip --clobber
+git tag -a vX.Y.Z -m "Maily X.Y.Z" && git push origin vX.Y.Z
+gh release create vX.Y.Z --title "Maily X.Y.Z" --notes "…"
+# puis, depuis chaque plateforme, après avoir buildé + zippé :
+gh release upload vX.Y.Z Maily-macos-arm64.zip     # depuis un Mac
+gh release upload vX.Y.Z Maily-linux-x64.tar.gz    # depuis Linux
+gh release upload vX.Y.Z Maily-windows-x64.zip     # depuis Windows
 ```
