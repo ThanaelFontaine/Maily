@@ -25,7 +25,7 @@ def creds_to_dict(creds: Credentials) -> dict:
         "client_id": creds.client_id,
         "client_secret": creds.client_secret,
         "scopes": list(creds.scopes) if creds.scopes else SCOPES,
-        "expiry": creds.expiry.isoformat() if creds.expiry else None,
+        "expiry": creds.expiry.isoformat() if getattr(creds, "expiry", None) else None,
     }
 
 

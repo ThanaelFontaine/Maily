@@ -87,6 +87,7 @@ def test_run_local_auth_persists_token(monkeypatch):
         client_id = "cid"
         client_secret = "sec"
         scopes = auth.SCOPES
+        expiry = None
 
     class FakeFlow:
         @staticmethod
