@@ -40,6 +40,13 @@ def build_gmail_client(email) -> GmailClient:
     return GmailClient(service)
 
 
+def refresh_labels(store, email, account_id) -> int:
+    client = build_gmail_client(email)
+    labels = client.list_labels()
+    store.replace_labels(account_id, labels)
+    return len(labels)
+
+
 def modify_message(store, email, message_id, add=None, remove=None) -> dict:
     m = store.get_message(message_id)
     if not m:

@@ -56,6 +56,18 @@ def make_send_fn(store):
     return _send
 
 
+def make_labels_fn(store):
+    from core import accounts_service as svc
+
+    def _labels(account_id):
+        acc = store.get_account(account_id)
+        if not acc:
+            raise ValueError(f"compte {account_id} introuvable")
+        return svc.refresh_labels(store, acc["email"], account_id)
+
+    return _labels
+
+
 def make_act_fn(store):
     from core import accounts_service as svc
 
@@ -126,7 +138,7 @@ def run():
     app = create_app(store, token, sync_fn=make_sync_fn(store, months),
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
                      download_fn=download_fn, inline_fn=inline_fn,
-                     frontend_dir=_frontend_dir())
+                     labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir())
 
     port = free_port()
     _start_server(app, port)

@@ -34,7 +34,7 @@ class ModifyPayload(BaseModel):
 
 
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
-               download_fn=None, inline_fn=None, frontend_dir=None) -> FastAPI:
+               download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -61,7 +61,14 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
 
     @app.get("/accounts/{account_id}/labels", dependencies=[Depends(guard)])
     def labels(account_id: int):
-        return rows(store.list_labels(account_id))
+        labs = store.list_labels(account_id)
+        if not labs and labels_fn:
+            try:
+                labels_fn(account_id)
+            except Exception:
+                pass
+            labs = store.list_labels(account_id)
+        return rows(labs)
 
     @app.get("/messages", dependencies=[Depends(guard)])
     def messages(account_id: int | None = None, category: str | None = None,
