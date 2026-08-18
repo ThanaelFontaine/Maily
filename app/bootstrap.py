@@ -1,5 +1,6 @@
 from __future__ import annotations
 import socket
+import sys
 import threading
 import time
 import pathlib
@@ -121,6 +122,21 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
+def window_kwargs(platform: str, width: int = 1240, height: int = 820) -> dict:
+    # Transparence de la fenetre native selon la plateforme :
+    # macOS -> vibrancy (flou depoli natif du bureau) ; Linux -> transparent
+    # (le compositeur floute) ; ailleurs (Windows) -> opaque + fond de repli clair.
+    kwargs = {"width": width, "height": height}
+    if platform == "darwin":
+        kwargs["transparent"] = True
+        kwargs["vibrancy"] = True
+    elif platform.startswith("linux"):
+        kwargs["transparent"] = True
+    else:
+        kwargs["background_color"] = "#EDF0FB"
+    return kwargs
+
+
 def run():
     import webview
     from core import paths, runtime
@@ -147,7 +163,7 @@ def run():
         raise RuntimeError("Le serveur local n'a pas demarre a temps.")
     runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port)
 
-    webview.create_window("Maily", base, width=1240, height=820)
+    webview.create_window("Maily", base, **window_kwargs(sys.platform))
     webview.start()
 
 
