@@ -571,13 +571,28 @@ async function syncAll() {
 
 /* ------------------------- Init ------------------------- */
 
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem("maily_theme", t);
+  document.querySelectorAll(".theme-opt").forEach((b) => b.classList.toggle("on", b.dataset.themeVal === t));
+}
+
+function openThemeMenu() {
+  const cur = document.documentElement.dataset.theme;
+  document.querySelectorAll(".theme-opt").forEach((b) => b.classList.toggle("on", b.dataset.themeVal === cur));
+  el("#thememodal").hidden = false;
+}
+
+function closeThemeMenu() { el("#thememodal").hidden = true; }
+
 async function main() {
-  document.documentElement.dataset.theme = localStorage.getItem("maily_theme") || "aero";
-  el("#themebtn").onclick = () => {
-    const next = document.documentElement.dataset.theme === "dedsec" ? "aero" : "dedsec";
-    document.documentElement.dataset.theme = next;
-    localStorage.setItem("maily_theme", next);
-  };
+  setTheme(localStorage.getItem("maily_theme") || "aero");
+  el("#themebtn").onclick = openThemeMenu;
+  el("#theme-close").onclick = closeThemeMenu;
+  el("#thememodal").addEventListener("click", (e) => { if (e.target.id === "thememodal") closeThemeMenu(); });
+  document.querySelectorAll(".theme-opt").forEach((b) => {
+    b.onclick = () => { setTheme(b.dataset.themeVal); closeThemeMenu(); };
+  });
   el("#sync").onclick = syncAll;
   el("#markread").onclick = markAllRead;
   el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });
