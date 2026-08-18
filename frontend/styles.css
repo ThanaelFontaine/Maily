@@ -329,3 +329,24 @@ body {
 :root[data-theme="dedsec"] .brand { text-shadow: 0 0 8px rgba(255,45,120,.5); }
 :root[data-theme="dedsec"] .li.on { box-shadow: inset 3px 0 0 #FF2D78, 0 0 18px rgba(255,45,120,.10); }
 :root[data-theme="dedsec"] .li-dot:not(.seen) { box-shadow: 0 0 8px #22E6DC, 0 0 2px #22E6DC; }
+
+/* ---------- Croix de fermeture du mail ---------- */
+.read-head { position: relative; }
+.read-subj { padding-right: 28px; }
+.read-close { position: absolute; top: 12px; right: 14px; border: 0; background: transparent; cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 4px 7px; border-radius: 8px; color: var(--ink-soft); }
+.read-close:hover { background: rgba(0,0,0,.07); color: var(--ink); }
+:root[data-theme="dedsec"] .read-close { color: #8A8F98; }
+:root[data-theme="dedsec"] .read-close:hover { color: #22E6DC; background: #12191b; }
+
+/* ---------- Scrollbars thématisées ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(31,167,199,.5), rgba(14,134,168,.55));
+  border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(14,134,168,.85); background-clip: padding-box; border: 2px solid transparent; }
+
+:root[data-theme="dedsec"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme="dedsec"] ::-webkit-scrollbar-track { background: #0a0c0d; }
+:root[data-theme="dedsec"] ::-webkit-scrollbar-thumb { background: #2c3a3b; border-radius: 0; border: 0; }
+:root[data-theme="dedsec"] ::-webkit-scrollbar-thumb:hover { background: #FF2D78; }

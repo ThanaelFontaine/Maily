@@ -222,6 +222,7 @@ async function loadMessages() {
   msgs.forEach((m) => {
     const row = document.createElement("div");
     row.className = "li" + (m.id === state.currentId ? " on" : "");
+    row.dataset.id = m.id;
     row.innerHTML =
       `<div class="li-top">
          <span class="li-dot ${m.is_unread ? "" : "seen"}"></span>
@@ -265,6 +266,10 @@ const BASE_CSS = `
   table { max-width: 100%; }
   blockquote { margin: 0 0 0 12px; padding-left: 12px; border-left: 3px solid rgba(20,50,63,.2); color: rgba(20,50,63,.75); }
   pre { white-space: pre-wrap; word-wrap: break-word; font: 14px/1.55 -apple-system, 'Segoe UI', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(20,50,63,.28); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(20,50,63,.5); }
 `;
 
 function buildDoc(fragment) {
@@ -341,9 +346,24 @@ function renderTabBar() {
   return bar;
 }
 
+function closeReading() {
+  state.currentId = null;
+  state.tabs = [];
+  el("#read").innerHTML = `<div class="read-empty">Sélectionne un message pour le lire.</div>`;
+  updateLayout();
+  loadMessages();
+}
+
 async function openMessage(id) {
   state.currentId = id;
   updateLayout();
+  // MAJ optimiste : la pastille non-lu disparait immediatement au clic
+  const listRow = document.querySelector(`.li[data-id="${id}"]`);
+  if (listRow) {
+    listRow.querySelector(".li-dot")?.classList.add("seen");
+    document.querySelectorAll(".li.on").forEach((r) => r.classList.remove("on"));
+    listRow.classList.add("on");
+  }
   let m;
   try { m = await api("/messages/" + id); }
   catch (e) { banner("Erreur : " + e.message); return; }
@@ -356,7 +376,8 @@ async function openMessage(id) {
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
   head.innerHTML =
-    `<h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
+    `<button class="read-close" id="read-close" title="Fermer">✕</button>
+     <h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
        <button class="gel" id="replybtn">↩︎ Répondre</button>
@@ -368,6 +389,7 @@ async function openMessage(id) {
      </div>`;
   read.appendChild(head);
 
+  head.querySelector("#read-close").onclick = closeReading;
   head.querySelector("#replybtn").onclick = () => replyTo(m);
   head.querySelector("#fwdbtn").onclick = () => forward(m);
   if (inTrash) {
