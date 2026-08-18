@@ -18,6 +18,7 @@
   <div class="win">
     <header class="top">
       <input id="search" class="search" type="search" placeholder="Rechercher dans les mails…" autocomplete="off">
+      <button id="settingsbtn" class="ghost" title="Réglages des profils">Réglages</button>
       <button id="themebtn" class="ghost" title="Changer de thème (Frutiger Aero / DedSec)">Thème</button>
       <button id="compose" class="gel">Écrire</button>
     </header>
@@ -81,6 +82,16 @@
         <input type="range" id="glass-alpha" class="glass-slider" min="0" max="100" value="60"
                title="Opacité / clarté du dépoli en thème Verre">
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="settingsmodal" hidden>
+    <div class="settingsmenu">
+      <div class="composer-head thememenu-head">
+        <span>Réglages des profils</span>
+        <button class="icon-btn" id="settings-close" title="Fermer"></button>
+      </div>
+      <div class="settings-body" id="settings-accounts"></div>
     </div>
   </div>
 

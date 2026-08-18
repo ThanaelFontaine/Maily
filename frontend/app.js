@@ -23,6 +23,7 @@ const ICONS = {
   tag: '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
 };
 function ico(name) {
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -97,8 +98,75 @@ function fmtSize(b) {
   return k < 1024 ? Math.round(k) + " Ko" : (k / 1024).toFixed(1) + " Mo";
 }
 
-function orb(color) {
-  return `<span class="orb" style="background:linear-gradient(180deg, ${color}cc, ${color})"></span>`;
+function orb(color, id) {
+  return `<span class="orb"${id != null ? ` data-acc="${id}"` : ""} style="background:linear-gradient(180deg, ${color}cc, ${color})"></span>`;
+}
+
+/* ------- Couleurs de compte : palette thème-aware + choix persistant ------- */
+const THEME_PALETTES = {
+  aero:   ["#2e5fff", "#0e91d8", "#18c07a", "#14b8a6", "#f5a524", "#ef476f", "#c159f5", "#8b5cf6"],
+  glass:  ["#4f7cff", "#38bdf8", "#34d399", "#2dd4bf", "#fbbf24", "#fb7185", "#c084fc", "#a78bfa"],
+  dedsec: ["#FF2D78", "#22E6DC", "#4AF626", "#F5A524", "#8b7cff", "#ef476f", "#00E5FF", "#39FF14"],
+};
+function paletteForTheme() {
+  return THEME_PALETTES[document.documentElement.dataset.theme] || THEME_PALETTES.aero;
+}
+
+// Met a jour un profil (nom et/ou couleur) en base, puis recolore/renomme en place.
+async function updateAccount(id, patch) {
+  let acc;
+  try {
+    const r = await fetch(`/accounts/${id}`, {
+      method: "PATCH",
+      headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!r.ok) throw new Error();
+    acc = await r.json();
+  } catch { banner("Mise à jour du profil impossible."); return null; }
+  const a = state.accounts.find((x) => x.id === id);
+  if (a) Object.assign(a, acc);
+  if (patch.color) {
+    accountColors[id] = patch.color;
+    document.querySelectorAll(`.orb[data-acc="${id}"]`).forEach((o) => {
+      o.style.background = `linear-gradient(180deg, ${patch.color}cc, ${patch.color})`;
+    });
+    document.querySelectorAll(`.li[data-acc="${id}"] .li-dot`).forEach((d) => {
+      d.style.setProperty("--dot", patch.color);
+    });
+  }
+  if (patch.display_name !== undefined) {
+    document.querySelectorAll(`.orb[data-acc="${id}"]`).forEach((o) => {
+      const lbl = o.parentElement && o.parentElement.querySelector(".nav-lbl");
+      if (lbl) lbl.textContent = acc.display_name || acc.email;
+    });
+  }
+  return acc;
+}
+
+function closeColorPicker() {
+  const p = document.getElementById("colorpop");
+  if (p) { if (p._onDoc) document.removeEventListener("click", p._onDoc, true); p.remove(); }
+}
+function openColorPicker(accountId, anchor) {
+  closeColorPicker();
+  const pop = document.createElement("div");
+  pop.id = "colorpop";
+  pop.className = "colorpop";
+  const cur = (accountColors[accountId] || "").toLowerCase();
+  pop.innerHTML = paletteForTheme().map((c) =>
+    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background:${c}" data-c="${c}" title="${c}"></button>`
+  ).join("");
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+  pop.style.top = (r.bottom + 6) + "px";
+  pop.querySelectorAll(".swatch").forEach((b) => {
+    b.onclick = () => { updateAccount(accountId, { color: b.dataset.c }); closeColorPicker(); };
+  });
+  const onDoc = (e) => { if (!e.target.closest("#colorpop")) closeColorPicker(); };
+  pop._onDoc = onDoc;
+  setTimeout(() => document.addEventListener("click", onDoc, true), 0);
 }
 
 function updateLayout() {
@@ -124,9 +192,10 @@ async function loadAccounts() {
     const n = document.createElement("div");
     n.className = "nav" + (state.accountId === a.id ? " on" : "");
     const label = a.display_name || a.email;
-    n.innerHTML = `${orb(accountColors[a.id])}<span class="nav-lbl">${esc(label)}</span>`;
+    n.innerHTML = `${orb(accountColors[a.id], a.id)}<span class="nav-lbl">${esc(label)}</span>`;
     n.title = a.email;
     n.onclick = () => selectAccount(a.id);
+    n.querySelector(".orb").onclick = (e) => { e.stopPropagation(); openColorPicker(a.id, e.currentTarget); };
     rail.appendChild(n);
   });
 
@@ -252,9 +321,11 @@ async function loadMessages() {
     const row = document.createElement("div");
     row.className = "li" + (m.id === state.currentId ? " on" : "");
     row.dataset.id = m.id;
+    if (m.account_id != null) row.dataset.acc = m.account_id;
+    const dotColor = accountColors[m.account_id];
     row.innerHTML =
       `<div class="li-top">
-         <span class="li-dot ${m.is_unread ? "" : "seen"}"></span>
+         <span class="li-dot ${m.is_unread ? "" : "seen"}"${dotColor ? ` style="--dot:${dotColor}"` : ""}></span>
          <span class="li-from" style="color:${m.is_unread ? "var(--ink)" : "var(--ink-soft)"}">${esc(fromName(m.addr_from))}</span>
          <span class="li-time">${fmtDate(m.internal_date)}</span>
        </div>
@@ -635,6 +706,41 @@ function openThemeMenu() {
 
 function closeThemeMenu() { el("#thememodal").hidden = true; }
 
+/* ------- Page réglages : nom + couleur par profil ------- */
+function renderSettings() {
+  const wrap = el("#settings-accounts");
+  const pal = paletteForTheme();
+  wrap.innerHTML = state.accounts.map((a) => {
+    const cur = (accountColors[a.id] || "").toLowerCase();
+    const sw = pal.map((c) =>
+      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="background:${c}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
+    ).join("");
+    return `<div class="settings-row">
+      <div class="settings-row-top">
+        ${orb(accountColors[a.id], a.id)}
+        <input class="settings-name" data-acc="${a.id}" value="${esc(a.display_name || "")}" placeholder="${esc(a.email)}" maxlength="60">
+      </div>
+      <div class="settings-email">${esc(a.email)}</div>
+      <div class="settings-swatches">${sw}</div>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll(".settings-name").forEach((inp) => {
+    inp.onchange = () => updateAccount(parseInt(inp.dataset.acc, 10), { display_name: inp.value.trim() });
+  });
+  wrap.querySelectorAll(".settings-swatches .swatch").forEach((b) => {
+    b.onclick = async () => {
+      await updateAccount(parseInt(b.dataset.acc, 10), { color: b.dataset.c });
+      renderSettings();
+    };
+  });
+}
+function openSettings() {
+  if (!state.accounts.length) { banner("Aucun compte à régler."); return; }
+  renderSettings();
+  el("#settingsmodal").hidden = false;
+}
+function closeSettings() { el("#settingsmodal").hidden = true; }
+
 /* ------- Densité du fond (thème Verre) : slider -> vibrancy native ------- */
 const GLASS_ALPHA_KEY = "maily_glass_alpha";
 
@@ -666,14 +772,14 @@ function initGlassSlider() {
 
 function paintStaticIcons() {
   const map = {
-    "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
+    "#settingsbtn": ["settings", "Réglages"], "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
     "#sync": ["refresh", "Synchroniser"], "#markread": ["check", "Tout marquer lu"],
     "#c-send": ["send", "Envoyer"], "#c-attach": ["paperclip", "Joindre"],
   };
   for (const [sel, [name, label]] of Object.entries(map)) {
     const b = el(sel); if (b) b.innerHTML = `${ico(name)} ${label}`;
   }
-  ["#c-close", "#theme-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
+  ["#c-close", "#theme-close", "#settings-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
 }
 
 async function main() {
@@ -685,6 +791,9 @@ async function main() {
   document.querySelectorAll(".theme-opt").forEach((b) => {
     b.onclick = () => { setTheme(b.dataset.themeVal); closeThemeMenu(); };
   });
+  el("#settingsbtn").onclick = openSettings;
+  el("#settings-close").onclick = closeSettings;
+  el("#settingsmodal").addEventListener("click", (e) => { if (e.target.id === "settingsmodal") closeSettings(); });
   el("#sync").onclick = syncAll;
   el("#markread").onclick = markAllRead;
   el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });

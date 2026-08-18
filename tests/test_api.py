@@ -114,3 +114,38 @@ def test_glass_requires_auth(database):
 def test_glass_invalid_alpha_is_400(database):
     c = TestClient(create_app(Store(database), TOKEN))
     assert c.post("/glass", headers=_auth(), json={"alpha": "abc"}).status_code == 400
+
+
+def test_patch_account_name_and_color(client):
+    c, a = client
+    r = c.patch(f"/accounts/{a}", headers=_auth(), json={"display_name": "Perso", "color": "#12ab34"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["display_name"] == "Perso" and body["color"] == "#12ab34"
+    # persistance
+    accs = c.get("/accounts", headers=_auth()).json()
+    me = [x for x in accs if x["id"] == a][0]
+    assert me["display_name"] == "Perso" and me["color"] == "#12ab34"
+
+
+def test_patch_account_partial_keeps_other(client):
+    c, a = client
+    c.patch(f"/accounts/{a}", headers=_auth(), json={"color": "#abcdef"})
+    c.patch(f"/accounts/{a}", headers=_auth(), json={"display_name": "X"})
+    me = [x for x in c.get("/accounts", headers=_auth()).json() if x["id"] == a][0]
+    assert me["color"] == "#abcdef" and me["display_name"] == "X"
+
+
+def test_patch_account_bad_color_is_400(client):
+    c, a = client
+    assert c.patch(f"/accounts/{a}", headers=_auth(), json={"color": "red"}).status_code == 400
+
+
+def test_patch_account_unknown_is_404(client):
+    c, _ = client
+    assert c.patch("/accounts/9999", headers=_auth(), json={"display_name": "Y"}).status_code == 404
+
+
+def test_patch_account_requires_auth(client):
+    c, a = client
+    assert c.patch(f"/accounts/{a}", json={"display_name": "Z"}).status_code == 401

@@ -26,6 +26,17 @@ class Store:
             )
             return c.execute("SELECT id FROM accounts WHERE email=?", (email,)).fetchone()[0]
 
+    def update_account(self, account_id, display_name=None, color=None):
+        # display_name / color a None = inchange ; "" efface le nom (retour a l'email).
+        with self.db.writer() as c:
+            c.execute(
+                """UPDATE accounts SET
+                     display_name=COALESCE(?, display_name),
+                     color=COALESCE(?, color)
+                   WHERE id=?""",
+                (display_name, color, account_id),
+            )
+
     def list_accounts(self):
         return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
 

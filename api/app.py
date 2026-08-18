@@ -76,6 +76,20 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     def accounts():
         return rows(store.list_accounts())
 
+    @app.patch("/accounts/{account_id}", dependencies=[Depends(guard)])
+    async def patch_account(account_id: int, request: Request):
+        body = await request.json()
+        dn = body.get("display_name")
+        color = body.get("color")
+        if dn is not None and not isinstance(dn, str):
+            raise HTTPException(status_code=400, detail="display_name invalide")
+        if color is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", color or ""):
+            raise HTTPException(status_code=400, detail="color invalide")
+        if store.get_account(account_id) is None:
+            raise HTTPException(status_code=404, detail="compte introuvable")
+        store.update_account(account_id, display_name=dn, color=color)
+        return dict(store.get_account(account_id))
+
     @app.get("/accounts/{account_id}/labels", dependencies=[Depends(guard)])
     def labels(account_id: int):
         labs = store.list_labels(account_id)
