@@ -21,7 +21,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["core"]
+packages = ["core", "api"]
 
 [build-system]
 requires = ["setuptools>=68"]
