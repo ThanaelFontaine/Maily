@@ -497,7 +497,10 @@ async function openMessage(id) {
   read.appendChild(head);
 
   head.querySelector("#read-close").onclick = closeReading;
-  head.querySelector("#replybtn").onclick = () => replyTo(m);
+  const replyBtn = head.querySelector("#replybtn");
+  const replyColor = accountColors[m.account_id];
+  if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; }
+  replyBtn.onclick = () => replyTo(m);
   head.querySelector("#fwdbtn").onclick = () => forward(m);
   if (inTrash) {
     head.querySelector("#untrashbtn").onclick = async () => {
@@ -701,6 +704,8 @@ function setTheme(t) {
 function openThemeMenu() {
   const cur = document.documentElement.dataset.theme;
   document.querySelectorAll(".theme-opt").forEach((b) => b.classList.toggle("on", b.dataset.themeVal === cur));
+  const ctl = document.querySelector(".glass-ctl");   // slider de densité : uniquement en Verre
+  if (ctl) ctl.style.display = cur === "glass" ? "flex" : "none";
   el("#thememodal").hidden = false;
 }
 
