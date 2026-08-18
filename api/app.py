@@ -8,6 +8,12 @@ from pydantic import BaseModel
 from core.sanitize import sanitize_html
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
+_CATEGORY_LABELS = {
+    "promotions": "CATEGORY_PROMOTIONS",
+    "social": "CATEGORY_SOCIAL",
+    "updates": "CATEGORY_UPDATES",
+    "forums": "CATEGORY_FORUMS",
+}
 
 
 class SendPayload(BaseModel):
@@ -53,10 +59,31 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     def accounts():
         return rows(store.list_accounts())
 
+    @app.get("/accounts/{account_id}/labels", dependencies=[Depends(guard)])
+    def labels(account_id: int):
+        return rows(store.list_labels(account_id))
+
     @app.get("/messages", dependencies=[Depends(guard)])
-    def messages(account_id: int | None = None, label: str | None = None,
-                 limit: int = 50, offset: int = 0):
-        return rows(store.list_messages(account_id, label, limit, offset))
+    def messages(account_id: int | None = None, category: str | None = None,
+                 label: str | None = None, archived: bool = False, trashed: bool = False,
+                 limit: int = 100, offset: int = 0):
+        require, exclude = [], []
+        if trashed:
+            pass
+        elif label:
+            require.append(label)
+        elif archived:
+            exclude.append("INBOX")
+        elif category:
+            require.append("INBOX")
+            if category == "primary":
+                exclude += list(_CATEGORY_LABELS.values())
+            elif category in _CATEGORY_LABELS:
+                require.append(_CATEGORY_LABELS[category])
+        else:
+            require.append("INBOX")
+        return rows(store.list_messages(account_id, require_labels=require, exclude_labels=exclude,
+                                        trashed=trashed, limit=limit, offset=offset))
 
     @app.get("/threads", dependencies=[Depends(guard)])
     def threads(account_id: int | None = None, limit: int = 50, offset: int = 0):

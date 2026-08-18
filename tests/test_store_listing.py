@@ -31,10 +31,27 @@ def test_list_messages_per_account(store):
     assert {m["subject"] for m in msgs} == {"Deux"}
 
 
-def test_list_messages_label_filter(store):
+def test_list_messages_require_label(store):
     _seed(store)
-    msgs = store.list_messages(label="IMPORTANT")
+    msgs = store.list_messages(require_labels=["IMPORTANT"])
     assert {m["subject"] for m in msgs} == {"Deux"}
+
+
+def test_list_messages_exclude_label(store):
+    _seed(store)
+    msgs = store.list_messages(require_labels=["INBOX"], exclude_labels=["IMPORTANT"])
+    subjects = {m["subject"] for m in msgs}
+    assert "Deux" not in subjects and "Un" in subjects
+
+
+def test_labels_replace_and_list(store):
+    acc = store.upsert_account("me@example.org")
+    store.replace_labels(acc, [{"id": "Label_1", "name": "Perso", "type": "user"},
+                               {"id": "INBOX", "name": "INBOX", "type": "system"}])
+    labs = store.list_labels(acc)
+    assert {l["name"] for l in labs} == {"Perso", "INBOX"}
+    store.replace_labels(acc, [{"id": "Label_1", "name": "Perso", "type": "user"}])
+    assert len(store.list_labels(acc)) == 1
 
 
 def test_list_threads_groups(store):

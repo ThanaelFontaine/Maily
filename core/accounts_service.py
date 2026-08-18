@@ -91,6 +91,10 @@ def send_from_account(store, email, account_id, payload) -> dict:
 
 def sync_account(store, email, account_id, full=False, query=None) -> int:
     client = build_gmail_client(email)
+    try:
+        store.replace_labels(account_id, client.list_labels())
+    except Exception:
+        pass
     syncer = Syncer(store, client, account_id)
     if full:
         return syncer.backfill(query=query)

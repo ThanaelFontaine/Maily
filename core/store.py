@@ -81,18 +81,35 @@ class Store:
         ).fetchone()
         return row[0] if row else None
 
-    def list_messages(self, account_id=None, label=None, limit=50, offset=0):
-        sql = "SELECT * FROM messages WHERE is_trashed=0"
-        params = []
+    def list_messages(self, account_id=None, require_labels=None, exclude_labels=None,
+                      trashed=False, limit=100, offset=0):
+        sql = "SELECT * FROM messages WHERE is_trashed=?"
+        params = [1 if trashed else 0]
         if account_id is not None:
             sql += " AND account_id=?"
             params.append(account_id)
-        if label:
+        for lab in require_labels or []:
             sql += " AND label_ids LIKE ?"
-            params.append(f'%"{label}"%')
+            params.append(f'%"{lab}"%')
+        for lab in exclude_labels or []:
+            sql += " AND (label_ids IS NULL OR label_ids NOT LIKE ?)"
+            params.append(f'%"{lab}"%')
         sql += " ORDER BY internal_date DESC, id DESC LIMIT ? OFFSET ?"
         params += [limit, offset]
         return self.db.read().execute(sql, params).fetchall()
+
+    def replace_labels(self, account_id, labels):
+        with self.db.writer() as c:
+            c.execute("DELETE FROM labels WHERE account_id=?", (account_id,))
+            for lab in labels or []:
+                c.execute(
+                    "INSERT INTO labels(account_id, gmail_label_id, name, type) VALUES(?,?,?,?)",
+                    (account_id, lab.get("id"), lab.get("name"), lab.get("type")),
+                )
+
+    def list_labels(self, account_id):
+        return self.db.read().execute(
+            "SELECT * FROM labels WHERE account_id=? ORDER BY name", (account_id,)).fetchall()
 
     def list_threads(self, account_id=None, limit=50, offset=0):
         sql = ("SELECT thread_id, account_id, MAX(internal_date) AS last_date, "
