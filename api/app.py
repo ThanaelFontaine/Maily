@@ -37,7 +37,8 @@ class ModifyPayload(BaseModel):
 
 
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
-               download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None) -> FastAPI:
+               download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None,
+               glass_fn=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -57,6 +58,19 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.post("/glass", dependencies=[Depends(guard)])
+    async def glass(request: Request):
+        # Regle la densite du depoli (vibrancy) du theme Verre, en direct.
+        try:
+            body = await request.json()
+            a = float(body.get("alpha"))
+        except (TypeError, ValueError, AttributeError):
+            raise HTTPException(status_code=400, detail="alpha invalide")
+        a = max(0.0, min(1.0, a))
+        if glass_fn:
+            glass_fn(a)
+        return {"alpha": a}
 
     @app.get("/accounts", dependencies=[Depends(guard)])
     def accounts():

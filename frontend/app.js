@@ -635,6 +635,35 @@ function openThemeMenu() {
 
 function closeThemeMenu() { el("#thememodal").hidden = true; }
 
+/* ------- Densité du fond (thème Verre) : slider -> vibrancy native ------- */
+const GLASS_ALPHA_KEY = "maily_glass_alpha";
+
+function applyGlassAlpha(a) {
+  fetch("/glass", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify({ alpha: a }),
+  }).catch(() => { /* pas de vibrancy (non-macOS) : sans effet */ });
+}
+
+function initGlassSlider() {
+  const s = el("#glass-alpha");
+  const val = el("#glass-alpha-val");
+  if (!s) return;
+  const saved = parseFloat(localStorage.getItem(GLASS_ALPHA_KEY));
+  const a0 = isNaN(saved) ? 0.6 : Math.max(0, Math.min(1, saved));
+  s.value = Math.round(a0 * 100);
+  if (val) val.textContent = s.value + "%";
+  applyGlassAlpha(a0);
+  s.addEventListener("input", () => {
+    if (val) val.textContent = s.value + "%";
+    applyGlassAlpha(s.value / 100);                       // aperçu en direct
+  });
+  s.addEventListener("change", () => {
+    localStorage.setItem(GLASS_ALPHA_KEY, (s.value / 100).toString());  // sauvegarde au relâchement
+  });
+}
+
 function paintStaticIcons() {
   const map = {
     "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
@@ -666,6 +695,7 @@ async function main() {
   el("#c-file").onchange = (e) => addComposerFiles(e.target.files);
   el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
   initSearch();
+  initGlassSlider();
   updateLayout();
   renderCats();
   try {

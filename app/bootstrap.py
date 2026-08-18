@@ -132,6 +132,28 @@ _GLASS_AUTORESIZE = 18     # NSViewWidthSizable(2) | NSViewHeightSizable(16)
 
 # uids deja traites (le re-parentage ne doit se faire qu'une fois par fenetre).
 _GLASS_DONE = set()
+# Reference de la couche vibrancy par fenetre, pour regler sa densite (alphaValue)
+# via le slider du frontend. alpha 1 = depoli plein ; 0 = bureau net.
+_GLASS_VEV = {}
+_GLASS_ALPHA_DEFAULT = 0.6
+
+
+def set_glass_alpha(alpha):
+    """Regle la densite du depoli (vibrancy) - appele par l'API depuis le slider."""
+    try:
+        from PyObjCTools import AppHelper
+        a = max(0.0, min(1.0, float(alpha)))
+    except Exception:
+        return
+
+    def _apply():
+        for vev in list(_GLASS_VEV.values()):
+            try:
+                vev.setAlphaValue_(a)
+            except Exception:
+                pass
+
+    AppHelper.callAfter(_apply)
 
 
 def _apply_macos_transparency(win):
@@ -205,6 +227,10 @@ def _apply_macos_transparency(win):
             webview.setAutoresizingMask_(_GLASS_AUTORESIZE)
             container.addSubview_positioned_relativeTo_(webview, AppKit.NSWindowAbove, vev)
 
+            # Densite reglable du depoli (le slider frontend ajustera via l'API).
+            _GLASS_VEV[win.uid] = vev
+            vev.setAlphaValue_(_GLASS_ALPHA_DEFAULT)
+
             # 4) Fenetre transparente + active (recompositing live du bureau).
             window.makeFirstResponder_(webview)
             window.setOpaque_(False)
@@ -253,7 +279,8 @@ def run():
     app = create_app(store, token, sync_fn=make_sync_fn(store, months),
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
                      download_fn=download_fn, inline_fn=inline_fn,
-                     labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir())
+                     labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
+                     glass_fn=set_glass_alpha)
 
     port = free_port()
     _start_server(app, port)

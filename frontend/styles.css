@@ -417,7 +417,9 @@ body {
 :root[data-theme="glass"] .att-chip {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none;
 }
-:root[data-theme="glass"] .orb { box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.3); }
+/* Pastilles de comptes : plates (pas de bulle Frutiger) pour la DA verre. */
+:root[data-theme="glass"] .orb { width: 12px; height: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,.18); }
+:root[data-theme="glass"] .orb::after { display: none; }
 :root[data-theme="glass"] .mailtab { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: var(--ink-soft); }
 :root[data-theme="glass"] .mailtab.on { background: rgba(255,255,255,.14); color: var(--ink); }
 :root[data-theme="glass"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
@@ -439,6 +441,18 @@ body {
   border: 1px solid rgba(0,0,0,.08); background: #fff; font-size: 14px; font-weight: 600; color: #14323F; text-align: left; }
 .theme-opt:hover { border-color: var(--accent); }
 .theme-opt.on { outline: 2px solid var(--accent); }
+
+/* Réglage densité du fond (thème Verre) */
+.glass-ctl { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.glass-ctl-top { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: #5c6b74; }
+.glass-ctl-val { font-variant-numeric: tabular-nums; }
+.glass-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; outline: none;
+  background: linear-gradient(90deg, var(--accent), rgba(140,124,255,.25)); cursor: pointer; }
+.glass-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 1px solid rgba(0,0,0,.15); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
+:root[data-theme="dedsec"] .glass-ctl-top { color: #8A8F98; }
+:root[data-theme="dedsec"] .glass-slider { background: linear-gradient(90deg, #FF2D78, #2c3a3b); }
+:root[data-theme="dedsec"] .glass-slider::-webkit-slider-thumb { background: #22E6DC; border: 0; }
 .sw { width: 40px; height: 28px; border-radius: 7px; flex: none; border: 1px solid rgba(0,0,0,.1); }
 .sw-aero { background: linear-gradient(160deg, #3fb0ef, #bfe9ff 60%, #8fd06a); }
 .sw-glass { background: linear-gradient(135deg, #6d5ef6, #22d3ee 55%, #ec6ee8); }

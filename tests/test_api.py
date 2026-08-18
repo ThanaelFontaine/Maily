@@ -94,3 +94,23 @@ def test_action_endpoints(database):
     assert c.post("/messages/5/trash", headers=_auth()).status_code == 200
     assert calls[1][1] == "trash"
     assert c.post("/messages/5/trash").status_code == 401
+
+
+def test_glass_clamps_and_calls_glass_fn(database):
+    calls = []
+    app = create_app(Store(database), TOKEN, glass_fn=lambda a: calls.append(a))
+    c = TestClient(app)
+    assert c.post("/glass", headers=_auth(), json={"alpha": 0.3}).json()["alpha"] == 0.3
+    assert c.post("/glass", headers=_auth(), json={"alpha": 5}).json()["alpha"] == 1.0
+    assert c.post("/glass", headers=_auth(), json={"alpha": -2}).json()["alpha"] == 0.0
+    assert calls == [0.3, 1.0, 0.0]
+
+
+def test_glass_requires_auth(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    assert c.post("/glass", json={"alpha": 0.5}).status_code == 401
+
+
+def test_glass_invalid_alpha_is_400(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    assert c.post("/glass", headers=_auth(), json={"alpha": "abc"}).status_code == 400
