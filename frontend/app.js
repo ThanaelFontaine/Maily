@@ -387,6 +387,12 @@ function refreshImgPref() {
 }
 
 async function main() {
+  document.documentElement.dataset.theme = localStorage.getItem("maily_theme") || "aero";
+  el("#themebtn").onclick = () => {
+    const next = document.documentElement.dataset.theme === "dedsec" ? "aero" : "dedsec";
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("maily_theme", next);
+  };
   state.loadImages = localStorage.getItem("maily_loadImages") === "1";
   refreshImgPref();
   el("#imgpref").onclick = () => {

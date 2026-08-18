@@ -158,3 +158,78 @@ body {
 /* scrollbars discrètes */
 .rail::-webkit-scrollbar, .list::-webkit-scrollbar { width: 9px; }
 .rail::-webkit-scrollbar-thumb, .list::-webkit-scrollbar-thumb { background: rgba(10,40,70,.18); border-radius: 9px; }
+
+/* ============================================================= */
+/* ============  THÈME DEDSEC (via [data-theme])  ============== */
+/* ============================================================= */
+:root[data-theme="dedsec"] {
+  --ink: #ECECE8;
+  --ink-soft: #8A8F98;
+  --accent: #FF2D78;
+  --unread: #22E6DC;
+  --font: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+}
+:root[data-theme="dedsec"] body {
+  background: #0A0B0E;
+  color: var(--ink);
+  font-family: var(--font);
+}
+:root[data-theme="dedsec"] .sun,
+:root[data-theme="dedsec"] .hill,
+:root[data-theme="dedsec"] .bokeh { display: none; }
+:root[data-theme="dedsec"] .bg::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px);
+}
+:root[data-theme="dedsec"] .win {
+  background: #0c0e11; -webkit-backdrop-filter: none; backdrop-filter: none;
+  border: 1px solid #202b2c; box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,45,120,.08);
+}
+:root[data-theme="dedsec"] .top { background: #0f1315; border-bottom: 1px solid #202b2c; text-transform: uppercase; letter-spacing: .05em; }
+:root[data-theme="dedsec"] .brand { color: #fff; }
+:root[data-theme="dedsec"] .search { background: #08090c; border: 1px solid #2A2D33; color: #cdd3d0; border-radius: 6px; box-shadow: none; }
+:root[data-theme="dedsec"] .search::placeholder { color: #5b616a; }
+:root[data-theme="dedsec"] .gel {
+  background: #FF2D78; color: #0a0c0f; border: 1px solid #FF2D78; border-radius: 0; text-shadow: none;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+  box-shadow: 0 0 12px rgba(255,45,120,.35); font-weight: 800; letter-spacing: .04em;
+}
+:root[data-theme="dedsec"] .gel::after { display: none; }
+:root[data-theme="dedsec"] .gel:hover { filter: brightness(1.08); }
+:root[data-theme="dedsec"] .ghost { background: transparent; color: #cdd3d0; border: 1px solid #2c3a3b; border-radius: 0; box-shadow: none; }
+:root[data-theme="dedsec"] .ghost:hover { border-color: #22E6DC; color: #22E6DC; }
+:root[data-theme="dedsec"] .rail { background: #0a0c0d; border-right: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .nav { border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11.5px; color: #8A8F98; }
+:root[data-theme="dedsec"] .nav:hover { background: #12161a; }
+:root[data-theme="dedsec"] .nav.on { background: #12191b; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="dedsec"] .orb { border-radius: 2px; box-shadow: none; }
+:root[data-theme="dedsec"] .orb::after { display: none; }
+:root[data-theme="dedsec"] .rail-sep { color: #5b616a; }
+:root[data-theme="dedsec"] .list { background: #0b0d10; border-right: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .li { border-bottom: 1px solid #16191d; }
+:root[data-theme="dedsec"] .li:hover { background: #12161a; }
+:root[data-theme="dedsec"] .li.on { background: #14161A; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="dedsec"] .li-from, :root[data-theme="dedsec"] .li-subj { font-family: system-ui, sans-serif; }
+:root[data-theme="dedsec"] .li-dot { background: #22E6DC; box-shadow: 0 0 6px #22E6DC; }
+:root[data-theme="dedsec"] .read { background: #14161A; }
+:root[data-theme="dedsec"] .read-empty { color: #5b616a; }
+:root[data-theme="dedsec"] .read-head { border-bottom: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .read-subj { color: #fff; text-transform: uppercase; letter-spacing: .02em; text-shadow: 1.2px 0 #FF2D78, -1.2px 0 #22E6DC; }
+:root[data-theme="dedsec"] .read-meta { color: #8A8F98; }
+:root[data-theme="dedsec"] .att-chip { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; box-shadow: none; }
+:root[data-theme="dedsec"] .att-size { color: #5b616a; }
+:root[data-theme="dedsec"] .banner { background: #12191b; color: #22E6DC; border-bottom: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .modal-backdrop { background: rgba(0,0,0,.6); }
+:root[data-theme="dedsec"] .composer { background: #0d0f12; border: 1px solid #202b2c; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="dedsec"] .composer-head { background: #0f1315; color: #fff; border-bottom: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .composer-foot { background: #0f1315; border-top: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .composer input,
+:root[data-theme="dedsec"] .composer select,
+:root[data-theme="dedsec"] .composer textarea { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; border-radius: 4px; box-shadow: none; }
+
+@keyframes ds-glitch { 0%{transform:translate(0)} 25%{transform:translate(-1.5px,1px)} 50%{transform:translate(1.5px,-1px)} 75%{transform:translate(-1px,0)} 100%{transform:translate(0)} }
+:root[data-theme="dedsec"] .read-subj:hover { animation: ds-glitch .25s steps(2) 1; }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme="dedsec"] .read-subj:hover { animation: none; }
+  :root[data-theme="dedsec"] .bg::after { background: none; }
+}
