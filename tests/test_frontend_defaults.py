@@ -41,3 +41,9 @@ def test_cmd_click_converts_current_mail_to_tab():
 def test_hover_tooltip_present():
     css = (FRONTEND / "styles.css").read_text(encoding="utf-8")
     assert "[data-tip]:hover::after" in css
+
+
+def test_glass_light_mode_variant_present():
+    css = (FRONTEND / "styles.css").read_text(encoding="utf-8")
+    # Le theme Verre s'adapte au mode clair du systeme (texte sombre lisible).
+    assert "@media (prefers-color-scheme: light)" in css
