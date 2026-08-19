@@ -56,29 +56,29 @@ def main():
     d = ImageDraw.Draw(icon)
 
     # Ombre douce sous l'enveloppe.
-    bx0, by0, bx1, by1 = 258, 372, 766, 690
+    bx0, by0, bx1, by1 = 196, 340, 828, 724   # enveloppe plus grosse
     shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(shadow).rounded_rectangle([bx0, by0 + 20, bx1, by1 + 22], radius=58,
+    ImageDraw.Draw(shadow).rounded_rectangle([bx0, by0 + 24, bx1, by1 + 26], radius=66,
                                              fill=(70, 90, 150, 120))
-    icon.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(22)))
+    icon.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(24)))
 
     # Enveloppe minimale : blanc translucide + fin liseré bleu-gris.
-    d.rounded_rectangle([bx0, by0, bx1, by1], radius=58,
+    d.rounded_rectangle([bx0, by0, bx1, by1], radius=66,
                         fill=(255, 255, 255, 238), outline=(150, 172, 208, 170), width=3)
 
     # Rabat en "V" (bleu doux, jonctions arrondies).
     blue = (108, 138, 190, 230)
-    apex = (S // 2, by0 + 186)
-    pl, pr = (bx0 + 48, by0 + 44), (bx1 - 48, by0 + 44)
-    d.line([pl, apex, pr], fill=blue, width=30, joint="curve")
+    apex = (S // 2, by0 + 226)
+    pl, pr = (bx0 + 56, by0 + 52), (bx1 - 56, by0 + 52)
+    d.line([pl, apex, pr], fill=blue, width=36, joint="curve")
     for p in (pl, apex, pr):
-        d.ellipse([p[0] - 15, p[1] - 15, p[0] + 15, p[1] + 15], fill=blue)
+        d.ellipse([p[0] - 18, p[1] - 18, p[0] + 18, p[1] + 18], fill=blue)
 
     # Reflet glossy sur le haut de l'enveloppe.
     gloss = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    ImageDraw.Draw(gloss).rounded_rectangle([bx0 + 16, by0 + 12, bx1 - 16, by0 + 96],
-                                            radius=44, fill=(255, 255, 255, 90))
-    icon.alpha_composite(gloss.filter(ImageFilter.GaussianBlur(10)))
+    ImageDraw.Draw(gloss).rounded_rectangle([bx0 + 18, by0 + 14, bx1 - 18, by0 + 112],
+                                            radius=52, fill=(255, 255, 255, 90))
+    icon.alpha_composite(gloss.filter(ImageFilter.GaussianBlur(11)))
 
     icon.save(OUT)
     print("wrote", OUT)
