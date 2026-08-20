@@ -56,8 +56,9 @@ Puis clique **⟳ Synchroniser** pour récupérer les 12 derniers mois de chaque
 ## Où sont mes données
 
 - Base + pièces jointes + `runtime.json` : `~/Library/Application Support/Maily/` (macOS), `%APPDATA%/Maily/` (Windows), `~/.local/share/maily/` (Linux).
-- Identifiants et jetons : **Trousseau** de l'OS (jamais dans le repo).
-- Confidentialité au repos : repose sur le chiffrement disque de l'OS (FileVault/BitLocker recommandé).
+- Identifiants et jetons : **fichier chiffré local** (`secrets.enc` + `secrets.key`, AES/Fernet, permissions `0600`) dans le dossier ci-dessus - jamais dans le repo, jamais dans le Trousseau. Migration automatique depuis le Trousseau au premier lancement.
+- **Déverrouillage Touch ID** au lancement de l'app graphique (macOS ; repli mot de passe de session). Désactivable via `MAILY_NO_BIOMETRIC=1`.
+- Confidentialité au repos : repose aussi sur le chiffrement disque de l'OS (FileVault/BitLocker recommandé).
 
 ## Accès pour Claude / automatisations
 
@@ -71,7 +72,20 @@ Le cœur (moteur Python + SQLite) est la source de vérité ; l'UI n'en est qu'u
   uv run python scripts/claude_client.py inbox --account 1
   uv run python scripts/claude_client.py send --account 1 --to dest@x.co --subject "Coucou" --body "Salut"
   ```
-  Pour agir **sans lancer l'app** (headless), Claude peut aussi importer directement le moteur : `from core import accounts_service` puis `sync_account(...)`, `send_from_account(...)`, `modify_message(...)` (les identifiants restent au Trousseau).
+  Pour agir **sans lancer l'app** (headless), Claude peut aussi importer directement le moteur : `from core import accounts_service` puis `sync_account(...)`, `send_from_account(...)`, `modify_message(...)`.
+- **Serveur MCP (recommandé pour l'app Claude)** : [`app/mcp_server.py`](app/mcp_server.py) expose Maily comme outils MCP multi-profils à une session Claude tournant sur ce Mac - transport stdio, aucun port réseau. Outils : `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_send` (chacun avec un paramètre `profile` : email ou nom de profil). Enregistrement dans `claude_desktop_config.json` :
+  ```json
+  {
+    "mcpServers": {
+      "maily": {
+        "command": "/Users/<toi>/.local/bin/uv",
+        "args": ["--directory", "/chemin/vers/fetch-multi-mail-viewer-sender",
+                 "run", "--group", "agent", "python", "-m", "app.mcp_server"]
+      }
+    }
+  }
+  ```
+  Puis redémarrer l'app Claude. (Le MCP lit les secrets chiffrés sans Touch ID : la porte biométrique ne protège que l'app graphique.)
 
 ## Développement
 
