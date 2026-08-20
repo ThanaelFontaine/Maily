@@ -3,15 +3,10 @@ from core import secrets_store
 
 
 @pytest.fixture(autouse=True)
-def fake_keyring(monkeypatch):
-    store = {}
-    monkeypatch.setattr(secrets_store.keyring, "set_password",
-                        lambda s, k, v: store.__setitem__((s, k), v))
-    monkeypatch.setattr(secrets_store.keyring, "get_password",
-                        lambda s, k: store.get((s, k)))
-    monkeypatch.setattr(secrets_store.keyring, "delete_password",
-                        lambda s, k: store.pop((s, k), None))
-    return store
+def tmp_secret_store(monkeypatch, tmp_path):
+    from core import secret_file
+    monkeypatch.setattr(secret_file.paths, "runtime_dir", lambda override=None: tmp_path)
+    return tmp_path
 
 
 def test_client_config_roundtrip():

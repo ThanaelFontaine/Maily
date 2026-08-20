@@ -19,7 +19,8 @@ hiddenimports = ["app", "api", "core"]
 
 # Paquets a imports dynamiques (backends, protocoles) : on collecte tout.
 for pkg in ("uvicorn", "webview", "keyring", "googleapiclient",
-            "google_auth_oauthlib", "google_auth_httplib2", "google.auth"):
+            "google_auth_oauthlib", "google_auth_httplib2", "google.auth",
+            "cryptography", "LocalAuthentication"):
     try:
         d, b, h = collect_all(pkg)
         datas += d
@@ -63,6 +64,6 @@ if sys.platform == "darwin":
         info_plist={
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "12.0",
-            "CFBundleShortVersionString": "0.2.1",
+            "CFBundleShortVersionString": "0.3.0",
         },
     )

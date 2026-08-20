@@ -433,9 +433,10 @@ wheels = [
 
 [[package]]
 name = "maily"
-version = "0.1.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "google-api-python-client" },
     { name = "google-auth" },
@@ -443,6 +444,7 @@ dependencies = [
     { name = "keyring" },
     { name = "nh3" },
     { name = "pydantic-settings" },
+    { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
     { name = "pywebview" },
     { name = "uvicorn" },
 ]
@@ -459,6 +461,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=43" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "google-api-python-client", specifier = ">=2.140" },
     { name = "google-auth", specifier = ">=2.35" },
@@ -466,6 +469,7 @@ requires-dist = [
     { name = "keyring", specifier = ">=25.4" },
     { name = "nh3", specifier = ">=0.2.18" },
     { name = "pydantic-settings", specifier = ">=2.5" },
+    { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'", specifier = ">=10.0" },
     { name = "pywebview", specifier = ">=5.2" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
@@ -756,6 +760,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/75/76/49c6da2c6a831020b4854ba20079d5a1030474bffc776b7b73c2eeff8c15/pyobjc_framework_cocoa-12.2.2.tar.gz", hash = "sha256:c96c0ef69a71afbbb0e6a7d594b455c5fe47d62e0db376ee7a2b4b828c16ace9", size = 3132831, upload-time = "2026-08-11T19:44:02.288Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fd/2f/b67e73d8bc367e03fe7861cd9c49fff9dcfa6db83bc0630c0adcfb25b7fa/pyobjc_framework_cocoa-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:e106f395531e67694376b0f1184612cbeea3ec8b9bf56b55ef41d026171d2a2d", size = 388117, upload-time = "2026-08-11T19:32:43.161Z" },
+]
+
+[[package]]
+name = "pyobjc-framework-localauthentication"
+version = "12.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyobjc-core" },
+    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-framework-security" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/5a/24ee91edf0e34b83d847e22a1e66fa2869a29fbcfe0be5c7c1296256e620/pyobjc_framework_localauthentication-12.2.2.tar.gz", hash = "sha256:c7a020a38e6aa279e408f2242e21d7fed0bd66688523e380d9bd0ddd17802c0e", size = 33302, upload-time = "2026-08-11T19:44:48.419Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5e/54/0475812aaf10750ec16da0383dc3cb03cb89c5fdda261f334eb4184216f1/pyobjc_framework_localauthentication-12.2.2-cp312-cp312-macosx_10_13_universal2.whl", hash = "sha256:cd2d4c6e21161a7164c02ec99e3eb629bf9805ac8f134d5eb097cd13060a57ac", size = 10907, upload-time = "2026-08-11T19:37:44.24Z" },
 ]
 
 [[package]]

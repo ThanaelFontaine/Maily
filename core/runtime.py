@@ -3,7 +3,7 @@ import json
 import os
 import pathlib
 import secrets
-import keyring
+from core import secret_file
 
 SERVICE = "Maily"
 _TOKEN_KEY = "api_token"
@@ -11,15 +11,15 @@ SCHEMA_VERSION = "1"
 
 
 def get_or_create_api_token() -> str:
-    tok = keyring.get_password(SERVICE, _TOKEN_KEY)
+    tok = secret_file.get(_TOKEN_KEY)
     if not tok:
         tok = secrets.token_urlsafe(32)
-        keyring.set_password(SERVICE, _TOKEN_KEY, tok)
+        secret_file.set(_TOKEN_KEY, tok)
     return tok
 
 
 def read_api_token() -> str | None:
-    return keyring.get_password(SERVICE, _TOKEN_KEY)
+    return secret_file.get(_TOKEN_KEY)
 
 
 def write_runtime_file(path, host: str, port: int, token: str | None = None) -> dict:

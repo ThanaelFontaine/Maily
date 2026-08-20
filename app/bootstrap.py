@@ -89,6 +89,20 @@ def make_act_fn(store):
     return _act
 
 
+def _migrate_secrets(store) -> None:
+    """Rapatrie les secrets du Trousseau vers le fichier chiffre (une seule fois)."""
+    from core import secret_file
+    names = ["oauth_client", "api_token"]
+    try:
+        names += [f"account:{a['email']}" for a in store.list_accounts()]
+    except Exception:
+        pass
+    try:
+        secret_file.migrate_from_keyring(names)
+    except Exception:
+        pass
+
+
 def _frontend_dir() -> pathlib.Path:
     # En binaire figé (PyInstaller), le frontend est embarque a la racine.
     if getattr(sys, "frozen", False):
@@ -297,6 +311,15 @@ def run():
     layout = paths.ensure_runtime_dirs(paths.runtime_dir())
     db = Database(layout["db"])
     store = Store(db)
+
+    # Secrets : migration unique Trousseau -> fichier chiffre local (supprime
+    # l'invite de mot de passe du Trousseau dans l'app empaquetee), puis porte
+    # Touch ID au lancement.
+    _migrate_secrets(store)
+    from core import biometric
+    if not biometric.require_unlock("Deverrouiller Maily"):
+        return
+
     token = runtime.get_or_create_api_token()
     from core.config import load_settings
     months = load_settings().backfill_months

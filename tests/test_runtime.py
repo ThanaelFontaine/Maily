@@ -4,11 +4,10 @@ from core import runtime
 
 
 @pytest.fixture(autouse=True)
-def fake_keyring(monkeypatch):
-    store = {}
-    monkeypatch.setattr(runtime.keyring, "set_password", lambda s, k, v: store.__setitem__((s, k), v))
-    monkeypatch.setattr(runtime.keyring, "get_password", lambda s, k: store.get((s, k)))
-    return store
+def tmp_secret_store(monkeypatch, tmp_path):
+    from core import secret_file
+    monkeypatch.setattr(secret_file.paths, "runtime_dir", lambda override=None: tmp_path)
+    return tmp_path
 
 
 def test_token_is_stable():
