@@ -25,9 +25,13 @@ hiddenimports = ["app", "api", "core", "_cffi_backend"]
 # - anyio  : backend d'event-loop charge dynamiquement (anyio._backends._asyncio),
 #            sinon FastAPI/Starlette plantent au 1er appel (No module named
 #            'anyio._backends').
+# - certifi: le fichier de donnees cacert.pem (bundle CA TLS) doit etre embarque,
+#            sinon requests (echange de token OAuth) plante : "Could not find a
+#            suitable TLS CA certificate bundle" -> certifi.where() pointe dans le
+#            vide.
 for pkg in ("uvicorn", "webview", "keyring", "googleapiclient",
             "google_auth_oauthlib", "google_auth_httplib2", "google.auth",
-            "cryptography", "cffi", "anyio", "LocalAuthentication"):
+            "cryptography", "cffi", "anyio", "certifi", "LocalAuthentication"):
     try:
         d, b, h = collect_all(pkg)
         datas += d
