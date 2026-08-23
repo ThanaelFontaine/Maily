@@ -6,15 +6,36 @@ Volontairement léger : Orange est temporaire (cf. spec Phase 2).
 """
 from __future__ import annotations
 import imaplib
+import re
 import datetime
 
 # Dossiers Corbeille courants selon les serveurs (Orange = "Trash").
 _TRASH_CANDIDATES = ["Trash", "INBOX.Trash", "Corbeille", "INBOX.Corbeille",
                      "Deleted Messages", "[Gmail]/Trash"]
 
+# Séparateur de clé message IMAP : "{folder}\x1f{uidvalidity}\x1f{uid}".
+# \x1f (unit separator) n'apparaît jamais dans un nom de dossier ni un UID.
+_KEY_SEP = "\x1f"
+
 
 class ImapError(Exception):
     pass
+
+
+def imap_msg_key(folder: str, uidvalidity, uid) -> str:
+    return f"{folder}{_KEY_SEP}{uidvalidity}{_KEY_SEP}{uid}"
+
+
+def parse_imap_key(key: str) -> tuple[str, int]:
+    """(folder, uid) depuis une clé message IMAP."""
+    parts = str(key).split(_KEY_SEP)
+    if len(parts) < 3:
+        raise ValueError(f"cle IMAP invalide: {key!r}")
+    return parts[0], int(parts[-1])
+
+
+def _quote(name: str) -> str:
+    return '"' + name.replace('"', '\\"') + '"'
 
 
 class ImapClient:
@@ -33,16 +54,40 @@ class ImapClient:
             raise ImapError(f"connexion/identifiants IMAP invalides: {e}") from e
         return self
 
-    def select_inbox(self) -> int:
-        typ, _ = self.conn.select("INBOX", readonly=False)
+    def list_folders(self) -> list[str]:
+        """Tous les dossiers sélectionnables (INBOX en premier)."""
+        try:
+            typ, data = self.conn.list()
+        except imaplib.IMAP4.error:
+            return ["INBOX"]
+        if typ != "OK" or not data:
+            return ["INBOX"]
+        names = []
+        for line in data:
+            if not isinstance(line, (bytes, bytearray)):
+                continue
+            s = line.decode(errors="replace")
+            if "\\Noselect" in s:          # conteneurs non sélectionnables
+                continue
+            quoted = re.findall(r'"((?:[^"\\]|\\.)*)"', s)
+            name = quoted[-1].replace('\\"', '"') if quoted else s.split()[-1]
+            if name:
+                names.append(name)
+        names = sorted(set(names), key=lambda n: (n != "INBOX", n.lower()))
+        return names or ["INBOX"]
+
+    def select_folder(self, name: str) -> int:
+        typ, _ = self.conn.select(_quote(name), readonly=False)
         if typ != "OK":
-            raise ImapError("selection INBOX impossible")
-        typ, data = self.conn.status("INBOX", "(UIDVALIDITY)")
-        # ex: b'INBOX (UIDVALIDITY 123456789)'
+            raise ImapError(f"selection {name!r} impossible")
+        typ, data = self.conn.status(_quote(name), "(UIDVALIDITY)")
         try:
             return int(data[0].split(b"UIDVALIDITY")[1].strip(b" )").split()[0])
-        except (IndexError, ValueError):
+        except (IndexError, ValueError, AttributeError):
             return 0
+
+    def select_inbox(self) -> int:
+        return self.select_folder("INBOX")
 
     def search_uids(self, since: datetime.date | None = None, min_uid: int | None = None) -> list[int]:
         if min_uid is not None:

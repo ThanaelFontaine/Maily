@@ -185,6 +185,7 @@ class _FakeImapClient:
         self.events.append("connect"); return self
 
     def select_inbox(self): self.events.append("select"); return 1000
+    def select_folder(self, name): self.events.append(("select", name)); return 1000
     def fetch(self, uid): return (b"From: a@b\r\nSubject: X\r\n\r\nhi", True)
     def move_to_trash(self, uid): self.events.append(("trash", uid))
     def logout(self): self.events.append("logout")
@@ -236,12 +237,15 @@ def test_sync_account_branches_to_imap(monkeypatch, tmp_path):
 
 
 def test_trash_message_imap(monkeypatch, tmp_path):
+    from core.imap_client import imap_msg_key
     db = Database(tmp_path / "app.sqlite"); store = Store(db)
     aid = store.upsert_account("me@orange.fr", provider="imap")
-    mid = store.upsert_message(aid, "1000.7", subject="X", label_ids='["INBOX"]')
+    mid = store.upsert_message(aid, imap_msg_key("INBOX.Sent", 1000, 7),
+                               subject="X", label_ids='["INBOX.Sent"]')
     fake = _FakeImapClient()
     monkeypatch.setattr(svc, "build_imap_client", lambda e: fake)
     svc.trash_message(store, "me@orange.fr", mid)
+    assert ("select", "INBOX.Sent") in fake.events   # sélectionne le bon dossier
     assert ("trash", 7) in fake.events
     assert dict(store.get_message(mid))["is_trashed"] == 1
     db.close()

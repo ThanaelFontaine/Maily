@@ -3,6 +3,7 @@ from email.message import EmailMessage
 from core.db import Database
 from core.store import Store
 from core.imap_sync import ImapSyncer
+from core.imap_client import parse_imap_key
 
 
 def _raw(subject, body="corps"):
@@ -17,85 +18,102 @@ def _raw(subject, body="corps"):
 
 
 class FakeImap:
-    def __init__(self, messages, uidvalidity=1000):
-        # messages : {uid: (raw_bytes, seen)}
-        self.messages = messages
-        self.uidvalidity = uidvalidity
+    """Multi-dossiers : folders = {name: {"uidvalidity": int, "messages": {uid:(raw,seen)}}}."""
+    def __init__(self, folders):
+        self.folders = folders
+        self.selected = None
         self.trashed = []
         self.logged_out = False
 
     def connect(self):
         return self
 
-    def select_inbox(self):
-        return self.uidvalidity
+    def list_folders(self):
+        return list(self.folders)
+
+    def select_folder(self, name):
+        self.selected = name
+        return self.folders[name]["uidvalidity"]
 
     def search_uids(self, since=None, min_uid=None):
-        uids = sorted(self.messages)
+        uids = sorted(self.folders[self.selected]["messages"])
         if min_uid is not None:
             uids = [u for u in uids if u >= min_uid]
         return uids
 
     def fetch(self, uid):
-        return self.messages[uid]
+        return self.folders[self.selected]["messages"][uid]
 
     def move_to_trash(self, uid):
-        self.trashed.append(uid)
+        self.trashed.append((self.selected, uid))
 
     def logout(self):
         self.logged_out = True
 
 
-def test_backfill_imports_inbox(tmp_path):
+def _mk(tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
     aid = store.upsert_account("me@orange.fr", provider="imap")
-    client = FakeImap({1: (_raw("Un"), True), 2: (_raw("Deux"), False)})
+    return db, store, aid
+
+
+def test_backfill_imports_all_folders_no_date_limit(tmp_path):
+    db, store, aid = _mk(tmp_path)
+    client = FakeImap({
+        "INBOX": {"uidvalidity": 10, "messages": {1: (_raw("Recu1"), True),
+                                                  2: (_raw("Recu2"), False)}},
+        "INBOX.Sent": {"uidvalidity": 20, "messages": {5: (_raw("Envoye1"), True)}},
+        "Archive2019": {"uidvalidity": 30, "messages": {9: (_raw("Vieux2019"), True)}},
+    })
     n = ImapSyncer(store, client, aid).backfill()
-    assert n == 2
-    msgs = store.list_messages(aid, require_labels=["INBOX"])
-    subjects = {m["subject"] for m in msgs}
-    assert subjects == {"Un", "Deux"}
-    # flag \Seen -> is_unread ; label synthetique INBOX/UNREAD
-    by_subj = {m["subject"]: m for m in msgs}
-    assert by_subj["Un"]["is_unread"] == 0
-    assert by_subj["Deux"]["is_unread"] == 1
-    assert "UNREAD" in json.loads(by_subj["Deux"]["label_ids"])
-    # gmail_id = uidvalidity.uid
-    assert by_subj["Un"]["gmail_id"] == "1000.1"
-    assert store.get_sync_state(aid, "backfill_done") == "1"
-    assert store.get_sync_state(aid, "imap_last_uid") == "2"
+    assert n == 4                                   # tous dossiers, tout âge
+    all_msgs = store.list_messages(aid)             # sans filtre de label
+    subjects = {m["subject"] for m in all_msgs}
+    assert subjects == {"Recu1", "Recu2", "Envoye1", "Vieux2019"}
+
+    # INBOX -> label INBOX ; autres dossiers -> label = nom du dossier
+    by_subj = {m["subject"]: m for m in all_msgs}
+    assert json.loads(by_subj["Recu1"]["label_ids"]) == ["INBOX"]
+    assert "INBOX.Sent" in json.loads(by_subj["Envoye1"]["label_ids"])
+    assert "Archive2019" in json.loads(by_subj["Vieux2019"]["label_ids"])
+
+    # la vue "Boîte de réception" (require INBOX) ne montre que l'INBOX
+    inbox = {m["subject"] for m in store.list_messages(aid, require_labels=["INBOX"])}
+    assert inbox == {"Recu1", "Recu2"}
+
+    # les dossiers apparaissent comme libellés (INBOX en 'system', les autres en 'user')
+    labels = {l["gmail_label_id"]: l["type"] for l in store.list_labels(aid)}
+    assert labels["INBOX"] == "system"
+    assert labels["INBOX.Sent"] == "user"
+    assert labels["Archive2019"] == "user"
+
+    # gmail_id encode le dossier -> (folder, uid) récupérables
+    folder, uid = parse_imap_key(by_subj["Envoye1"]["gmail_id"])
+    assert folder == "INBOX.Sent" and uid == 5
     assert client.logged_out is True
     db.close()
 
 
-def test_incremental_fetches_only_new(tmp_path):
-    db = Database(tmp_path / "app.sqlite")
-    store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
-    client = FakeImap({1: (_raw("Un"), True)})
+def test_incremental_only_new_per_folder(tmp_path):
+    db, store, aid = _mk(tmp_path)
+    client = FakeImap({"INBOX": {"uidvalidity": 10, "messages": {1: (_raw("A"), True)}}})
     ImapSyncer(store, client, aid).backfill()
-    # nouveau message arrive
-    client.messages[2] = (_raw("Nouveau"), False)
+    client.folders["INBOX"]["messages"][2] = (_raw("B"), False)
     n = ImapSyncer(store, client, aid).incremental()
     assert n == 1
-    msgs = {m["subject"] for m in store.list_messages(aid, require_labels=["INBOX"])}
-    assert msgs == {"Un", "Nouveau"}
-    assert store.get_sync_state(aid, "imap_last_uid") == "2"
+    assert {m["subject"] for m in store.list_messages(aid, require_labels=["INBOX"])} == {"A", "B"}
     db.close()
 
 
-def test_uidvalidity_change_triggers_full_reimport(tmp_path):
-    db = Database(tmp_path / "app.sqlite")
-    store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
-    client = FakeImap({1: (_raw("Un"), True)}, uidvalidity=1000)
+def test_uidvalidity_change_reimports_folder(tmp_path):
+    db, store, aid = _mk(tmp_path)
+    client = FakeImap({"INBOX": {"uidvalidity": 10, "messages": {1: (_raw("Un"), True)}}})
     ImapSyncer(store, client, aid).backfill()
-    # la boite reinitialise ses UID (uidvalidity change)
-    client.uidvalidity = 2000
-    client.messages = {1: (_raw("Reimport"), True)}
+    client.folders["INBOX"]["uidvalidity"] = 99
+    client.folders["INBOX"]["messages"] = {1: (_raw("Reimport"), True)}
     n = ImapSyncer(store, client, aid).incremental()
     assert n == 1
     ids = {m["gmail_id"] for m in store.list_messages(aid, require_labels=["INBOX"])}
-    assert "2000.1" in ids
+    assert any("99" in k for k in ids)
     db.close()

@@ -10,7 +10,7 @@ from core.gmail import GmailClient
 from core.sync import Syncer
 from core import sender
 from core import secrets_store
-from core.imap_client import ImapClient, ImapError
+from core.imap_client import ImapClient, ImapError, parse_imap_key
 from core.imap_sync import ImapSyncer
 from core.rfc822_parse import extract_part
 
@@ -55,11 +55,12 @@ def build_imap_client(email) -> ImapClient:
 
 
 def _imap_fetch_raw(email, gmail_id) -> bytes:
+    folder, uid = parse_imap_key(gmail_id)
     c = build_imap_client(email)
     c.connect()
-    c.select_inbox()
+    c.select_folder(folder)
     try:
-        raw, _seen = c.fetch(int(str(gmail_id).split(".")[-1]))
+        raw, _seen = c.fetch(uid)
     finally:
         c.logout()
     return raw
@@ -185,11 +186,12 @@ def trash_message(store, email, message_id) -> dict:
     if not m:
         raise ValueError("message introuvable")
     if _provider(store, m["account_id"]) == "imap":
+        folder, uid = parse_imap_key(m["gmail_id"])
         c = build_imap_client(email)
         c.connect()
-        c.select_inbox()
+        c.select_folder(folder)
         try:
-            c.move_to_trash(int(str(m["gmail_id"]).split(".")[-1]))
+            c.move_to_trash(uid)
         finally:
             c.logout()
     else:
