@@ -114,8 +114,19 @@ body {
 /* ---------- Corps (3 panneaux) ---------- */
 .body { flex: 1; display: flex; min-height: 0; }
 
-.rail { width: 210px; padding: 12px 10px; overflow-y: auto;
+.rail-wrap { width: 210px; display: flex; flex-direction: column; min-height: 0;
   background: rgba(255,255,255,.20); border-right: 1px solid rgba(255,255,255,.45); }
+.rail { flex: 1 1 auto; min-height: 0; padding: 12px 10px; overflow-y: auto; }
+
+/* Bouton "+ Ajouter un compte" : épinglé en bas de la colonne des comptes. */
+.rail-add { flex: none; margin: 8px 10px 12px; padding: 9px 11px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink);
+  background: rgba(255,255,255,.35); border: 1px solid rgba(255,255,255,.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8); transition: background .12s, filter .12s; }
+.rail-add:hover { background: rgba(255,255,255,.55); }
+.rail-add:active { transform: translateY(1px); }
+.rail-add:disabled { opacity: .55; cursor: default; }
 .nav { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-radius: 13px; margin-bottom: 4px;
   font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink); }
 .nav:hover { background: rgba(255,255,255,.35); }
@@ -254,7 +265,10 @@ body {
 :root[data-theme="dedsec"] .gel:hover { filter: brightness(1.08); }
 :root[data-theme="dedsec"] .ghost { background: transparent; color: #cdd3d0; border: 1px solid #2c3a3b; border-radius: 0; box-shadow: none; }
 :root[data-theme="dedsec"] .ghost:hover { border-color: #22E6DC; color: #22E6DC; }
-:root[data-theme="dedsec"] .rail { background: #0a0c0d; border-right: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .rail-wrap { background: #0a0c0d; border-right: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .rail-add { border-radius: 0; text-transform: uppercase; letter-spacing: .03em;
+  font-size: 11.5px; color: #c7ccd4; background: #12161a; border: 1px solid #202b2c; box-shadow: none; }
+:root[data-theme="dedsec"] .rail-add:hover { background: #161d20; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
 :root[data-theme="dedsec"] .nav { border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11.5px; color: #8A8F98; }
 :root[data-theme="dedsec"] .nav:hover { background: #12161a; }
 :root[data-theme="dedsec"] .nav.on { background: #12191b; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
@@ -405,10 +419,13 @@ body {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 24px 70px rgba(0,0,0,.45);
 }
 :root[data-theme="glass"] .top,
-:root[data-theme="glass"] .rail,
+:root[data-theme="glass"] .rail-wrap,
 :root[data-theme="glass"] .listbar,
 :root[data-theme="glass"] .cats,
 :root[data-theme="glass"] .list { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.08); }
+:root[data-theme="glass"] .rail-add { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+  color: var(--ink); box-shadow: none; }
+:root[data-theme="glass"] .rail-add:hover { background: rgba(255,255,255,.14); }
 :root[data-theme="glass"] .search {
   background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
   color: var(--ink); box-shadow: none;
@@ -531,6 +548,19 @@ body {
 /* DedSec : swatches carrés (même DA que les pastilles de profil) */
 :root[data-theme="dedsec"] .swatch { border-radius: 3px; }
 
+/* Menu "Ajouter un compte" : popover sombre (même DA que la palette rapide) */
+.addpop { position: fixed; z-index: 30; min-width: 210px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+  border-radius: 12px; background: rgba(20,22,30,.94); border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 16px 40px rgba(0,0,0,.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.addpop-item { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; cursor: pointer;
+  padding: 9px 11px; border-radius: 8px; border: 0; background: transparent; color: #eef1f6; font-size: 13px; font-weight: 600; }
+.addpop-item .ico { width: 18px; height: 18px; flex: none; opacity: .9; }
+.addpop-item:hover:not(:disabled) { background: rgba(255,255,255,.10); }
+.addpop-item:disabled { opacity: .5; cursor: default; }
+.addpop-sub { display: block; font-size: 11px; font-weight: 500; color: rgba(255,255,255,.55); }
+.addpop-badge { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
+
 /* Page réglages des profils */
 .settingsmenu { width: min(460px, 92vw); max-height: 86vh; overflow-y: auto; border-radius: 16px;
   border: 1px solid var(--hairline); background: rgba(255,255,255,.95);
@@ -577,10 +607,12 @@ body {
     box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 24px 70px rgba(60,50,120,.20);
   }
   :root[data-theme="glass"] .top,
-  :root[data-theme="glass"] .rail,
+  :root[data-theme="glass"] .rail-wrap,
   :root[data-theme="glass"] .listbar,
   :root[data-theme="glass"] .cats,
   :root[data-theme="glass"] .list { background: rgba(255,255,255,.28); border-color: rgba(0,0,0,.06); }
+  :root[data-theme="glass"] .rail-add { background: rgba(255,255,255,.55); border: 1px solid rgba(0,0,0,.08); color: var(--ink); }
+  :root[data-theme="glass"] .rail-add:hover { background: rgba(255,255,255,.78); }
   :root[data-theme="glass"] .search { background: rgba(255,255,255,.65); border: 1px solid rgba(0,0,0,.1); color: var(--ink); }
   :root[data-theme="glass"] .search::placeholder { color: rgba(31,41,55,.45); }
   :root[data-theme="glass"] .ghost { background: rgba(255,255,255,.55); border: 1px solid rgba(0,0,0,.08); color: var(--ink); }

@@ -3,7 +3,7 @@ import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import InstalledAppFlow, WSGITimeoutError
 from googleapiclient.discovery import build
 from core import secrets_store
 
@@ -14,6 +14,11 @@ SCOPES = [
 
 
 class ReauthRequired(Exception):
+    pass
+
+
+class AuthTimeout(Exception):
+    """Le consentement OAuth n'a pas ete recu dans le delai imparti (ou annule)."""
     pass
 
 
@@ -78,9 +83,15 @@ def _fetch_email(creds) -> str:
     return profile["emailAddress"]
 
 
-def run_local_auth(open_browser: bool = True) -> str:
+def run_local_auth(open_browser: bool = True, timeout_seconds: int | None = None) -> str:
     flow = InstalledAppFlow.from_client_config(client_config_dict(), SCOPES)
-    creds = flow.run_local_server(host="127.0.0.1", port=0, open_browser=open_browser)
+    try:
+        creds = flow.run_local_server(host="127.0.0.1", port=0, open_browser=open_browser,
+                                      timeout_seconds=timeout_seconds)
+    except WSGITimeoutError as e:
+        raise AuthTimeout("Consentement Google non recu (delai depasse ou annule).") from e
+    if creds is None:
+        raise AuthTimeout("Consentement Google non recu (delai depasse ou annule).")
     email = _fetch_email(creds)
     secrets_store.save_account_token(email, creds_to_dict(creds))
     return email

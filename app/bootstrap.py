@@ -57,6 +57,15 @@ def make_send_fn(store):
     return _send
 
 
+def make_add_google_fn(store, timeout_seconds=180):
+    from core.accounts_service import add_google_account
+
+    def _add():
+        return add_google_account(store, timeout_seconds=timeout_seconds)
+
+    return _add
+
+
 def make_labels_fn(store):
     from core import accounts_service as svc
 
@@ -328,7 +337,8 @@ def run():
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
                      download_fn=download_fn, inline_fn=inline_fn,
                      labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
-                     glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha)
+                     glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha,
+                     add_google_fn=make_add_google_fn(store))
 
     port = free_port()
     _start_server(app, port)

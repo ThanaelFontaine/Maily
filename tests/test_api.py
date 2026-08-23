@@ -162,3 +162,52 @@ def test_glass_get_default_and_auth(database):
     c = TestClient(create_app(Store(database), TOKEN))
     assert c.get("/glass").status_code == 401
     assert c.get("/glass", headers=_auth()).json()["alpha"] == 0.6
+
+
+def test_add_google_endpoint_nominal(database):
+    app = create_app(Store(database), TOKEN,
+                     add_google_fn=lambda: {"account_id": 3, "email": "z@example.org"})
+    c = TestClient(app)
+    r = c.post("/accounts/google", headers=_auth())
+    assert r.status_code == 200 and r.json()["email"] == "z@example.org"
+
+
+def test_add_google_endpoint_requires_auth(database):
+    app = create_app(Store(database), TOKEN, add_google_fn=lambda: {})
+    assert TestClient(app).post("/accounts/google").status_code == 401
+
+
+def test_add_google_endpoint_not_wired_is_501(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    assert c.post("/accounts/google", headers=_auth()).status_code == 501
+
+
+def test_add_google_endpoint_reauth_is_400(database):
+    from core.auth import ReauthRequired
+
+    def boom():
+        raise ReauthRequired("client OAuth absent")
+
+    c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
+    r = c.post("/accounts/google", headers=_auth())
+    assert r.status_code == 400 and "OAuth" in r.json()["detail"]
+
+
+def test_add_google_endpoint_timeout_is_408(database):
+    from core.auth import AuthTimeout
+
+    def boom():
+        raise AuthTimeout("delai depasse")
+
+    c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
+    assert c.post("/accounts/google", headers=_auth()).status_code == 408
+
+
+def test_add_google_endpoint_in_progress_is_409(database):
+    from core.accounts_service import AddAccountInProgress
+
+    def boom():
+        raise AddAccountInProgress("deja en cours")
+
+    c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
+    assert c.post("/accounts/google", headers=_auth()).status_code == 409

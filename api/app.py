@@ -38,7 +38,7 @@ class ModifyPayload(BaseModel):
 
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None,
-               glass_fn=None, glass_get_fn=None) -> FastAPI:
+               glass_fn=None, glass_get_fn=None, add_google_fn=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -80,6 +80,23 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.get("/accounts", dependencies=[Depends(guard)])
     def accounts():
         return rows(store.list_accounts())
+
+    @app.post("/accounts/google", dependencies=[Depends(guard)])
+    def add_google():
+        if add_google_fn is None:
+            raise HTTPException(status_code=501, detail="add account not wired")
+        from core.auth import ReauthRequired, AuthTimeout
+        from core.accounts_service import AddAccountInProgress
+        try:
+            return add_google_fn()
+        except ReauthRequired as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except AuthTimeout as e:
+            raise HTTPException(status_code=408, detail=str(e))
+        except AddAccountInProgress as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"ajout du compte echoue: {e}")
 
     @app.patch("/accounts/{account_id}", dependencies=[Depends(guard)])
     async def patch_account(account_id: int, request: Request):

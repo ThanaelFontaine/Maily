@@ -106,3 +106,61 @@ def test_run_local_auth_persists_token(monkeypatch):
     email = auth.run_local_auth(open_browser=False)
     assert email == "me@example.org"
     assert secrets_store.load_account_token("me@example.org")["refresh_token"] == "1//r"
+
+
+def test_run_local_auth_forwards_timeout(monkeypatch):
+    secrets_store.save_client_config("cid", "sec")
+    captured = {}
+
+    class FakeCreds:
+        token = "t"; refresh_token = "1//r"; token_uri = "u"
+        client_id = "cid"; client_secret = "sec"; scopes = auth.SCOPES; expiry = None
+
+    class FakeFlow:
+        @staticmethod
+        def from_client_config(cfg, scopes):
+            return FakeFlow()
+
+        def run_local_server(self, **kw):
+            captured.update(kw)
+            return FakeCreds()
+
+    monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
+    monkeypatch.setattr(auth, "_fetch_email", lambda creds: "me@example.org")
+
+    auth.run_local_auth(open_browser=False, timeout_seconds=90)
+    assert captured.get("timeout_seconds") == 90
+
+
+def test_run_local_auth_timeout_raises(monkeypatch):
+    secrets_store.save_client_config("cid", "sec")
+
+    class FakeFlow:
+        @staticmethod
+        def from_client_config(cfg, scopes):
+            return FakeFlow()
+
+        def run_local_server(self, **kw):
+            return None  # aucun consentement recu dans le delai
+
+    monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
+
+    with pytest.raises(auth.AuthTimeout):
+        auth.run_local_auth(open_browser=False, timeout_seconds=1)
+
+
+def test_run_local_auth_maps_wsgi_timeout(monkeypatch):
+    secrets_store.save_client_config("cid", "sec")
+
+    class FakeFlow:
+        @staticmethod
+        def from_client_config(cfg, scopes):
+            return FakeFlow()
+
+        def run_local_server(self, **kw):
+            raise auth.WSGITimeoutError("timed out")  # comportement reel de la lib
+
+    monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
+
+    with pytest.raises(auth.AuthTimeout):
+        auth.run_local_auth(open_browser=False, timeout_seconds=1)

@@ -26,6 +26,7 @@ const ICONS = {
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   // "mark_email_read" facon Google : enveloppe + coche.
   mail_read: '<path d="M22 12.2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9.5"/><path d="m2 7 10 6 10-6"/><path d="m16 18.5 2 2 4-4"/>',
+  at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>',
 };
 function ico(name) {
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -176,6 +177,57 @@ function openColorPicker(accountId, anchor) {
   const onDoc = (e) => { if (!e.target.closest("#colorpop")) closeColorPicker(); };
   pop._onDoc = onDoc;
   setTimeout(() => document.addEventListener("click", onDoc, true), 0);
+}
+
+/* ------- Ajouter un compte : menu + flow OAuth Google ------- */
+function closeAddMenu() {
+  const p = document.getElementById("addpop");
+  if (p) { if (p._onDoc) document.removeEventListener("click", p._onDoc, true); p.remove(); }
+}
+function openAddMenu(anchor) {
+  closeAddMenu();
+  const pop = document.createElement("div");
+  pop.id = "addpop";
+  pop.className = "addpop";
+  pop.innerHTML =
+    `<button class="addpop-item" data-p="google">${ico("at")}` +
+    `<span>Compte Google<span class="addpop-sub">Gmail / Google Workspace</span></span></button>` +
+    `<button class="addpop-item" data-p="orange" disabled>${ico("at")}` +
+    `<span>Adresse Orange<span class="addpop-sub">IMAP · orange.fr</span></span>` +
+    `<span class="addpop-badge">Bientôt</span></button>`;
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
+  // Le bouton est en bas de la colonne : on ouvre le menu vers le haut.
+  pop.style.top = Math.max(8, r.top - pop.offsetHeight - 6) + "px";
+  pop.querySelector('[data-p="google"]').onclick = () => { closeAddMenu(); addGoogleAccount(); };
+  const onDoc = (e) => {
+    if (!e.target.closest("#addpop") && e.target.id !== "addaccount") closeAddMenu();
+  };
+  pop._onDoc = onDoc;
+  setTimeout(() => document.addEventListener("click", onDoc, true), 0);
+}
+
+async function addGoogleAccount() {
+  const btn = el("#addaccount");
+  btn.disabled = true;
+  banner("Autorise Maily dans la fenêtre de ton navigateur…");
+  try {
+    const acc = await postAction("/accounts/google");
+    banner("Compte ajouté : " + (acc.email || ""));
+    await loadAccounts();
+    if (acc.account_id) {
+      selectAccount(acc.account_id);
+      // Première synchro en tâche de fond (le backfill peut durer).
+      fetch("/accounts/" + acc.account_id + "/sync", { method: "POST", ...AUTH })
+        .then(() => { loadAccounts(); loadMessages(); })
+        .catch(() => {});
+    }
+  } catch (e) {
+    banner("Ajout du compte échoué : " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function updateLayout() {
@@ -870,6 +922,7 @@ async function main() {
   el("#settingsmodal").addEventListener("click", (e) => { if (e.target.id === "settingsmodal") closeSettings(); });
   el("#sync").onclick = syncAll;
   el("#markread").onclick = markAllRead;
+  el("#addaccount").onclick = (e) => openAddMenu(e.currentTarget);
   el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });
   el("#c-close").onclick = closeComposer;
   el("#c-cancel").onclick = closeComposer;

@@ -2,11 +2,40 @@ from __future__ import annotations
 import base64
 import os
 import re
+import threading
 from googleapiclient.discovery import build
+from core import auth
 from core.auth import load_credentials
 from core.gmail import GmailClient
 from core.sync import Syncer
 from core import sender
+
+
+class AddAccountInProgress(Exception):
+    """Un ajout de compte est deja en cours (le flow OAuth loopback est mono-instance)."""
+    pass
+
+
+# Un seul ajout a la fois : le serveur loopback OAuth se lie a un port libre et
+# deux flows concurrents peuvent se marcher dessus / ouvrir deux navigateurs.
+_add_account_lock = threading.Lock()
+
+
+def add_google_account(store, timeout_seconds: int | None = 180) -> dict:
+    """Lance le consentement Google (navigateur systeme), enregistre le compte.
+
+    Retourne {"account_id": int, "email": str}. Leve ReauthRequired si le client
+    OAuth n'est pas configure, AuthTimeout en cas d'abandon, AddAccountInProgress
+    si un ajout est deja en cours.
+    """
+    if not _add_account_lock.acquire(blocking=False):
+        raise AddAccountInProgress("Un ajout de compte est deja en cours.")
+    try:
+        email = auth.run_local_auth(open_browser=True, timeout_seconds=timeout_seconds)
+        account_id = store.upsert_account(email)
+        return {"account_id": account_id, "email": email}
+    finally:
+        _add_account_lock.release()
 
 
 def _safe_name(name: str) -> str:
