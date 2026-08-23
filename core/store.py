@@ -15,14 +15,16 @@ class Store:
     def __init__(self, database: Database):
         self.db = database
 
-    def upsert_account(self, email, display_name=None, color=None) -> int:
+    def upsert_account(self, email, display_name=None, color=None, provider=None) -> int:
         with self.db.writer() as c:
             c.execute(
-                """INSERT INTO accounts(email, display_name, color) VALUES(?,?,?)
+                """INSERT INTO accounts(email, display_name, color, provider)
+                   VALUES(?,?,?,COALESCE(?,'gmail'))
                    ON CONFLICT(email) DO UPDATE SET
                      display_name=COALESCE(excluded.display_name, accounts.display_name),
-                     color=COALESCE(excluded.color, accounts.color)""",
-                (email, display_name, color),
+                     color=COALESCE(excluded.color, accounts.color),
+                     provider=COALESCE(?, accounts.provider)""",
+                (email, display_name, color, provider, provider),
             )
             return c.execute("SELECT id FROM accounts WHERE email=?", (email,)).fetchone()[0]
 
@@ -39,6 +41,16 @@ class Store:
 
     def list_accounts(self):
         return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
+
+    def delete_account(self, account_id):
+        # Les FK ON DELETE CASCADE (foreign_keys=ON) purgent threads/messages/
+        # labels/outbox/sync_state, et le trigger messages_ad nettoie le FTS.
+        # Les attachments ne portent pas d'account_id -> purge explicite d'abord.
+        with self.db.writer() as c:
+            c.execute(
+                "DELETE FROM attachments WHERE owner_kind='message' AND owner_id IN "
+                "(SELECT id FROM messages WHERE account_id=?)", (account_id,))
+            c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
 
     def get_account(self, account_id):
         return self.db.read().execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()

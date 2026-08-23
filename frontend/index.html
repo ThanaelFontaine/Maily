@@ -89,6 +89,30 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="imapmodal" hidden>
+    <div class="imapform">
+      <div class="composer-head thememenu-head">
+        <span>Connecter une adresse Orange</span>
+        <button class="icon-btn" id="imap-close" title="Fermer"></button>
+      </div>
+      <div class="imap-body">
+        <label class="c-row"><span class="c-lbl">Email</span><input id="imap-email" type="email" placeholder="prenom.nom@orange.fr" autocomplete="username"></label>
+        <label class="c-row"><span class="c-lbl">Mot de passe</span><input id="imap-pass" type="password" placeholder="mot de passe Orange" autocomplete="current-password"></label>
+        <details class="imap-adv">
+          <summary>Réglages avancés</summary>
+          <label class="c-row"><span class="c-lbl">Serveur</span><input id="imap-host" value="imap.orange.fr"></label>
+          <label class="c-row"><span class="c-lbl">Port</span><input id="imap-port" type="number" value="993"></label>
+        </details>
+        <div class="imap-note">🔒 Ton mot de passe est chiffré et stocké uniquement sur ce Mac.</div>
+      </div>
+      <div class="composer-foot">
+        <button class="gel" id="imap-connect">Connecter</button>
+        <button class="ghost" id="imap-cancel">Annuler</button>
+        <span id="imap-status" class="c-status"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="settingsmodal" hidden>
     <div class="settingsmenu">
       <div class="composer-head thememenu-head">

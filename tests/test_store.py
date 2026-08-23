@@ -40,3 +40,29 @@ def test_sync_state_roundtrip(store):
     store.set_sync_state(acc, "last_history_id", "12345")
     assert store.get_sync_state(acc, "last_history_id") == "12345"
     assert store.get_sync_state(acc, "absent") is None
+
+
+def test_delete_account_removes_account_and_cache(store):
+    acc = store.upsert_account("me@example.org")
+    other = store.upsert_account("autre@example.org")
+    mid = store.upsert_message(acc, "g1", subject="Secret", body_text="corps",
+                               label_ids='["INBOX"]', addr_from="x@y.co")
+    store.replace_attachments(mid, [{"filename": "f.pdf", "mime_type": "application/pdf",
+                                     "size": 3, "gmail_attachment_id": "a1", "content_id": None}])
+    store.replace_labels(acc, [{"id": "INBOX", "name": "INBOX", "type": "system"}])
+    store.set_sync_state(acc, "last_history_id", "42")
+    # message chez l'autre compte, ne doit PAS disparaitre
+    store.upsert_message(other, "g2", subject="Garde", body_text="reste", addr_from="z@y.co")
+
+    store.delete_account(acc)
+
+    assert store.get_account(acc) is None
+    assert store.list_messages(acc) == []
+    assert store.list_labels(acc) == []
+    assert store.get_sync_state(acc, "last_history_id") is None
+    assert store.list_attachments(mid) == []
+    assert store.search_messages("Secret") == []          # FTS nettoye
+    # l'autre compte est intact
+    assert store.get_account(other) is not None
+    assert len(store.list_messages(other)) == 1
+    assert store.search_messages("Garde")[0]["gmail_id"] == "g2"

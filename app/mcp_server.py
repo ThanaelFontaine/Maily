@@ -273,6 +273,77 @@ def maily_send(profile: str, to: str, subject: str, body_text: str,
     return {"sent_from": acc["email"], "to": to, "result": res}
 
 
+def _save_path(dest_path, filename):
+    import pathlib
+    if dest_path:
+        p = pathlib.Path(dest_path).expanduser()
+        if p.is_dir():
+            p = p / filename
+    else:
+        p = pathlib.Path.home() / "Downloads" / filename
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _account_of(message_id):
+    m = store().get_message(message_id)
+    if not m:
+        return None, None
+    m = dict(m)
+    acc = store().get_account(m["account_id"])
+    return m, (dict(acc) if acc else None)
+
+
+@mcp.tool()
+def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
+    """Enregistre un message au format .eml (RFC822 brut) sur le disque.
+    dest_path : dossier ou chemin complet (defaut : ~/Downloads). Marche pour
+    Gmail et Orange. Renvoie le chemin du fichier ecrit."""
+    from core.accounts_service import export_eml
+    try:
+        data, filename = export_eml(store(), message_id)
+    except Exception as e:
+        return {"error": f"export .eml echoue: {e}"}
+    p = _save_path(dest_path, filename)
+    p.write_bytes(data)
+    return {"saved": str(p), "bytes": len(data)}
+
+
+@mcp.tool()
+def maily_download_attachment(message_id: int, attachment_id: int,
+                             dest_path: str | None = None) -> dict:
+    """Telecharge une piece jointe d'un message sur le disque.
+    dest_path : dossier ou chemin complet (defaut : ~/Downloads)."""
+    from core.accounts_service import fetch_attachment
+    m, acc = _account_of(message_id)
+    if not acc:
+        return {"error": f"message {message_id} introuvable"}
+    attdir = paths.ensure_runtime_dirs(paths.runtime_dir())["attachments"]
+    try:
+        data, mime, filename = fetch_attachment(store(), acc["email"], message_id,
+                                                attachment_id, attdir)
+    except Exception as e:
+        return {"error": f"telechargement echoue: {e}"}
+    p = _save_path(dest_path, filename or "piece-jointe")
+    p.write_bytes(data)
+    return {"saved": str(p), "mime": mime, "bytes": len(data)}
+
+
+@mcp.tool()
+def maily_trash(message_id: int) -> dict:
+    """Met un message a la corbeille (reversible). Action de gestion : confirme
+    avec l'utilisateur avant d'appeler cet outil."""
+    from core.accounts_service import trash_message
+    m, acc = _account_of(message_id)
+    if not acc:
+        return {"error": f"message {message_id} introuvable"}
+    try:
+        trash_message(store(), acc["email"], message_id)
+    except Exception as e:
+        return {"error": f"corbeille echouee: {e}"}
+    return {"trashed": message_id, "profile": acc["email"]}
+
+
 def main():
     mcp.run()
 

@@ -27,6 +27,7 @@ const ICONS = {
   // "mark_email_read" facon Google : enveloppe + coche.
   mail_read: '<path d="M22 12.2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9.5"/><path d="m2 7 10 6 10-6"/><path d="m16 18.5 2 2 4-4"/>',
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
 };
 function ico(name) {
   return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -62,11 +63,21 @@ async function postAction(path, body) {
   return r.json();
 }
 
+let _bannerTimer = null;
+function dismissBanner() {
+  const b = el(".banner");
+  if (b) b.classList.remove("show");
+  if (_bannerTimer) { clearTimeout(_bannerTimer); _bannerTimer = null; }
+}
 function banner(msg) {
   let b = el(".banner");
   if (!b) { b = document.createElement("div"); b.className = "banner"; el(".win").insertBefore(b, el(".body")); }
-  b.textContent = msg;
+  b.innerHTML = `<span class="banner-msg"></span><button class="banner-x" title="Fermer" aria-label="Fermer">×</button>`;
+  b.querySelector(".banner-msg").textContent = msg;   // textContent : pas d'injection HTML
+  b.querySelector(".banner-x").onclick = dismissBanner;
   b.classList.add("show");
+  if (_bannerTimer) clearTimeout(_bannerTimer);
+  _bannerTimer = setTimeout(dismissBanner, 5000);      // auto-fermeture 5 s
 }
 
 function esc(s) {
@@ -192,15 +203,15 @@ function openAddMenu(anchor) {
   pop.innerHTML =
     `<button class="addpop-item" data-p="google">${ico("at")}` +
     `<span>Compte Google<span class="addpop-sub">Gmail / Google Workspace</span></span></button>` +
-    `<button class="addpop-item" data-p="orange" disabled>${ico("at")}` +
-    `<span>Adresse Orange<span class="addpop-sub">IMAP · orange.fr</span></span>` +
-    `<span class="addpop-badge">Bientôt</span></button>`;
+    `<button class="addpop-item" data-p="orange">${ico("at")}` +
+    `<span>Adresse Orange<span class="addpop-sub">IMAP · orange.fr</span></span></button>`;
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
   pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
   // Le bouton est en bas de la colonne : on ouvre le menu vers le haut.
   pop.style.top = Math.max(8, r.top - pop.offsetHeight - 6) + "px";
   pop.querySelector('[data-p="google"]').onclick = () => { closeAddMenu(); addGoogleAccount(); };
+  pop.querySelector('[data-p="orange"]').onclick = () => { closeAddMenu(); openImapForm(); };
   const onDoc = (e) => {
     if (!e.target.closest("#addpop") && e.target.id !== "addaccount") closeAddMenu();
   };
@@ -225,6 +236,54 @@ async function addGoogleAccount() {
     }
   } catch (e) {
     banner("Ajout du compte échoué : " + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function openImapForm() {
+  el("#imap-email").value = "";
+  el("#imap-pass").value = "";
+  el("#imap-host").value = "imap.orange.fr";
+  el("#imap-port").value = "993";
+  el("#imap-status").textContent = "";
+  el("#imapmodal").hidden = false;
+  el("#imap-email").focus();
+}
+function closeImapForm() {
+  el("#imap-pass").value = "";                 // ne pas laisser trainer le mot de passe
+  el("#imapmodal").hidden = true;
+}
+async function connectImap() {
+  const status = el("#imap-status");
+  const email = el("#imap-email").value.trim();
+  const password = el("#imap-pass").value;
+  if (!email || !password) { status.textContent = "Email et mot de passe requis."; return; }
+  const btn = el("#imap-connect");
+  btn.disabled = true;
+  status.textContent = "Connexion…";
+  try {
+    const r = await fetch("/accounts/imap", {
+      method: "POST", headers: { ...AUTH.headers, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email, password,
+        host: el("#imap-host").value.trim() || "imap.orange.fr",
+        port: Number(el("#imap-port").value) || 993,
+      }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detail || ("HTTP " + r.status));
+    closeImapForm();
+    banner("Compte Orange connecté : " + data.email);
+    await loadAccounts();
+    if (data.account_id) {
+      selectAccount(data.account_id);
+      fetch("/accounts/" + data.account_id + "/sync", { method: "POST", ...AUTH })
+        .then(() => { loadAccounts(); loadMessages(); })
+        .catch(() => {});
+    }
+  } catch (e) {
+    status.textContent = "Échec : " + e.message;
   } finally {
     btn.disabled = false;
   }
@@ -477,6 +536,23 @@ async function downloadAttachment(id, attId, att) {
   } catch (e) { banner("Téléchargement échoué : " + e.message); }
 }
 
+async function exportEml(id) {
+  try {
+    const r = await fetch(`/messages/${id}/eml`, AUTH);
+    if (!r.ok) throw new Error(r.status);
+    const blob = await r.blob();
+    const cd = r.headers.get("content-disposition") || "";
+    const m = cd.match(/filename\*=UTF-8''([^;]+)/i) || cd.match(/filename="([^"]+)"/i);
+    const name = m ? decodeURIComponent(m[1]) : `message-${id}.eml`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    banner("Message exporté : " + name);
+  } catch (e) { banner("Export .eml échoué : " + e.message); }
+}
+
 function openSingle(id) { state.tabs = []; openMessage(id); }
 
 function openInTab(id, subject) {
@@ -549,13 +625,18 @@ async function openMessage(id) {
   const head = document.createElement("div");
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
+  // Orange (IMAP) = lecture seule : pas de réponse/transfert (pas de SMTP).
+  const isImap = ((state.accounts.find((a) => a.id === m.account_id) || {}).provider === "imap");
+  const sendButtons = isImap ? "" :
+    `<button class="gel" id="replybtn">${ico("reply")} Répondre</button>
+     <button class="ghost io" id="fwdbtn" title="Transférer" data-tip="Transférer">${ico("forward")}</button>`;
   head.innerHTML =
     `<button class="read-close" id="read-close" title="Fermer">${ico("x")}</button>
      <h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
-       <button class="gel" id="replybtn">${ico("reply")} Répondre</button>
-       <button class="ghost io" id="fwdbtn" title="Transférer" data-tip="Transférer">${ico("forward")}</button>
+       ${sendButtons}
+       <button class="ghost io" id="emlbtn" title="Télécharger en .eml" data-tip="Télécharger .eml">${ico("download")}</button>
        ${inTrash
         ? `<button class="ghost io" id="untrashbtn" title="Restaurer" data-tip="Restaurer">${ico("restore")}</button>`
         : `<button class="ghost io" id="archbtn" title="Archiver" data-tip="Archiver">${ico("archive")}</button>
@@ -565,10 +646,14 @@ async function openMessage(id) {
 
   head.querySelector("#read-close").onclick = closeReading;
   const replyBtn = head.querySelector("#replybtn");
-  const replyColor = accountColors[m.account_id];
-  if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; }
-  replyBtn.onclick = () => replyTo(m);
-  head.querySelector("#fwdbtn").onclick = () => forward(m);
+  if (replyBtn) {
+    const replyColor = accountColors[m.account_id];
+    if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; }
+    replyBtn.onclick = () => replyTo(m);
+  }
+  const fwdBtn = head.querySelector("#fwdbtn");
+  if (fwdBtn) fwdBtn.onclick = () => forward(m);
+  head.querySelector("#emlbtn").onclick = () => exportEml(id);
   if (inTrash) {
     head.querySelector("#untrashbtn").onclick = async () => {
       try { await postAction(`/messages/${id}/untrash`); afterAction("Restauré."); }
@@ -634,12 +719,15 @@ function syncSendColor() {
 function openComposer(prefill) {
   const fromSel = el("#c-from");
   fromSel.innerHTML = "";
-  (state.accounts || []).forEach((a) => {
+  // Seuls les comptes capables d'envoyer (Gmail) : l'IMAP (Orange) est en lecture seule.
+  const sendable = (state.accounts || []).filter((a) => a.provider !== "imap");
+  if (!sendable.length) { banner("Aucun compte capable d'envoyer (Orange est en lecture seule)."); return; }
+  sendable.forEach((a) => {
     const o = document.createElement("option");
     o.value = a.id; o.textContent = a.display_name || a.email;
     fromSel.appendChild(o);
   });
-  if (prefill.accountId) fromSel.value = prefill.accountId;
+  if (prefill.accountId && sendable.some((a) => a.id === prefill.accountId)) fromSel.value = prefill.accountId;
   fromSel.onchange = syncSendColor;
   syncSendColor();
   el("#composer-title").textContent = prefill.title || "Nouveau message";
@@ -807,6 +895,7 @@ function renderSettings() {
       </div>
       <div class="settings-email">${esc(a.email)}</div>
       <div class="settings-swatches">${sw}</div>
+      <button class="settings-logout" data-acc="${a.id}" data-email="${esc(a.email)}">Déconnecter</button>
     </div>`;
   }).join("");
   wrap.querySelectorAll(".settings-name").forEach((inp) => {
@@ -818,6 +907,22 @@ function renderSettings() {
       renderSettings();
     };
   });
+  wrap.querySelectorAll(".settings-logout").forEach((b) => {
+    b.onclick = () => logoutAccount(parseInt(b.dataset.acc, 10), b.dataset.email);
+  });
+}
+
+async function logoutAccount(id, email) {
+  if (!window.confirm(`Déconnecter ${email} ?\nLes mails téléchargés en local seront supprimés (réversible en reconnectant le compte).`)) return;
+  try {
+    const r = await fetch(`/accounts/${id}`, { method: "DELETE", headers: { Authorization: "Bearer " + TOKEN } });
+    if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+    banner("Compte déconnecté : " + email);
+    if (state.accountId === id) { state.accountId = null; state.folder = { type: "inbox" }; }
+    await loadAccounts();
+    if (state.accounts.length) { renderSettings(); } else { closeSettings(); }
+    loadMessages();
+  } catch (e) { banner("Déconnexion échouée : " + e.message); }
 }
 function openSettings() {
   if (!state.accounts.length) { banner("Aucun compte à régler."); return; }
@@ -905,7 +1010,7 @@ function paintStaticIcons() {
     const b = el(sel);
     if (b) { b.innerHTML = ico(name); b.classList.add("io"); b.dataset.tip = tip; b.title = tip; }
   }
-  ["#c-close", "#theme-close", "#settings-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
+  ["#c-close", "#theme-close", "#settings-close", "#imap-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
 }
 
 async function main() {
@@ -923,6 +1028,11 @@ async function main() {
   el("#sync").onclick = syncAll;
   el("#markread").onclick = markAllRead;
   el("#addaccount").onclick = (e) => openAddMenu(e.currentTarget);
+  el("#imap-close").onclick = closeImapForm;
+  el("#imap-cancel").onclick = closeImapForm;
+  el("#imap-connect").onclick = connectImap;
+  el("#imapmodal").addEventListener("click", (e) => { if (e.target.id === "imapmodal") closeImapForm(); });
+  el("#imap-pass").addEventListener("keydown", (e) => { if (e.key === "Enter") connectImap(); });
   el("#compose").onclick = () => openComposer({ accountId: state.accountId || undefined });
   el("#c-close").onclick = closeComposer;
   el("#c-cancel").onclick = closeComposer;

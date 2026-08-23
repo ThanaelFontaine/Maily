@@ -211,3 +211,94 @@ def test_add_google_endpoint_in_progress_is_409(database):
 
     c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
     assert c.post("/accounts/google", headers=_auth()).status_code == 409
+
+
+def test_delete_account_endpoint(database):
+    store = Store(database)
+    aid = store.upsert_account("me@example.org")
+    calls = []
+    app = create_app(store, TOKEN, logout_fn=lambda account_id: calls.append(account_id))
+    c = TestClient(app)
+    r = c.delete(f"/accounts/{aid}", headers=_auth())
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert calls == [aid]
+
+
+def test_delete_account_requires_auth(database):
+    store = Store(database)
+    aid = store.upsert_account("me@example.org")
+    app = create_app(store, TOKEN, logout_fn=lambda account_id: None)
+    assert TestClient(app).delete(f"/accounts/{aid}").status_code == 401
+
+
+def test_delete_account_not_wired_is_501(database):
+    store = Store(database)
+    aid = store.upsert_account("me@example.org")
+    c = TestClient(create_app(store, TOKEN))
+    assert c.delete(f"/accounts/{aid}", headers=_auth()).status_code == 501
+
+
+def test_eml_endpoint(database):
+    store = Store(database)
+    aid = store.upsert_account("me@example.org")
+    mid = store.upsert_message(aid, "g1", subject="X", label_ids='["INBOX"]')
+    app = create_app(store, TOKEN, eml_fn=lambda message_id: (b"RAW-EML-BYTES", "x.eml"))
+    c = TestClient(app)
+    r = c.get(f"/messages/{mid}/eml", headers=_auth())
+    assert r.status_code == 200
+    assert r.content == b"RAW-EML-BYTES"
+    assert "attachment" in r.headers.get("content-disposition", "")
+    assert "x.eml" in r.headers.get("content-disposition", "")
+
+
+def test_eml_endpoint_requires_auth(database):
+    store = Store(database)
+    mid = store.upsert_message(store.upsert_account("me@example.org"), "g1", subject="X")
+    app = create_app(store, TOKEN, eml_fn=lambda message_id: (b"x", "x.eml"))
+    assert TestClient(app).get(f"/messages/{mid}/eml").status_code == 401
+
+
+def test_eml_endpoint_not_wired_is_501(database):
+    store = Store(database)
+    mid = store.upsert_message(store.upsert_account("me@example.org"), "g1", subject="X")
+    c = TestClient(create_app(store, TOKEN))
+    assert c.get(f"/messages/{mid}/eml", headers=_auth()).status_code == 501
+
+
+def test_add_imap_endpoint_nominal(database):
+    store = Store(database)
+    captured = {}
+
+    def add_imap_fn(email, password, host, port):
+        captured.update(email=email, password=password, host=host, port=port)
+        return {"account_id": 5, "email": email}
+
+    app = create_app(store, TOKEN, add_imap_fn=add_imap_fn)
+    c = TestClient(app)
+    r = c.post("/accounts/imap", headers=_auth(),
+               json={"email": "me@orange.fr", "password": "pw"})
+    assert r.status_code == 200 and r.json()["email"] == "me@orange.fr"
+    assert captured["host"] == "imap.orange.fr" and captured["port"] == 993
+    assert captured["password"] == "pw"
+
+
+def test_add_imap_endpoint_requires_auth(database):
+    app = create_app(Store(database), TOKEN, add_imap_fn=lambda *a: {})
+    assert TestClient(app).post("/accounts/imap", json={"email": "a", "password": "b"}).status_code == 401
+
+
+def test_add_imap_endpoint_bad_credentials_is_400(database):
+    from core.imap_client import ImapError
+
+    def boom(email, password, host, port):
+        raise ImapError("bad creds")
+
+    c = TestClient(create_app(Store(database), TOKEN, add_imap_fn=boom))
+    r = c.post("/accounts/imap", headers=_auth(), json={"email": "a@orange.fr", "password": "x"})
+    assert r.status_code == 400
+
+
+def test_add_imap_endpoint_not_wired_is_501(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    assert c.post("/accounts/imap", headers=_auth(),
+                  json={"email": "a@orange.fr", "password": "x"}).status_code == 501

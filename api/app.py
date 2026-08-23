@@ -36,9 +36,17 @@ class ModifyPayload(BaseModel):
     remove_labels: list[str] = []
 
 
+class ImapConnectPayload(BaseModel):
+    email: str
+    password: str
+    host: str = "imap.orange.fr"
+    port: int = 993
+
+
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None,
-               glass_fn=None, glass_get_fn=None, add_google_fn=None) -> FastAPI:
+               glass_fn=None, glass_get_fn=None, add_google_fn=None,
+               logout_fn=None, eml_fn=None, add_imap_fn=None) -> FastAPI:
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -112,6 +120,33 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         store.update_account(account_id, display_name=dn, color=color)
         return dict(store.get_account(account_id))
 
+    @app.post("/accounts/imap", dependencies=[Depends(guard)])
+    def add_imap(payload: ImapConnectPayload):
+        if add_imap_fn is None:
+            raise HTTPException(status_code=501, detail="add imap not wired")
+        from core.imap_client import ImapError
+        from core.accounts_service import AddAccountInProgress
+        try:
+            return add_imap_fn(payload.email, payload.password, payload.host, payload.port)
+        except ImapError as e:
+            raise HTTPException(status_code=400, detail=f"connexion Orange echouee: {e}")
+        except AddAccountInProgress as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"ajout du compte echoue: {e}")
+
+    @app.delete("/accounts/{account_id}", dependencies=[Depends(guard)])
+    def delete_account(account_id: int):
+        if logout_fn is None:
+            raise HTTPException(status_code=501, detail="logout not wired")
+        if store.get_account(account_id) is None:
+            raise HTTPException(status_code=404, detail="compte introuvable")
+        try:
+            logout_fn(account_id)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"deconnexion echouee: {e}")
+        return {"ok": True}
+
     @app.get("/accounts/{account_id}/labels", dependencies=[Depends(guard)])
     def labels(account_id: int):
         labs = store.list_labels(account_id)
@@ -180,6 +215,23 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                     if uri:
                         html = pattern.sub(lambda m: uri, html)
         return HTMLResponse(html)
+
+    @app.get("/messages/{message_id}/eml", dependencies=[Depends(guard)])
+    def message_eml(message_id: int):
+        if eml_fn is None:
+            raise HTTPException(status_code=501, detail="eml export not wired")
+        if store.get_message(message_id) is None:
+            raise HTTPException(status_code=404, detail="not found")
+        try:
+            data, filename = eml_fn(message_id)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"export .eml echoue: {e}")
+        fname = filename or f"message-{message_id}.eml"
+        ascii_fallback = re.sub(r'[\r\n"]', "", fname.encode("ascii", "ignore").decode("ascii")) or "message.eml"
+        utf8_star = urllib.parse.quote(fname, safe="")
+        cd = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{utf8_star}"
+        return Response(content=data, media_type="message/rfc822",
+                        headers={"Content-Disposition": cd})
 
     @app.get("/messages/{message_id}/attachments", dependencies=[Depends(guard)])
     def attachments(message_id: int):

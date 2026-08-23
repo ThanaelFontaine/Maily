@@ -66,6 +66,33 @@ def make_add_google_fn(store, timeout_seconds=180):
     return _add
 
 
+def make_add_imap_fn(store):
+    from core.accounts_service import add_imap_account
+
+    def _add(email, password, host, port):
+        return add_imap_account(store, email, password, host=host, port=port)
+
+    return _add
+
+
+def make_logout_fn(store):
+    from core.accounts_service import logout_account
+
+    def _logout(account_id):
+        return logout_account(store, account_id)
+
+    return _logout
+
+
+def make_eml_fn(store):
+    from core.accounts_service import export_eml
+
+    def _eml(message_id):
+        return export_eml(store, message_id)
+
+    return _eml
+
+
 def make_labels_fn(store):
     from core import accounts_service as svc
 
@@ -338,7 +365,10 @@ def run():
                      download_fn=download_fn, inline_fn=inline_fn,
                      labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
                      glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha,
-                     add_google_fn=make_add_google_fn(store))
+                     add_google_fn=make_add_google_fn(store),
+                     logout_fn=make_logout_fn(store),
+                     eml_fn=make_eml_fn(store),
+                     add_imap_fn=make_add_imap_fn(store))
 
     port = free_port()
     _start_server(app, port)

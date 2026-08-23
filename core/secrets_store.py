@@ -30,3 +30,21 @@ def load_account_token(email: str) -> dict | None:
 
 def delete_account_token(email: str) -> None:
     secret_file.delete(_account_key(email))
+
+
+def _imap_key(email: str) -> str:
+    return f"imap:{email}"
+
+
+def save_imap_credentials(email: str, creds: dict) -> None:
+    """creds : {host, port, username, password}. Stocke chiffre."""
+    secret_file.set(_imap_key(email), json.dumps(creds))
+
+
+def load_imap_credentials(email: str) -> dict | None:
+    raw = secret_file.get(_imap_key(email))
+    return json.loads(raw) if raw else None
+
+
+def delete_imap_credentials(email: str) -> None:
+    secret_file.delete(_imap_key(email))

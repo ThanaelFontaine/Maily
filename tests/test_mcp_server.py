@@ -48,4 +48,5 @@ def test_all_tools_registered():
     assert names == {
         "maily_list_accounts", "maily_list_messages", "maily_get_message",
         "maily_search", "maily_sync", "maily_send",
+        "maily_export_eml", "maily_download_attachment", "maily_trash",
     }

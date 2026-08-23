@@ -197,8 +197,12 @@ body {
 .read-frame { flex: 1; width: 100%; border: 0; background: #fff; }
 
 .banner { padding: 8px 20px; font-size: 12.5px; background: rgba(255,233,168,.5); color: #6b4e00;
-  border-bottom: 1px solid rgba(0,0,0,.06); display: none; }
-.banner.show { display: block; }
+  border-bottom: 1px solid rgba(0,0,0,.06); display: none; align-items: center; gap: 10px; }
+.banner.show { display: flex; }
+.banner-msg { flex: 1; min-width: 0; }
+.banner-x { flex: none; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; opacity: .7; }
+.banner-x:hover { opacity: 1; background: rgba(0,0,0,.08); }
 
 /* ---------- Composer (modale) ---------- */
 .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
@@ -561,6 +565,24 @@ body {
 .addpop-badge { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
   padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
 
+/* Formulaire de connexion Orange (IMAP) */
+.imapform { width: min(440px, 92vw); border-radius: 16px;
+  border: 1px solid var(--hairline); background: rgba(255,255,255,.96);
+  -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 24px 60px rgba(8,45,80,.4); }
+.imap-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.imap-body .c-row { display: flex; align-items: center; gap: 10px; }
+.imap-body .c-row input { flex: 1; padding: 8px 12px; border-radius: 10px; font-size: 14px;
+  font-family: var(--font); color: #14323F; background: #fff; border: 1px solid rgba(10,40,70,.2); }
+.imap-adv { font-size: 12.5px; color: var(--ink-soft); }
+.imap-adv summary { cursor: pointer; padding: 2px 0; }
+.imap-adv .c-row { margin-top: 8px; }
+.imap-note { font-size: 11.5px; color: var(--ink-soft); }
+:root[data-theme="dedsec"] .imapform { border-radius: 0; background: #0d1012; border: 1px solid #202b2c; }
+:root[data-theme="dedsec"] .imap-body .c-row input { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
+:root[data-theme="glass"] .imapform { background: rgba(30,34,46,.96); border: 1px solid rgba(255,255,255,.12); }
+:root[data-theme="glass"] .imap-body .c-row input { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: var(--ink); }
+
 /* Page réglages des profils */
 .settingsmenu { width: min(460px, 92vw); max-height: 86vh; overflow-y: auto; border-radius: 16px;
   border: 1px solid var(--hairline); background: rgba(255,255,255,.95);
@@ -574,6 +596,12 @@ body {
   background: rgba(255,255,255,.7); border: 1px solid rgba(0,0,0,.12); border-radius: 10px; outline: none; }
 .settings-email { font-size: 12px; color: #5c6b74; padding-left: 30px; }
 .settings-swatches { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 30px; }
+.settings-logout { align-self: flex-start; margin-left: 30px; margin-top: 2px; padding: 5px 12px; border-radius: 9px;
+  font-size: 12px; font-weight: 600; cursor: pointer; color: #a12a2a;
+  background: rgba(239,71,111,.10); border: 1px solid rgba(239,71,111,.35); }
+.settings-logout:hover { background: rgba(239,71,111,.18); }
+:root[data-theme="dedsec"] .settings-logout { border-radius: 0; color: #FF2D78; background: #1a1013; border: 1px solid #3a1420; }
+:root[data-theme="dedsec"] .settings-logout:hover { background: #24141a; }
 :root[data-theme="dedsec"] .settingsmenu { background: #0d0f12; border: 1px solid #202b2c; color: #ECECE8; }
 :root[data-theme="dedsec"] .settings-name { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
 :root[data-theme="dedsec"] .settings-email { color: #8A8F98; }
