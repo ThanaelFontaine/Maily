@@ -15,6 +15,12 @@ dependencies = [
     "uvicorn>=0.30",
     "pywebview>=5.2",
     "pyobjc-framework-LocalAuthentication>=10.0 ; sys_platform == 'darwin'",
+    # Serveur MCP (app/mcp_server.py). En dependance principale (pas un groupe
+    # optionnel) pour eviter le va-et-vient d'installation qui corrompait l'env
+    # quand Claude Code lançait `uv run` (jsonschema est une dep de mcp, epinglee
+    # explicitement pour fiabiliser la resolution).
+    "mcp>=1.2,<2",
+    "jsonschema>=4.20",
 ]
 
 [dependency-groups]
@@ -25,9 +31,6 @@ dev = [
 build = [
     "pyinstaller>=6.10",
     "pillow>=10.0",
-]
-agent = [
-    "mcp>=1.2,<2",
 ]
 
 [tool.setuptools]

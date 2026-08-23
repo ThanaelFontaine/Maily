@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "maily": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/you/Documents/GitHub/fetch-multi-mail-viewer-sender",
+        "run",
+        "python",
+        "-m",
+        "app.mcp_server"
+      ]
+    }
+  }
+}

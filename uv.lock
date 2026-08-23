@@ -486,7 +486,9 @@ dependencies = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
     { name = "google-auth-oauthlib" },
+    { name = "jsonschema" },
     { name = "keyring" },
+    { name = "mcp" },
     { name = "nh3" },
     { name = "pydantic-settings" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'" },
@@ -495,9 +497,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-agent = [
-    { name = "mcp" },
-]
 build = [
     { name = "pillow" },
     { name = "pyinstaller" },
@@ -514,7 +513,9 @@ requires-dist = [
     { name = "google-api-python-client", specifier = ">=2.140" },
     { name = "google-auth", specifier = ">=2.35" },
     { name = "google-auth-oauthlib", specifier = ">=1.2" },
+    { name = "jsonschema", specifier = ">=4.20" },
     { name = "keyring", specifier = ">=25.4" },
+    { name = "mcp", specifier = ">=1.2,<2" },
     { name = "nh3", specifier = ">=0.2.18" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'", specifier = ">=10.0" },
@@ -523,7 +524,6 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-agent = [{ name = "mcp", specifier = ">=1.2,<2" }]
 build = [
     { name = "pillow", specifier = ">=10.0" },
     { name = "pyinstaller", specifier = ">=6.10" },

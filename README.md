@@ -73,19 +73,14 @@ Le cœur (moteur Python + SQLite) est la source de vérité ; l'UI n'en est qu'u
   uv run python scripts/claude_client.py send --account 1 --to dest@x.co --subject "Coucou" --body "Salut"
   ```
   Pour agir **sans lancer l'app** (headless), Claude peut aussi importer directement le moteur : `from core import accounts_service` puis `sync_account(...)`, `send_from_account(...)`, `modify_message(...)`.
-- **Serveur MCP (recommandé pour l'app Claude)** : [`app/mcp_server.py`](app/mcp_server.py) expose Maily comme outils MCP multi-profils à une session Claude tournant sur ce Mac - transport stdio, aucun port réseau. Outils : `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_send` (chacun avec un paramètre `profile` : email ou nom de profil). Enregistrement dans `claude_desktop_config.json` :
+- **Serveur MCP (pour Claude Code)** : [`app/mcp_server.py`](app/mcp_server.py) expose Maily comme outils MCP multi-profils à une session **Claude Code** tournant sur ce Mac - transport stdio, aucun port réseau. Outils : `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_send` (chacun avec un paramètre `profile` : email ou nom de profil). Le repo fournit un [`.mcp.json`](.mcp.json) prêt à l'emploi ; une session Claude Code ouverte sur ce dossier le détecte (approuver `maily`, ou `/mcp`). Enregistrement manuel équivalent :
   ```json
-  {
-    "mcpServers": {
-      "maily": {
-        "command": "/Users/<toi>/.local/bin/uv",
-        "args": ["--directory", "/chemin/vers/fetch-multi-mail-viewer-sender",
-                 "run", "--group", "agent", "python", "-m", "app.mcp_server"]
-      }
-    }
-  }
+  { "mcpServers": { "maily": {
+    "command": "uv",
+    "args": ["--directory", "/chemin/vers/fetch-multi-mail-viewer-sender",
+             "run", "python", "-m", "app.mcp_server"] } } }
   ```
-  Puis redémarrer l'app Claude. (Le MCP lit les secrets chiffrés sans Touch ID : la porte biométrique ne protège que l'app graphique.)
+  Note : **Cowork / claude.ai ne peuvent PAS** utiliser un serveur MCP local (stdio) - uniquement des connecteurs distants. Le MCP local ne fonctionne donc que dans **Claude Code** (et Claude Desktop). Il lit les secrets chiffrés sans Touch ID (la porte biométrique ne protège que l'app graphique).
 
 ## Développement
 
