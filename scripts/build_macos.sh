@@ -27,4 +27,10 @@ echo "==> Installation dans $DEST (remplace l'ancienne)"
 rm -rf "$DEST"
 cp -R dist/Maily.app "$DEST"
 xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
+
+# Une seule Maily visible : on supprime la copie de build dans le repo, sinon
+# Spotlight/Launchpad affiche deux applications (dist/ + /Applications).
+echo "==> Nettoyage de la copie de build (dist/Maily.app)"
+rm -rf dist/Maily.app
+
 echo "==> Terminé : $DEST"

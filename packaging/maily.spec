@@ -15,12 +15,19 @@ ICON = ICNS if os.path.exists(ICNS) else None
 datas = [(os.path.join(ROOT, "frontend"), "frontend"),
          (os.path.join(ROOT, "migrations"), "migrations")]
 binaries = []
-hiddenimports = ["app", "api", "core"]
+# _cffi_backend : extension C requise par cryptography (Fernet) ; PyInstaller
+# ne la detecte pas seul -> import cache explicite, sinon l'app crashe au
+# demarrage (ModuleNotFoundError: No module named '_cffi_backend').
+hiddenimports = ["app", "api", "core", "_cffi_backend"]
 
 # Paquets a imports dynamiques (backends, protocoles) : on collecte tout.
+# - cffi   : backend C de cryptography (Fernet).
+# - anyio  : backend d'event-loop charge dynamiquement (anyio._backends._asyncio),
+#            sinon FastAPI/Starlette plantent au 1er appel (No module named
+#            'anyio._backends').
 for pkg in ("uvicorn", "webview", "keyring", "googleapiclient",
             "google_auth_oauthlib", "google_auth_httplib2", "google.auth",
-            "cryptography", "LocalAuthentication"):
+            "cryptography", "cffi", "anyio", "LocalAuthentication"):
     try:
         d, b, h = collect_all(pkg)
         datas += d
@@ -38,7 +45,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter", "pytest", "_pytest"],
+    excludes=["tkinter", "pytest", "_pytest", "mcp"],  # mcp : cote agent, pas dans l'app
     noarchive=False,
 )
 pyz = PYZ(a.pure)
