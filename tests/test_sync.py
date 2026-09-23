@@ -68,3 +68,50 @@ def test_incremental_resyncs_on_history_expired(store):
     client = FakeClient({"g1": _msg("g1", "Un"), "g9": _msg("g9", "Neuf")}, history_raises=True)
     Syncer(store, client, acc).incremental()
     assert store.search_messages("Neuf")
+
+
+class PagedClient(FakeClient):
+    """Deux pages d'historique ; la seconde peut tomber en panne (quota Gmail)."""
+
+    def __init__(self, messages, pages, panne_page2=False):
+        super().__init__(messages)
+        self.pages = pages
+        self.panne_page2 = panne_page2
+        self.relectures = []
+
+    def get_message(self, gid, fmt="full"):
+        self.relectures.append(gid)
+        return self.messages[gid]
+
+    def list_history(self, start_history_id, page_token=None):
+        if page_token is None:
+            return self.pages[0], "p2", "999"
+        if self.panne_page2:
+            raise RuntimeError("quota")
+        return self.pages[1], None, "999"
+
+
+def test_incremental_checkpoints_each_page_so_a_failure_does_not_restart_from_scratch(store):
+    acc = store.upsert_account("me@example.org")
+    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    pages = [[{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}], [{"id": "12", "messagesAdded": [{"message": {"id": "g3"}}]}]]
+    msgs = {"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux"), "g3": _msg("g3", "Trois")}
+    with pytest.raises(RuntimeError):
+        Syncer(store, PagedClient(msgs, pages, panne_page2=True), acc).incremental()
+    assert store.get_sync_state(acc, "last_history_id") == "11"
+    assert store.search_messages("Deux")
+    Syncer(store, PagedClient(msgs, pages), acc).incremental()
+    assert store.get_sync_state(acc, "last_history_id") == "999"
+    assert store.search_messages("Trois")
+
+
+def test_incremental_refetches_a_message_once_per_run(store):
+    acc = store.upsert_account("me@example.org")
+    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    pages = [
+        [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}, {"id": "12", "labelsAdded": [{"message": {"id": "g2"}}]}],
+        [{"id": "13", "labelsRemoved": [{"message": {"id": "g2"}}]}],
+    ]
+    client = PagedClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")}, pages)
+    Syncer(store, client, acc).incremental()
+    assert client.relectures == ["g2"]
