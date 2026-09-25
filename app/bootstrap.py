@@ -358,9 +358,14 @@ def run():
 
     token = runtime.get_or_create_api_token()
     from core.config import load_settings
-    months = load_settings().backfill_months
+    settings = load_settings()
+    months = settings.backfill_months
+    # Une seule synchro a la fois : le bouton de l'interface et le fil
+    # automatique partagent ce verrou.
+    from core.auto_sync import AutoSync, serialized
+    sync_fn = serialized(make_sync_fn(store, months))
     download_fn, inline_fn = make_attachment_fns(store, layout["attachments"])
-    app = create_app(store, token, sync_fn=make_sync_fn(store, months),
+    app = create_app(store, token, sync_fn=sync_fn,
                      send_fn=make_send_fn(store), act_fn=make_act_fn(store),
                      download_fn=download_fn, inline_fn=inline_fn,
                      labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
@@ -376,6 +381,9 @@ def run():
     if not wait_for_health(base):
         raise RuntimeError("Le serveur local n'a pas demarre a temps.")
     runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port)
+    # Synchro automatique de toutes les boites tant que la fenetre est ouverte
+    # (MAILY_POLL_INTERVAL_SECONDS, 180 par defaut).
+    AutoSync(store, sync_fn, settings.poll_interval_seconds).start()
 
     win = webview.create_window("Maily", base, **window_kwargs(sys.platform))
     if sys.platform == "darwin":
