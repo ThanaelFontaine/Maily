@@ -34,9 +34,15 @@ def write_runtime_file(path, host: str, port: int, token: str | None = None) -> 
         data["token"] = token
     # Create file with 0600 permissions atomically (never world-readable).
     # Fix permissions before writing any token bytes (handles pre-existing loose perms).
+    # Close fd exactly once on all paths: exception handlers close it if setup fails.
     fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.fchmod(fd, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
+    try:
+        os.fchmod(fd, 0o600)
+        f = os.fdopen(fd, "w", encoding="utf-8")
+    except BaseException:
+        os.close(fd)
+        raise
+    with f:
         json.dump(data, f, indent=2)
     return data
 

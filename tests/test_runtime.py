@@ -50,3 +50,21 @@ def test_runtime_file_fixes_loose_permissions(tmp_path):
     assert stat.S_IMODE(p.stat().st_mode) == 0o600
     lu = runtime.read_runtime_file(p)
     assert lu["token"] == "xyz"
+
+
+def test_runtime_file_no_fd_leak_on_fchmod_error(tmp_path, monkeypatch):
+    # Verify fd is closed if os.fchmod raises (fd leak protection).
+    p = tmp_path / "runtime.json"
+    fd_count_before = len(os.listdir("/dev/fd")) if os.path.exists("/dev/fd") else -1
+
+    def raise_on_fchmod(fd, mode):
+        raise OSError("test error from fchmod")
+
+    monkeypatch.setattr("os.fchmod", raise_on_fchmod)
+    with pytest.raises(OSError, match="test error from fchmod"):
+        runtime.write_runtime_file(p, "127.0.0.1", 50123, token="abc")
+
+    # Verify fd was closed (no leak): /dev/fd count should be same.
+    if os.path.exists("/dev/fd"):
+        fd_count_after = len(os.listdir("/dev/fd"))
+        assert fd_count_after == fd_count_before, "fd leak detected"
