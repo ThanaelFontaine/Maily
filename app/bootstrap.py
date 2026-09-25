@@ -380,7 +380,7 @@ def run():
     base = f"http://127.0.0.1:{port}"
     if not wait_for_health(base):
         raise RuntimeError("Le serveur local n'a pas demarre a temps.")
-    runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port)
+    runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port, token=token)
     # Synchro automatique de toutes les boites tant que la fenetre est ouverte
     # (MAILY_POLL_INTERVAL_SECONDS, 180 par defaut).
     AutoSync(store, sync_fn, settings.poll_interval_seconds).start()

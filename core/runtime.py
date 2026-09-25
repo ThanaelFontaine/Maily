@@ -30,9 +30,16 @@ def write_runtime_file(path, host: str, port: int, token: str | None = None) -> 
         "base_url": f"http://{host}:{port}",
         "schema_version": SCHEMA_VERSION,
     }
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    if os.name == "posix":
-        os.chmod(path, 0o600)
+    if token is not None:
+        data["token"] = token
+    # Create file with 0600 permissions atomically (never world-readable).
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        os.close(fd)
+        raise
     return data
 
 

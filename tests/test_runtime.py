@@ -26,3 +26,12 @@ def test_runtime_file_roundtrip(tmp_path):
     assert "token" not in data
     if os.name == "posix":
         assert stat.S_IMODE(p.stat().st_mode) == 0o600
+
+
+def test_runtime_file_porte_la_cle_en_0600(tmp_path):
+    p = tmp_path / "runtime.json"
+    data = runtime.write_runtime_file(p, "127.0.0.1", 50123, token="abc")
+    assert data["token"] == "abc"
+    lu = runtime.read_runtime_file(p)
+    assert lu["token"] == "abc" and lu["port"] == 50123 and lu["host"] == "127.0.0.1"
+    assert stat.S_IMODE(p.stat().st_mode) == 0o600
