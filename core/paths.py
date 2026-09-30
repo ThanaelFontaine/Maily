@@ -6,10 +6,23 @@ import pathlib
 APP_NAME = "Maily"
 _SLUG = "maily"
 
+# Variable d'environnement qui remplace le dossier de donnees par defaut.
+# Sert aux tests, aux captures d'ecran et a quiconque veut une base separee
+# (ex. MAILY_DATA_DIR=/tmp/maily-demo uv run python -m app.bootstrap).
+DATA_DIR_ENV = "MAILY_DATA_DIR"
+
 
 def runtime_dir(override: str | None = None) -> pathlib.Path:
+    """Dossier des donnees locales (base, pieces jointes, secrets chiffres).
+
+    Priorite : argument `override`, puis la variable MAILY_DATA_DIR, puis le
+    dossier standard de la plateforme.
+    """
     if override:
-        return pathlib.Path(override)
+        return pathlib.Path(override).expanduser()
+    env = os.environ.get(DATA_DIR_ENV, "").strip()
+    if env:
+        return pathlib.Path(env).expanduser()
     home = pathlib.Path(os.environ.get("HOME", os.path.expanduser("~")))
     if sys.platform == "darwin":
         return home / "Library" / "Application Support" / APP_NAME

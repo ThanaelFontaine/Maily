@@ -6,11 +6,37 @@ def test_runtime_dir_override(tmp_path):
     assert paths.runtime_dir(str(tmp_path)) == tmp_path
 
 
+def test_runtime_dir_env_variable(monkeypatch, tmp_path):
+    monkeypatch.setenv("MAILY_DATA_DIR", str(tmp_path / "demo"))
+    assert paths.runtime_dir() == tmp_path / "demo"
+
+
+def test_runtime_dir_override_beats_env(monkeypatch, tmp_path):
+    monkeypatch.setenv("MAILY_DATA_DIR", str(tmp_path / "env"))
+    assert paths.runtime_dir(str(tmp_path / "arg")) == tmp_path / "arg"
+
+
 def test_runtime_dir_macos(monkeypatch):
+    monkeypatch.delenv("MAILY_DATA_DIR", raising=False)
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.setenv("HOME", "/Users/tester")
     d = paths.runtime_dir()
     assert str(d) == "/Users/tester/Library/Application Support/Maily"
+
+
+def test_runtime_dir_linux_xdg(monkeypatch, tmp_path):
+    monkeypatch.delenv("MAILY_DATA_DIR", raising=False)
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(os, "name", "posix")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path))
+    assert paths.runtime_dir() == tmp_path / "maily"
+
+
+def test_bootstrap_data_dir_flag_sets_env(monkeypatch, tmp_path):
+    from app import bootstrap
+    monkeypatch.setattr(bootstrap, "run", lambda: None)
+    bootstrap.main(["--data-dir", str(tmp_path / "flag")])
+    assert paths.runtime_dir() == tmp_path / "flag"
 
 
 def test_ensure_runtime_dirs_creates_tree(tmp_path):

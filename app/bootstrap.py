@@ -396,5 +396,24 @@ def run():
     webview.start(private_mode=False, storage_path=storage)
 
 
-if __name__ == "__main__":
+def parse_args(argv=None):
+    """Options de ligne de commande du lanceur (toutes facultatives)."""
+    import argparse
+    ap = argparse.ArgumentParser(prog="maily", description="Maily, client mail local multi-comptes.")
+    ap.add_argument("--data-dir", metavar="DOSSIER",
+                    help="dossier des donnees locales (base, secrets chiffres). "
+                         "Equivalent de la variable MAILY_DATA_DIR.")
+    return ap.parse_args(argv)
+
+
+def main(argv=None):
+    import os
+    from core import paths
+    args = parse_args(argv)
+    if args.data_dir:
+        os.environ[paths.DATA_DIR_ENV] = args.data_dir
     run()
+
+
+if __name__ == "__main__":
+    main()
