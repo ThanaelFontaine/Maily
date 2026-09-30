@@ -356,7 +356,13 @@ def run():
     if not biometric.require_unlock("Deverrouiller Maily"):
         return
 
-    token = runtime.get_or_create_api_token()
+    from core.secret_file import SecretStoreError
+    try:
+        token = runtime.get_or_create_api_token()
+    except SecretStoreError as e:
+        # Magasin de secrets illisible : on s'arrete sans rien ecrire dessus.
+        print(f"Maily ne peut pas demarrer : {e}", file=sys.stderr)
+        raise SystemExit(2)
     from core.config import load_settings
     settings = load_settings()
     months = settings.backfill_months
