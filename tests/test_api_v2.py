@@ -17,7 +17,7 @@ def store(database):
 
 
 def _seed_categories(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
     store.upsert_message(a, "g1", subject="Primary", internal_date=100, label_ids='["INBOX","CATEGORY_PERSONAL"]')
     store.upsert_message(a, "g2", subject="Promo", internal_date=90, label_ids='["INBOX","CATEGORY_PROMOTIONS"]')
     store.upsert_message(a, "g3", subject="Archived", internal_date=80, label_ids='["IMPORTANT"]')
@@ -26,7 +26,7 @@ def _seed_categories(store):
 
 
 def test_search_special_chars_no_500(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
     store.upsert_message(a, "g1", subject="Bonjour", body_text="hello world", label_ids='["INBOX"]')
     c = TestClient(create_app(store, TOKEN))
     for q in ["user@domain", '"unterminated', "a:b", "foo AND", "*", ""]:
@@ -50,7 +50,7 @@ def test_message_filters(store):
 
 
 def test_labels_lazy_refresh(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
     calls = {"n": 0}
 
     def labels_fn(aid):
@@ -65,7 +65,7 @@ def test_labels_lazy_refresh(store):
 
 
 def test_labels_refresh_error_swallowed(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
 
     def labels_fn(aid):
         raise RuntimeError("boom")
@@ -76,7 +76,7 @@ def test_labels_refresh_error_swallowed(store):
 
 
 def test_download_headers_rfc6266(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
     mid = store.upsert_message(a, "g1")
     store.replace_attachments(mid, [{"filename": "x", "mime_type": "application/pdf", "size": 1,
                                      "gmail_attachment_id": "att1", "content_id": None}])
@@ -90,7 +90,7 @@ def test_download_headers_rfc6266(store):
 
 
 def test_cid_prefix_no_collision(store):
-    a = store.upsert_account("me@x.co")
+    a = store.upsert_account("me@example.com")
     mid = store.upsert_message(a, "g1", body_html='<img src="cid:img"><img src="cid:img2">')
     store.replace_attachments(mid, [
         {"filename": "1", "mime_type": "image/png", "size": 1, "gmail_attachment_id": "a1", "content_id": "img"},
@@ -112,7 +112,7 @@ def test_index_host_check(store, tmp_path):
 
 
 def test_send_attachments_passthrough(store):
-    store.upsert_account("me@x.co")
+    store.upsert_account("me@example.com")
     cap = {}
 
     def send_fn(p):

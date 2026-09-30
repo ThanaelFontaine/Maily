@@ -72,8 +72,8 @@ def test_idempotency_dedup(store):
             return {"id": "g%d" % self.n}
 
     client = Counting()
-    r1 = sender.send_message(store, client, acc, "me@x.co", "d@example.com", "S", "b", idempotency_key="K")
-    r2 = sender.send_message(store, client, acc, "me@x.co", "d@example.com", "S", "b", idempotency_key="K")
+    r1 = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "S", "b", idempotency_key="K")
+    r2 = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "S", "b", idempotency_key="K")
     assert client.n == 1  # deuxieme appel dedupe, aucun re-envoi
     assert r2.get("deduped") is True
     assert r1["outbox_id"] == r2["outbox_id"]

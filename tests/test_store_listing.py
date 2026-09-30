@@ -69,8 +69,8 @@ def test_get_thread_messages_chrono(store):
 
 
 def test_threads_no_cross_account_merge(store):
-    a = store.upsert_account("a@x.co")
-    b = store.upsert_account("b@x.co")
+    a = store.upsert_account("a@example.com")
+    b = store.upsert_account("b@example.com")
     store.upsert_message(a, "g1", thread_id="shared", subject="A subj", internal_date=100, label_ids='["INBOX"]')
     store.upsert_message(b, "g2", thread_id="shared", subject="B subj", internal_date=200, label_ids='["INBOX"]')
     shared = [t for t in store.list_threads() if t["thread_id"] == "shared"]
@@ -80,7 +80,7 @@ def test_threads_no_cross_account_merge(store):
 
 
 def test_mark_trashed_by_gmail_id(store):
-    a = store.upsert_account("a@x.co")
+    a = store.upsert_account("a@example.com")
     store.upsert_message(a, "g1")
     assert store.mark_trashed_by_gmail_id(a, "g1") is True
     assert store.list_messages(trashed=True)[0]["gmail_id"] == "g1"
@@ -88,7 +88,7 @@ def test_mark_trashed_by_gmail_id(store):
 
 
 def test_replace_attachments_preserves_local_path(store):
-    a = store.upsert_account("a@x.co")
+    a = store.upsert_account("a@example.com")
     mid = store.upsert_message(a, "g1")
     att = {"filename": "c.pdf", "mime_type": "application/pdf", "size": 1, "gmail_attachment_id": "att1", "content_id": None}
     store.replace_attachments(mid, [att])

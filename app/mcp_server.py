@@ -184,7 +184,8 @@ def maily_list_messages(profile: str, category: str = "inbox",
 @mcp.tool()
 def maily_get_message(message_id: int, include_html: bool = False) -> dict:
     """Renvoie le contenu complet d'un message (expediteur, destinataires, date,
-    sujet, corps texte). Met `include_html=True` pour aussi recuperer le HTML brut."""
+    sujet, corps texte, pieces jointes avec leur attachment_id). Met
+    `include_html=True` pour aussi recuperer le HTML brut."""
     m = store().get_message(message_id)
     if not m:
         return {"error": f"message {message_id} introuvable"}
@@ -204,6 +205,17 @@ def maily_get_message(message_id: int, include_html: bool = False) -> dict:
     if not body and m.get("body_html"):
         body = _html_to_text(m["body_html"])
     out["body_text"] = body
+    # Pieces jointes (hors images integrees cid:) : ids a passer a
+    # maily_download_attachment.
+    try:
+        atts = [dict(a) for a in store().list_attachments(message_id)]
+    except Exception:
+        atts = []
+    out["attachments"] = [
+        {"attachment_id": a["id"], "filename": a.get("filename"),
+         "mime_type": a.get("mime_type"), "size": a.get("size")}
+        for a in atts if not a.get("content_id")
+    ]
     if include_html:
         out["body_html"] = m.get("body_html")
     return out

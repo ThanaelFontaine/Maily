@@ -14,7 +14,7 @@ def test_parse_simple_multipart():
         "payload": {
             "mimeType": "multipart/alternative",
             "headers": [
-                {"name": "From", "value": "Rec <rh@boite.co>"},
+                {"name": "From", "value": "Rec <rh@example.org>"},
                 {"name": "To", "value": "me@example.com"},
                 {"name": "Subject", "value": "Candidature"},
                 {"name": "Message-ID", "value": "<abc@mail>"},
@@ -27,7 +27,7 @@ def test_parse_simple_multipart():
     }
     fields, atts = parse_gmail_message(raw)
     assert fields["subject"] == "Candidature"
-    assert fields["addr_from"] == "Rec <rh@boite.co>"
+    assert fields["addr_from"] == "Rec <rh@example.org>"
     assert fields["body_text"] == "bonjour recruteur"
     assert fields["body_html"] == "<p>bonjour</p>"
     assert fields["direction"] == "in"

@@ -1,7 +1,22 @@
 [project]
 name = "maily"
-version = "0.5.1"
-description = "Outil email local multi-comptes (viewer + sender)"
+version = "0.6.0"
+description = "Local, multi-account email client for Gmail and IMAP: your mail stays on your computer."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Thanaël Fontaine" }]
+keywords = ["email", "gmail", "imap", "desktop", "local-first", "mcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email :: Email Clients (MUA)",
+]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic-settings>=2.5",
@@ -23,6 +38,12 @@ dependencies = [
     "jsonschema>=4.20",
 ]
 
+[project.urls]
+Homepage = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender"
+Documentation = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender#readme"
+Changelog = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/issues"
+
 [dependency-groups]
 dev = [
     "pytest>=8.3",
@@ -37,7 +58,7 @@ build = [
 packages = ["core", "api", "app"]
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]

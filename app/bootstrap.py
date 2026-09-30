@@ -345,6 +345,11 @@ def run():
     from api.app import create_app
 
     layout = paths.ensure_runtime_dirs(paths.runtime_dir())
+    from core.config import load_settings
+    from core.logging_setup import configure_logging
+    settings = load_settings()
+    # Journaux dans <donnees>/logs/maily.log (rotation, secrets masques).
+    configure_logging(layout["logs"], settings.log_level)
     db = Database(layout["db"])
     store = Store(db)
 
@@ -363,8 +368,6 @@ def run():
         # Magasin de secrets illisible : on s'arrete sans rien ecrire dessus.
         print(f"Maily ne peut pas demarrer : {e}", file=sys.stderr)
         raise SystemExit(2)
-    from core.config import load_settings
-    settings = load_settings()
     months = settings.backfill_months
     # Une seule synchro a la fois : le bouton de l'interface et le fil
     # automatique partagent ce verrou.

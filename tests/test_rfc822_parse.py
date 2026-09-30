@@ -53,7 +53,7 @@ def test_extract_part_returns_bytes():
 
 def test_parse_plain_only():
     m = EmailMessage()
-    m["From"] = "x@y.co"
+    m["From"] = "x@example.org"
     m["Subject"] = "Simple"
     m["Date"] = "Mon, 18 Aug 2025 10:30:00 +0200"
     m.set_content("juste du texte")

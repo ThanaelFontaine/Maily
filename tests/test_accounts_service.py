@@ -147,7 +147,7 @@ def test_export_eml_gmail(monkeypatch, tmp_path):
     store = Store(db)
     aid = store.upsert_account("me@example.com")
     mid = store.upsert_message(aid, "gmABC", subject="Ma facture", label_ids='["INBOX"]')
-    raw_bytes = b"From: a@b.co\r\nSubject: Ma facture\r\n\r\nCorps du mail."
+    raw_bytes = b"From: a@example.com\r\nSubject: Ma facture\r\n\r\nCorps du mail."
     b64 = base64.urlsafe_b64encode(raw_bytes).decode().rstrip("=")  # style Gmail (sans padding)
 
     class FakeClient:

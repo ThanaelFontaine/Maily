@@ -19,6 +19,6 @@ def test_apply_migrations_sets_user_version(tmp_path):
 
 def test_database_writer_serializes(database):
     with database.writer() as conn:
-        conn.execute("INSERT INTO accounts(email) VALUES ('a@b.co')")
+        conn.execute("INSERT INTO accounts(email) VALUES ('a@example.com')")
     rows = database.read().execute("SELECT email FROM accounts").fetchall()
-    assert rows[0]["email"] == "a@b.co"
+    assert rows[0]["email"] == "a@example.com"

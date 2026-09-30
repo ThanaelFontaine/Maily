@@ -26,7 +26,7 @@ def test_build_reply_headers():
 
 
 def test_build_with_attachment():
-    raw, mid = build_mime("me@x.co", "d@example.com", "S", "corps",
+    raw, mid = build_mime("me@example.com", "d@example.com", "S", "corps",
                           attachments=[{"filename": "a.txt", "mime_type": "text/plain", "data": b"hello"}])
     msg = _parse(raw)
     assert msg.is_multipart()

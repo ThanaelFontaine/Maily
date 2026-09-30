@@ -50,3 +50,18 @@ def test_all_tools_registered():
         "maily_search", "maily_sync", "maily_send",
         "maily_export_eml", "maily_download_attachment", "maily_trash",
     }
+
+
+def test_get_message_lists_real_attachments(monkeypatch, database):
+    from core.store import Store
+    store = Store(database)
+    aid = store.upsert_account("alex@example.com")
+    mid = store.upsert_message(aid, "g1", subject="PJ", body_text="corps")
+    store.replace_attachments(mid, [
+        {"filename": "facture.pdf", "mime_type": "application/pdf", "size": 10, "gmail_attachment_id": "a1"},
+        {"filename": "logo.png", "mime_type": "image/png", "size": 5, "gmail_attachment_id": "a2", "content_id": "logo"},
+    ])
+    monkeypatch.setattr(S, "_store", store)
+    out = S.maily_get_message(mid)
+    assert [a["filename"] for a in out["attachments"]] == ["facture.pdf"]
+    assert isinstance(out["attachments"][0]["attachment_id"], int)

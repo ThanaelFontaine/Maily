@@ -1,95 +1,387 @@
 # Maily
 
-Outil email **local** multi-comptes (lecture + envoi) pour Gmail / Google Workspace, avec une vraie interface desktop, deux thèmes (Frutiger Aero et DedSec), et un accès de premier ordre pour des automatisations Claude. Tout reste **sur ta machine** : les mails sont synchronisés dans une base SQLite locale, les identifiants dans le Trousseau. Pas de serveur, pas de cloud tiers.
+**A local, multi-account email client for Gmail and IMAP. Your mail stays on your computer.**
 
-## Fonctionnalités
+[Version française](README.fr.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · MIT License
 
-- **Multi-comptes Gmail** (Workspace et Gmail grand public mélangés), vue unifiée + par profil.
-- **Lecture** : liste, rendu HTML nettoyé et sûr (anti pixel espion), images intégrées (`cid:`) affichées, pièces jointes téléchargeables.
-- **Envoi / Réponse / Transfert** avec pièces jointes.
-- **Organisation** : lu/non-lu (auto à l'ouverture), archiver, corbeille (réversible).
-- **Recherche** locale plein texte.
-- **Onglets de mails** : ⌘/Ctrl + clic ouvre un mail dans un onglet dédié.
-- **Deux thèmes** : Frutiger Aero (verre, par défaut) et DedSec (sombre/glitch), bascule en un clic.
-- **Réglage images** : bloquées par défaut (vie privée), activables globalement.
-- **Accès Claude** : base SQLite (vues stables `v1_*`) + API HTTP locale + `runtime.json`.
+Maily is a desktop email client that syncs your Gmail / Google Workspace mailboxes (and, read-only, any IMAP mailbox) into a **local SQLite database**, then lets you read, search, sort and send mail from a clean desktop window. There is no Maily server and no third-party cloud: Maily talks directly to Google (or your IMAP server) with **your own** OAuth credentials, and everything it stores is on your disk.
 
-## Prérequis
+It is also built to be **scripted**: a stable read-only SQL schema, a local HTTP API and a local [MCP](https://modelcontextprotocol.io/) server let your own automations and AI agents (for example Claude Code) read and act on your mail, on your machine.
 
-- macOS (Apple Silicon ou Intel), Windows ou Linux.
-- [`uv`](https://docs.astral.sh/uv/) (gère Python et les dépendances).
-- Un compte Google et **tes propres identifiants OAuth** (gratuits, voir ci-dessous). Aucun serveur ni compte payant requis.
+![Maily with the default Classic theme](docs/images/classic-light.png)
 
-## Installation
+---
+
+## Table of contents
+
+1. [Features](#features)
+2. [Screenshots](#screenshots)
+3. [How it works, in one minute](#how-it-works-in-one-minute)
+4. [Requirements](#requirements)
+5. [Installation, step by step](#installation-step-by-step)
+6. [Google setup: bring your own credentials](#google-setup-bring-your-own-credentials)
+7. [Launching Maily](#launching-maily)
+8. [Using Maily](#using-maily)
+9. [Where your data lives](#where-your-data-lives)
+10. [Security and privacy](#security-and-privacy)
+11. [Automations: SQL, HTTP API and MCP](#automations-sql-http-api-and-mcp)
+12. [Configuration reference](#configuration-reference)
+13. [Troubleshooting](#troubleshooting)
+14. [FAQ](#faq)
+15. [Development](#development)
+16. [License](#license)
+
+---
+
+## Features
+
+- **Several mailboxes, one window.** Gmail and Google Workspace accounts side by side, with a unified inbox and one view per account. Each account gets a name and a color.
+- **Gmail categories and labels.** Primary, Promotions, Social and Updates tabs; archive, trash (reversible), your own labels as folders.
+- **Read-only IMAP accounts.** Connect an IMAP mailbox (Orange by default, any IMAP server works): every folder is imported, without date limit. Reading, search, attachments, trash and `.eml` export work; sending does not (no SMTP).
+- **Safe HTML rendering.** Messages are sanitized (no scripts, no dangerous links, no CSS tricks) and displayed in a sandboxed frame. Inline images (`cid:`) are shown.
+- **Tracking pixels blocked by default.** Remote images are not loaded unless you allow them, globally or for one message.
+- **Write, reply, forward**, with attachments (Gmail accounts).
+- **Local full-text search** (SQLite FTS5) across every account, instant and offline.
+- **Mail tabs.** Cmd/Ctrl + click opens a message in its own tab.
+- **Automatic sync** every 3 minutes while the app is open, plus a Sync button.
+- **Export** any message as a standard `.eml` file.
+- **Four themes.** *Classic* (default: light, flat, Google-like, with a dark variant), *Frutiger Aero*, *Glassmorphism* (native blurred glass on macOS) and *DedSec*.
+- **One Settings panel** for appearance, privacy, accounts and app information.
+- **Encrypted secrets.** OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read. On macOS, the app can require Touch ID at launch.
+- **Built for automation.** Stable SQL views, a token-protected local HTTP API, a ready-made Python client and a local MCP server.
+
+## Screenshots
+
+| Classic, light | Classic, dark |
+|---|---|
+| ![Classic light](docs/images/classic-light.png) | ![Classic dark](docs/images/classic-dark.png) |
+
+| Settings: appearance | Settings: privacy |
+|---|---|
+| ![Settings, appearance tab](docs/images/settings-appearance.png) | ![Settings, privacy tab](docs/images/settings-privacy.png) |
+
+| Remote images blocked | Writing a message |
+|---|---|
+| ![Remote images blocked banner](docs/images/remote-images-blocked.png) | ![Composer](docs/images/composer.png) |
+
+| Frutiger Aero theme | DedSec theme |
+|---|---|
+| ![Frutiger Aero](docs/images/theme-aero.png) | ![DedSec](docs/images/theme-dedsec.png) |
+
+All screenshots use the built-in [demo mode](#try-it-without-a-google-account) with fictitious data.
+
+## How it works, in one minute
+
+```
+ Gmail API / IMAP  <--- sync --->  core/ (Python engine)  --->  app.sqlite (your mail, local)
+                                          |
+                                          +--> api/  local HTTP API on 127.0.0.1 (random port, token)
+                                          |        ^
+                                          |        +--- frontend/ (the window you see, via pywebview)
+                                          |        +--- your scripts (scripts/claude_client.py)
+                                          |
+                                          +--> app/mcp_server.py  (MCP over stdio, for AI agents)
+```
+
+- The **engine** (`core/`) is the source of truth: it syncs mail, stores it in SQLite, sends mail and manages secrets.
+- The **window** is a small web page (`frontend/`) shown by [pywebview](https://pywebview.flowrl.com/) and served by a local API bound to `127.0.0.1` only.
+- Your **automations** use the same engine: read the database, call the local API, or use the MCP server.
+
+More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Requirements
+
+- **Operating system:** macOS (Apple Silicon or Intel) is the primary, tested platform. Linux and Windows are expected to work (the code has fallbacks for both) but are less tested; see [docs/BUILD.md](docs/BUILD.md) for their system packages.
+- **[uv](https://docs.astral.sh/uv/)**, the Python package manager. It installs the right Python (3.12) and every dependency for you.
+- **git**, to download the code.
+- **A Google account** and about 10 minutes to create your own free OAuth credentials (only for Gmail accounts; IMAP needs only your mailbox password).
+
+No paid account, no server, no credit card.
+
+## Installation, step by step
+
+### 1. Install uv
+
+macOS and Linux:
 
 ```bash
-git clone git@github.com:ThanaelFontaine/fetch-multi-mail-viewer-sender.git
-cd fetch-multi-mail-viewer-sender
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+Other methods (Homebrew, pipx, ...) are listed in the [uv documentation](https://docs.astral.sh/uv/getting-started/installation/). Open a new terminal afterwards and check with `uv --version`.
+
+### 2. Download Maily
+
+```bash
+git clone https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender.git maily
+cd maily
+```
+
+### 3. Install Python and the dependencies
+
+```bash
 uv python install 3.12
 uv sync
 ```
 
-## Configuration Google (une fois, gratuit)
+`uv sync` creates a private virtual environment in `.venv/` inside the project. Nothing is installed system-wide.
 
-L'app utilise **tes propres identifiants** (modèle « BYO credentials », comme rclone/GAM) : aucune vérification Google, données 100 % locales.
+### 4. Check that everything works
 
-1. Suis le guide pas à pas : [`docs/guide-google-cloud-byo.md`](docs/guide-google-cloud-byo.md) (créer un projet Google Cloud, activer l'API Gmail, écran de consentement **External**, publier « In production », créer un identifiant OAuth **Application de bureau**).
-2. Enregistre le `client_id`/`client_secret` dans le Trousseau (le secret ne s'affiche jamais) :
+```bash
+uv run pytest
+```
+
+All tests should pass. They never touch your real data (each test gets a temporary folder).
+
+### Try it without a Google account
+
+Want to look around first? The demo mode starts the interface on fictitious mailboxes, in a temporary folder, without network access and without touching any real data or secret:
+
+```bash
+uv run python scripts/demo.py
+```
+
+Open the address it prints (for example `http://127.0.0.1:53817/`) in your browser. Sending and syncing are disabled; marking as read, archiving and trashing only affect the demo database. Press Ctrl+C to stop.
+
+## Google setup: bring your own credentials
+
+Maily uses the "bring your own credentials" model (like rclone or GAM): **you** create a small, free Google Cloud project and an OAuth client of type *Desktop app*. Maily then connects to Gmail on your behalf. Consequences:
+
+- No shared Maily credentials, nothing to trust but Google and your own machine.
+- Google shows an "unverified app" screen the first time. This is expected: it is **your** app. Click *Advanced*, then *Go to Maily (unsafe)*.
+
+The full walkthrough, with every screen of the Google Cloud console explained, is in **[docs/GOOGLE_CLOUD_SETUP.md](docs/GOOGLE_CLOUD_SETUP.md)** ([French version](docs/fr/GOOGLE_CLOUD_SETUP.md)). In short:
+
+1. Create a Google Cloud project and enable the **Gmail API**.
+2. Configure the consent screen: user type **External**, then **Publish app** (in "Testing" mode, Google makes the connection expire after 7 days).
+3. Create an OAuth client of type **Desktop app** and download its JSON file.
+4. Give that file to Maily (the secret is encrypted, never printed):
+
    ```bash
-   uv run python scripts/store_client_config.py ~/Downloads/client_secret_*.json
+   uv run python scripts/store_client_config.py ~/Downloads/client_secret_XXXX.json
    ```
-3. Connecte chaque boîte (ouvre le navigateur pour le consentement) :
+
+   You can then delete the downloaded JSON file.
+
+5. Add your mailboxes, either from the app (**+ Ajouter un compte**, "add an account", at the bottom left, then *Compte Google*) or from the terminal:
+
    ```bash
    uv run python scripts/connect_account.py
    ```
-   À l'écran « application non vérifiée » : *Paramètres avancés → Continuer* (c'est ta propre app).
-   Répète pour chaque adresse. (Pour enregistrer des boîtes déjà connectées : `uv run python scripts/register_accounts.py email1 email2 …`.)
 
-## Lancer l'app
+   Your browser opens on Google's consent screen. Repeat for each address.
+
+Maily asks for two Gmail permissions: `gmail.modify` (read, label, archive, trash) and `gmail.send` (send). It never permanently deletes a message.
+
+### IMAP accounts (read-only)
+
+In the app: **+ Ajouter un compte**, then *Adresse IMAP*. Enter the address and the password; the server defaults to Orange (`imap.orange.fr`, port 993, TLS) and can be changed under *Serveur IMAP*. Maily tests the login before saving anything. The password is stored encrypted, like OAuth tokens. Some providers require an "app password" instead of your usual password: check your provider's help pages.
+
+## Launching Maily
+
+From the project folder:
 
 ```bash
 uv run python -m app.bootstrap
 ```
 
-Puis clique **⟳ Synchroniser** pour récupérer les 12 derniers mois de chaque boîte (réglable). Bascule le thème avec **🎨 Thème**.
+On macOS, if Touch ID is configured, the system asks you to unlock Maily first (your session password works too). Then the window opens and a first sync starts in the background: the first time, Maily downloads the last 12 months of each Gmail mailbox (configurable) and all IMAP folders. This can take a while for big mailboxes; the list fills in as it goes.
 
-## Où sont mes données
-
-- Base + pièces jointes + `runtime.json` : `~/Library/Application Support/Maily/` (macOS), `%APPDATA%/Maily/` (Windows), `~/.local/share/maily/` (Linux).
-- Identifiants et jetons : **fichier chiffré local** (`secrets.enc` + `secrets.key`, AES/Fernet, permissions `0600`) dans le dossier ci-dessus - jamais dans le repo, jamais dans le Trousseau. Migration automatique depuis le Trousseau au premier lancement.
-- **Déverrouillage Touch ID** au lancement de l'app graphique (macOS ; repli mot de passe de session). Désactivable via `MAILY_NO_BIOMETRIC=1`.
-- Confidentialité au repos : repose aussi sur le chiffrement disque de l'OS (FileVault/BitLocker recommandé).
-
-## Accès pour Claude / automatisations
-
-Le cœur (moteur Python + SQLite) est la source de vérité ; l'UI n'en est qu'un client. Une automatisation peut :
-
-- **Lire** : interroger les vues stables `v1_messages` / `v1_threads` / `v1_accounts` dans `app.sqlite`.
-- **Agir** : appeler l'API HTTP locale (voir port + `base_url` dans `runtime.json`, jeton d'API dans le Trousseau, à passer en en-tête `Authorization: Bearer …`). Endpoints : `/accounts`, `/messages`, `/threads`, `/search`, `/send`, `/messages/{id}/modify|trash|untrash`, `/accounts/{id}/sync`, etc.
-- **Client prêt à l'emploi** : `scripts/claude_client.py` (l'app doit être lancée) lit `runtime.json` + le jeton et expose `accounts()`, `messages()`, `read_message()`, `search()`, `send()`, `modify()`, `trash()`, `sync()`. En ligne de commande :
-  ```bash
-  uv run python scripts/claude_client.py accounts
-  uv run python scripts/claude_client.py inbox --account 1
-  uv run python scripts/claude_client.py send --account 1 --to dest@x.co --subject "Coucou" --body "Salut"
-  ```
-  Pour agir **sans lancer l'app** (headless), Claude peut aussi importer directement le moteur : `from core import accounts_service` puis `sync_account(...)`, `send_from_account(...)`, `modify_message(...)`.
-- **Serveur MCP (pour Claude Code)** : [`app/mcp_server.py`](app/mcp_server.py) expose Maily comme outils MCP multi-profils à une session **Claude Code** tournant sur ce Mac - transport stdio, aucun port réseau. Outils : `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_send` (chacun avec un paramètre `profile` : email ou nom de profil). Le repo fournit un [`.mcp.json`](.mcp.json) prêt à l'emploi ; une session Claude Code ouverte sur ce dossier le détecte (approuver `maily`, ou `/mcp`). Enregistrement manuel équivalent :
-  ```json
-  { "mcpServers": { "maily": {
-    "command": "uv",
-    "args": ["--directory", "/chemin/vers/fetch-multi-mail-viewer-sender",
-             "run", "python", "-m", "app.mcp_server"] } } }
-  ```
-  Note : **Cowork / claude.ai ne peuvent PAS** utiliser un serveur MCP local (stdio) - uniquement des connecteurs distants. Le MCP local ne fonctionne donc que dans **Claude Code** (et Claude Desktop). Il lit les secrets chiffrés sans Touch ID (la porte biométrique ne protège que l'app graphique).
-
-## Développement
+Useful options:
 
 ```bash
-uv run pytest        # 84 tests
+uv run python -m app.bootstrap --data-dir /path/to/folder   # use another data folder
+MAILY_NO_BIOMETRIC=1 uv run python -m app.bootstrap         # skip the Touch ID gate
 ```
 
-Architecture : `core/` (moteur : auth, gmail, sync, store, sender, sanitize), `api/` (FastAPI), `app/` (lanceur pywebview), `frontend/` (SPA), `migrations/` (schéma SQLite). Détails dans `docs/superpowers/specs/` et `docs/superpowers/plans/`.
+To build a double-clickable application (`Maily.app`, or an executable on Linux and Windows), see [docs/BUILD.md](docs/BUILD.md).
 
-## Distribution
+## Using Maily
 
-Repo privé : tes amis clonent et **buildent/lancent en local** (chacun fait sa propre configuration Google). Pas de store, pas de signature requise pour un usage local.
+The interface is in French for now (translations welcome). Here is what each part does, with the French labels you will see:
+
+- **Left column:** *Tout (unifié)* (all accounts), then one entry per account. Click an account's colored dot to change its color. When an account is selected, its folders (*Boîte de réception*, *Archivés*, *Corbeille*) and labels (*Libellés*) appear below. **+ Ajouter un compte** (add an account) is pinned at the bottom.
+- **Middle column:** the message list, with Gmail category tabs (*Principale*, *Promotions*, *Réseaux sociaux*, *Notifications*). The two small buttons are *Synchroniser* (sync) and *Tout marquer lu* (mark all as read). Drag the separator to resize.
+- **Right column:** the open message, with *Répondre* (reply), forward, download `.eml`, archive and trash. Cmd/Ctrl + click on a message opens it in a tab.
+- **Search box** (*Rechercher dans les mails*): full-text search in the local database, across all accounts or the selected one.
+- **Écrire** (write): new message. The *Envoyer* (send) button takes the color of the selected sender account.
+- **Réglages** (settings, gear icon, top right), four tabs:
+  - *Apparence* (appearance): theme (Classic, Frutiger Aero, Glassmorphisme, DedSec); for Classic, *Automatique* (follows the system), *Clair* (light) or *Sombre* (dark); for Glassmorphisme, the density of the blurred background (macOS).
+  - *Confidentialité* (privacy): load remote images automatically or not (off by default).
+  - *Comptes* (accounts): display name, color, and *Déconnecter* (disconnect: removes the account's secrets and its local copy of the mail; reconnecting downloads it again).
+  - *À propos* (about): version, data folder, license.
+- **Escape** closes the open dialog.
+
+Your choices are remembered between launches.
+
+## Where your data lives
+
+Everything is in one folder:
+
+| Platform | Default folder |
+|---|---|
+| macOS | `~/Library/Application Support/Maily/` |
+| Windows | `%APPDATA%\Maily\` |
+| Linux | `$XDG_DATA_HOME/maily/`, or `~/.local/share/maily/` |
+
+Set `MAILY_DATA_DIR` (or pass `--data-dir`) to use another folder. The folder contains:
+
+| File or folder | Content |
+|---|---|
+| `app.sqlite` (+ `-wal`, `-shm`) | Your messages, accounts, labels, sync state, full-text index |
+| `attachments/` | Attachments you opened (local cache) |
+| `secrets.enc` | Encrypted secrets: OAuth client, OAuth tokens, IMAP passwords, local API token |
+| `secrets.key` | The key that decrypts `secrets.enc` |
+| `secrets.lock` | Lock file that serializes concurrent writes to the secrets |
+| `runtime.json` | Address, port and API token of the running app (for your scripts) |
+| `logs/` | Logs, with tokens and passwords redacted |
+| `webview/` | The window's local storage (theme, preferences) |
+
+The folder and the secret files are readable by your user only (permissions `0700` / `0600` on macOS and Linux). **Back up** this folder if you want to keep your local copy; note that anyone who gets both `secrets.enc` and `secrets.key` can read your tokens, so treat a backup like a password.
+
+To start over, quit Maily and delete the folder. To remove Maily's access on Google's side, visit your Google account's [third-party connections page](https://myaccount.google.com/connections).
+
+## Security and privacy
+
+Short version (details and threat model in [SECURITY.md](SECURITY.md)):
+
+- **Local only.** No Maily server. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
+- **Encrypted secrets.** Tokens and passwords are encrypted with Fernet (AES-128-CBC + HMAC-SHA256) in `secrets.enc`; the key is in `secrets.key`; both are `0600`. Writes are atomic and locked across processes, and an unreadable store raises a clear error instead of being silently overwritten. Encryption at rest protects against casual copies; it does not protect against malware running as your user, which could read both files. Full-disk encryption (FileVault, BitLocker, LUKS) is recommended.
+- **Touch ID gate** (macOS, optional): the window only opens after Touch ID or your session password. The MCP server and scripts do not ask for it, by design, so that local automations can work.
+- **Sanitized HTML.** Messages go through [nh3](https://github.com/messense/nh3) (Rust `ammonia`): no scripts, no `javascript:` or `data:` links, filtered CSS, then a sandboxed iframe.
+- **Tracking pixels.** Remote images are blocked by default; a banner tells you how many were blocked and lets you load them for one message.
+- **Least privilege on Gmail.** `gmail.modify` and `gmail.send` only; messages go to the trash, never deleted permanently.
+
+Found a vulnerability? Please report it privately, see [SECURITY.md](SECURITY.md).
+
+## Automations: SQL, HTTP API and MCP
+
+Maily is meant to be driven by your own tools. Three levels, from simplest to richest:
+
+### 1. Read the database (no app needed)
+
+Open `app.sqlite` read-only and use the **stable views**, which will keep their columns across versions:
+
+- `v1_accounts` (id, email, display_name, status, last_sync_at)
+- `v1_messages` (id, account_id, gmail_id, thread_id, direction, addr_from, addr_to, addr_cc, subject, snippet, body_text, internal_date, is_unread, is_starred, has_attachments, is_trashed), trashed messages excluded
+- `v1_threads` (id, account_id, gmail_thread_id, subject, last_message_at, message_count)
+
+```bash
+sqlite3 -readonly "$HOME/Library/Application Support/Maily/app.sqlite" \
+  "SELECT datetime(internal_date/1000,'unixepoch'), addr_from, subject FROM v1_messages ORDER BY internal_date DESC LIMIT 10;"
+```
+
+Tables other than `v1_*` are internal and may change.
+
+### 2. The local HTTP API (app running)
+
+When the app runs, `runtime.json` gives `base_url` and `token`. Every call needs `Authorization: Bearer <token>`. Main endpoints: `GET /accounts`, `GET /messages`, `GET /messages/{id}`, `GET /messages/{id}/html`, `GET /search?q=...`, `POST /send`, `POST /messages/{id}/modify`, `POST /messages/{id}/trash`, `POST /messages/{id}/untrash`, `POST /accounts/{id}/sync`, `GET /messages/{id}/eml`. The full list is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#local-http-api).
+
+A ready-made client does the plumbing for you:
+
+```bash
+uv run python scripts/claude_client.py accounts
+uv run python scripts/claude_client.py inbox --account 1
+uv run python scripts/claude_client.py read 42
+uv run python scripts/claude_client.py send --account 1 --to someone@example.com --subject "Hello" --body "Hi!"
+```
+
+It can also be imported: `from scripts.claude_client import accounts, messages, read_message, search, send, sync`.
+
+### 3. The MCP server (for AI agents)
+
+`app/mcp_server.py` exposes Maily as MCP tools over **stdio** (no network port): `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_send`, `maily_export_eml`, `maily_download_attachment`, `maily_trash`. It works without the app being open.
+
+The repository ships a [`.mcp.json`](.mcp.json): open a Claude Code session in the project folder and approve the `maily` server (or type `/mcp`). For Claude Desktop or another MCP client, and for the recommended safety rules (confirm before sending or trashing), see **[docs/MCP.md](docs/MCP.md)**.
+
+## Configuration reference
+
+Environment variables (or a `.env` file in the folder you launch from, see [`.env.example`](.env.example)):
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAILY_DATA_DIR` | platform folder | Data folder (same as `--data-dir`) |
+| `MAILY_POLL_INTERVAL_SECONDS` | `180` | Automatic sync interval while the app is open (minimum 60) |
+| `MAILY_BACKFILL_MONTHS` | `12` | Months of Gmail history downloaded by the first sync |
+| `MAILY_ATTACHMENT_CACHE_MB` | `500` | Attachment cache size (reserved, not enforced yet) |
+| `MAILY_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
+| `MAILY_NO_BIOMETRIC` | unset | Set to `1` to skip the Touch ID gate |
+
+## Troubleshooting
+
+**"Identifiants client (client_id/secret) absents" when adding a Google account.**
+The OAuth client is not stored yet. Run `uv run python scripts/store_client_config.py path/to/client_secret.json`, then try again.
+
+**Google says "Access blocked" or "This app is blocked".**
+Check that the consent screen user type is *External* and that the Gmail API is enabled. For a Google Workspace account, the administrator may have to allow the app in the Admin console (*Security > API controls > Manage third-party app access*, by Client ID). See [docs/GOOGLE_CLOUD_SETUP.md](docs/GOOGLE_CLOUD_SETUP.md#troubleshooting).
+
+**I have to reconnect every week.**
+Your consent screen is still in *Testing*. Google issues refresh tokens that expire after 7 days in that mode. Publish the app (*Audience > Publish app*), then reconnect the account once.
+
+**"Maily ne peut pas demarrer : Impossible de dechiffrer ..." at launch.**
+`secrets.enc` cannot be decrypted with `secrets.key` (the key was replaced, or a file is damaged). Maily stops without modifying anything. Restore both files from a backup if you have one; otherwise delete `secrets.enc` and `secrets.key` and reconnect your accounts (your mail in `app.sqlite` is kept).
+
+**The window stays empty or says it cannot reach the local API.**
+Run from a terminal to see the error: `uv run python -m app.bootstrap`. Check the logs in the `logs/` folder of the data folder.
+
+**Remote images do not show.**
+That is the privacy default. Click *Afficher les images* (show images) above the message, or enable *Charger automatiquement les images distantes* in *Réglages > Confidentialité*.
+
+**The Glassmorphism theme is opaque.**
+The native blur needs macOS with *System Settings > Accessibility > Display > Reduce transparency* turned off. On Linux and Windows this theme has no native blur.
+
+**Linux: the window does not open.**
+pywebview needs GTK and WebKit2GTK (or Qt). Install the packages listed in [docs/BUILD.md](docs/BUILD.md#linux-x86_64).
+
+**The MCP tools do not appear in Claude Code.**
+The server must be approved: type `/mcp` in Claude Code. See [docs/MCP.md](docs/MCP.md#troubleshooting).
+
+## FAQ
+
+**Does Maily send my mail anywhere?**
+No. It talks only to Google's APIs (for Gmail accounts) and to your IMAP server. There is no Maily server, no analytics, no telemetry.
+
+**Why do I need my own Google Cloud project?**
+Gmail's permissions are "restricted" scopes: a shared, public OAuth client would have to go through Google's verification, including a paid third-party security assessment. With your own client, the app is yours, it is free, and nobody else holds credentials to your mail.
+
+**Is my own Google Cloud project free?**
+Yes for this use: enabling the Gmail API and creating an OAuth client costs nothing and requires no billing account.
+
+**Can I use a regular @gmail.com address?**
+Yes. Gmail and Google Workspace accounts can be mixed. Choose *External* on the consent screen so that all your accounts can connect.
+
+**Why can't I send from an IMAP account?**
+IMAP only reads mail. Sending would need SMTP, which Maily does not implement yet. Contributions welcome.
+
+**Can Maily delete my mail for good?**
+No. *Trash* moves the message to the trash (reversible, and Gmail empties its trash itself after 30 days). *Disconnect* only removes Maily's local copy and secrets; your mailbox is untouched.
+
+**Does it work offline?**
+Reading and searching what is already synced works offline. Sync and sending need a connection.
+
+**Is the interface available in English?**
+Not yet: the interface is in French today. Translations are a welcome contribution (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
+**Can AI agents read my mail?**
+Only if you set it up: the MCP server runs only when your MCP client starts it, on your machine. See [docs/MCP.md](docs/MCP.md) for safety rules.
+
+## Development
+
+```bash
+uv sync                           # dependencies, including the dev group (pytest, httpx)
+uv run pytest                     # the whole test suite
+uv run python scripts/demo.py     # the interface on fictitious data
+```
+
+The frontend is plain HTML, CSS and JavaScript (no build step): edit `frontend/` and reload. Project layout, conventions and the release process are described in [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## License
+
+[MIT](LICENSE), © 2026 Thanaël Fontaine.
