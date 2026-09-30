@@ -2,8 +2,24 @@
 
 const TOKEN = window.MAILY_TOKEN || "";
 const AUTH = { headers: { Authorization: "Bearer " + TOKEN } };
-const PALETTE = ["#2e5fff", "#18c07a", "#f5a524", "#c159f5", "#ef476f", "#0e91d8"];
-const TZ = "Europe/Paris";
+const PALETTE = ["#1a73e8", "#188038", "#e37400", "#9334e6", "#d93025", "#007b83"];
+// Fuseau horaire : celui du systeme (undefined = fuseau local du navigateur).
+const TZ = undefined;
+const THEMES = ["classic", "aero", "glass", "dedsec"];
+const DEFAULT_THEME = "classic";
+const THEME_KEY = "maily_theme";
+const CLASSIC_MODE_KEY = "maily_classic_mode";
+const REMOTE_IMAGES_KEY = "maily_remote_images";
+
+/* localStorage peut etre indisponible (mode prive, stockage bloque) : on ne
+   plante jamais, on retombe sur les valeurs par defaut. */
+function prefGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
+  catch { return fallback; }
+}
+function prefSet(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* sans persistance */ }
+}
 
 /* Icônes SVG épurées (style trait, currentColor) - cohérentes avec la DA verre. */
 const ICONS = {
@@ -118,12 +134,13 @@ function orb(color, id) {
 
 /* ------- Couleurs de compte : palette thème-aware + choix persistant ------- */
 const THEME_PALETTES = {
+  classic: ["#1a73e8", "#188038", "#e37400", "#d93025", "#9334e6", "#007b83", "#b06000", "#c5221f"],
   aero:   ["#2e5fff", "#0e91d8", "#18c07a", "#14b8a6", "#f5a524", "#ef476f", "#c159f5", "#8b5cf6"],
   glass:  ["#4f7cff", "#38bdf8", "#34d399", "#2dd4bf", "#fbbf24", "#fb7185", "#c084fc", "#a78bfa"],
   dedsec: ["#FF2D78", "#22E6DC", "#4AF626", "#F5A524", "#8b7cff", "#ef476f", "#00E5FF", "#39FF14"],
 };
 function paletteForTheme() {
-  return THEME_PALETTES[document.documentElement.dataset.theme] || THEME_PALETTES.aero;
+  return THEME_PALETTES[document.documentElement.dataset.theme] || THEME_PALETTES.classic;
 }
 // Fond d'un swatch : même DA que les pastilles de profil (dégradé brillant en
 // Aero, à-plat ailleurs) pour une couleur fidèle.
@@ -204,7 +221,7 @@ function openAddMenu(anchor) {
     `<button class="addpop-item" data-p="google">${ico("at")}` +
     `<span>Compte Google<span class="addpop-sub">Gmail / Google Workspace</span></span></button>` +
     `<button class="addpop-item" data-p="orange">${ico("at")}` +
-    `<span>Adresse Orange<span class="addpop-sub">IMAP · orange.fr</span></span></button>`;
+    `<span>Adresse IMAP<span class="addpop-sub">Lecture seule · Orange ou autre</span></span></button>`;
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
   pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
@@ -274,7 +291,7 @@ async function connectImap() {
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.detail || ("HTTP " + r.status));
     closeImapForm();
-    banner("Compte Orange connecté : " + data.email);
+    banner("Compte IMAP connecté : " + data.email);
     await loadAccounts();
     if (data.account_id) {
       selectAccount(data.account_id);
@@ -503,9 +520,15 @@ function buildDoc(fragment) {
     `<style>${BASE_CSS}</style></head><body>${fragment}</body></html>`;
 }
 
-async function fetchHtml(id) {
-  const r = await fetch("/messages/" + id + "/html?allow_remote=true", AUTH);
-  return await r.text();
+function remoteImagesAllowed() { return prefGet(REMOTE_IMAGES_KEY, "0") === "1"; }
+
+// Rend {html, blocked} : `blocked` = nombre de ressources distantes retirees
+// par le nettoyage cote serveur (en-tete X-Maily-Blocked-Remote).
+async function fetchHtml(id, allowRemote) {
+  const r = await fetch("/messages/" + id + "/html?allow_remote=" + (allowRemote ? "true" : "false"), AUTH);
+  if (!r.ok) throw new Error("/messages/" + id + "/html -> " + r.status);
+  const blocked = parseInt(r.headers.get("x-maily-blocked-remote") || "0", 10) || 0;
+  return { html: await r.text(), blocked };
 }
 
 async function renderAttachments(id, wrap) {
@@ -625,7 +648,7 @@ async function openMessage(id) {
   const head = document.createElement("div");
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
-  // Orange (IMAP) = lecture seule : pas de réponse/transfert (pas de SMTP).
+  // IMAP (Orange, etc.) = lecture seule : pas de réponse/transfert (pas de SMTP).
   const isImap = ((state.accounts.find((a) => a.id === m.account_id) || {}).provider === "imap");
   const sendButtons = isImap ? "" :
     `<button class="gel" id="replybtn">${ico("reply")} Répondre</button>
@@ -648,7 +671,8 @@ async function openMessage(id) {
   const replyBtn = head.querySelector("#replybtn");
   if (replyBtn) {
     const replyColor = accountColors[m.account_id];
-    if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; }
+    // Couleur du profil + texte blanc (lisible quel que soit le thème).
+    if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; replyBtn.style.color = "#fff"; }
     replyBtn.onclick = () => replyTo(m);
   }
   const fwdBtn = head.querySelector("#fwdbtn");
@@ -675,17 +699,32 @@ async function openMessage(id) {
   read.appendChild(attWrap);
   renderAttachments(id, attWrap);
 
+  const imgBar = document.createElement("div");
+  imgBar.className = "img-bar";
+  imgBar.hidden = true;
+  read.appendChild(imgBar);
+
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
   frame.setAttribute("sandbox", "");
   read.appendChild(frame);
 
-  try {
-    const html = await fetchHtml(id);
+  const render = async (allowRemote) => {
+    const { html, blocked } = await fetchHtml(id, allowRemote);
     if (seq !== state.openSeq) return;
     const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || "(vide)"}</pre>`;
     frame.srcdoc = buildDoc(body);
-  } catch (e) { banner("Erreur : " + e.message); }
+    if (!allowRemote && blocked > 0) {
+      imgBar.innerHTML = `<span>${blocked} image(s) distante(s) bloquée(s) pour protéger ta vie privée.</span>` +
+        `<button class="ghost img-bar-btn">Afficher les images</button>`;
+      imgBar.querySelector("button").onclick = () => { imgBar.hidden = true; render(true).catch((e) => banner("Erreur : " + e.message)); };
+      imgBar.hidden = false;
+    } else {
+      imgBar.hidden = true;
+    }
+  };
+  try { await render(remoteImagesAllowed()); }
+  catch (e) { banner("Erreur : " + e.message); }
 
   if (m.is_unread) {
     postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] })
@@ -714,14 +753,15 @@ function syncSendColor() {
   const color = accountColors[Number(el("#c-from").value)];
   btn.style.background = color || "";
   btn.style.borderColor = color ? "transparent" : "";
+  btn.style.color = color ? "#fff" : "";
 }
 
 function openComposer(prefill) {
   const fromSel = el("#c-from");
   fromSel.innerHTML = "";
-  // Seuls les comptes capables d'envoyer (Gmail) : l'IMAP (Orange) est en lecture seule.
+  // Seuls les comptes capables d'envoyer (Gmail) : l'IMAP est en lecture seule.
   const sendable = (state.accounts || []).filter((a) => a.provider !== "imap");
-  if (!sendable.length) { banner("Aucun compte capable d'envoyer (Orange est en lecture seule)."); return; }
+  if (!sendable.length) { banner("Aucun compte capable d'envoyer (les comptes IMAP sont en lecture seule)."); return; }
   sendable.forEach((a) => {
     const o = document.createElement("option");
     o.value = a.id; o.textContent = a.display_name || a.email;
@@ -864,36 +904,71 @@ async function syncAll() {
 /* ------------------------- Init ------------------------- */
 
 function setTheme(t) {
+  if (!THEMES.includes(t)) t = DEFAULT_THEME;
   document.documentElement.dataset.theme = t;
-  localStorage.setItem("maily_theme", t);
-  document.querySelectorAll(".theme-opt").forEach((b) => b.classList.toggle("on", b.dataset.themeVal === t));
+  prefSet(THEME_KEY, t);
+  refreshAppearancePane();
 }
 
-function openThemeMenu() {
+// Mode du theme Classic : "auto" suit le systeme, "light"/"dark" le forcent.
+function setClassicMode(mode) {
+  if (!["auto", "light", "dark"].includes(mode)) mode = "auto";
+  if (mode === "auto") delete document.documentElement.dataset.mode;
+  else document.documentElement.dataset.mode = mode;
+  prefSet(CLASSIC_MODE_KEY, mode);
+  refreshAppearancePane();
+}
+
+function refreshAppearancePane() {
   const cur = document.documentElement.dataset.theme;
-  document.querySelectorAll(".theme-opt").forEach((b) => b.classList.toggle("on", b.dataset.themeVal === cur));
-  const ctl = document.querySelector(".glass-ctl");   // slider de densité : uniquement en Verre
-  if (ctl) ctl.style.display = cur === "glass" ? "flex" : "none";
-  el("#thememodal").hidden = false;
+  document.querySelectorAll(".theme-opt").forEach((b) => {
+    const on = b.dataset.themeVal === cur;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const mode = prefGet(CLASSIC_MODE_KEY, "auto");
+  document.querySelectorAll(".seg-opt").forEach((b) => {
+    const on = b.dataset.modeVal === mode;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", on ? "true" : "false");
+  });
+  const cm = el("#classic-mode-ctl");
+  if (cm) cm.hidden = cur !== "classic";
+  const gc = el("#glass-ctl");                 // slider de densité : uniquement en Verre
+  if (gc) gc.hidden = cur !== "glass";
 }
 
-function closeThemeMenu() { el("#thememodal").hidden = true; }
+/* ------- Panneau Réglages : apparence, confidentialité, comptes, à propos ------- */
+function showSettingsPane(name) {
+  document.querySelectorAll(".settings-tab").forEach((t) => {
+    const on = t.dataset.pane === name;
+    t.classList.toggle("on", on);
+    t.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll(".settings-pane").forEach((p) => { p.hidden = p.dataset.pane !== name; });
+  if (name === "accounts") renderSettings();
+  if (name === "about") loadAbout();
+}
 
-/* ------- Page réglages : nom + couleur par profil ------- */
 function renderSettings() {
   const wrap = el("#settings-accounts");
+  if (!state.accounts.length) {
+    wrap.innerHTML = `<div class="settings-empty">Aucun compte pour l'instant.</div>`;
+    return;
+  }
   const pal = paletteForTheme();
   wrap.innerHTML = state.accounts.map((a) => {
     const cur = (accountColors[a.id] || "").toLowerCase();
     const sw = pal.map((c) =>
-      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" data-acc="${a.id}" title="${c}"></button>`
+      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" data-acc="${a.id}" title="${c}" aria-label="Couleur ${c}"></button>`
     ).join("");
+    const kind = a.provider === "imap" ? "IMAP · lecture seule" : "Gmail";
     return `<div class="settings-row">
       <div class="settings-row-top">
         ${orb(accountColors[a.id], a.id)}
-        <input class="settings-name" data-acc="${a.id}" value="${esc(a.display_name || "")}" placeholder="${esc(a.email)}" maxlength="60">
+        <input class="settings-name" data-acc="${a.id}" value="${esc(a.display_name || "")}" placeholder="${esc(a.email)}" maxlength="60" aria-label="Nom affiché pour ${esc(a.email)}">
       </div>
-      <div class="settings-email">${esc(a.email)}</div>
+      <div class="settings-email">${esc(a.email)} · ${kind}</div>
       <div class="settings-swatches">${sw}</div>
       <button class="settings-logout" data-acc="${a.id}" data-email="${esc(a.email)}">Déconnecter</button>
     </div>`;
@@ -912,6 +987,14 @@ function renderSettings() {
   });
 }
 
+async function loadAbout() {
+  try {
+    const info = await api("/about");
+    el("#about-version").textContent = info.version || "?";
+    el("#about-datadir").textContent = info.data_dir || "?";
+  } catch { /* hors ligne : on laisse les valeurs par defaut */ }
+}
+
 async function logoutAccount(id, email) {
   if (!window.confirm(`Déconnecter ${email} ?\nLes mails téléchargés en local seront supprimés (réversible en reconnectant le compte).`)) return;
   try {
@@ -920,14 +1003,17 @@ async function logoutAccount(id, email) {
     banner("Compte déconnecté : " + email);
     if (state.accountId === id) { state.accountId = null; state.folder = { type: "inbox" }; }
     await loadAccounts();
-    if (state.accounts.length) { renderSettings(); } else { closeSettings(); }
+    renderSettings();
     loadMessages();
   } catch (e) { banner("Déconnexion échouée : " + e.message); }
 }
-function openSettings() {
-  if (!state.accounts.length) { banner("Aucun compte à régler."); return; }
-  renderSettings();
+function openSettings(pane) {
+  refreshAppearancePane();
+  el("#remote-images").checked = remoteImagesAllowed();
+  showSettingsPane(pane || "appearance");
   el("#settingsmodal").hidden = false;
+  const first = document.querySelector(".settings-tab.on");
+  if (first) first.focus();
 }
 function closeSettings() { el("#settingsmodal").hidden = true; }
 
@@ -946,7 +1032,7 @@ function initSplitter() {
   const listcol = document.querySelector(".listcol");
   if (!sp || !listcol) return;
   const setW = (w) => document.documentElement.style.setProperty("--list-w", w + "px");
-  const saved = parseInt(localStorage.getItem(LIST_WIDTH_KEY), 10);
+  const saved = parseInt(prefGet(LIST_WIDTH_KEY, ""), 10);
   if (saved) setW(saved);
   let startX = 0, startW = 0, dragging = false;
 
@@ -972,7 +1058,7 @@ function initSplitter() {
     try { sp.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     sp.classList.remove("dragging");
     document.body.style.userSelect = "";
-    localStorage.setItem(LIST_WIDTH_KEY, String(listcol.offsetWidth));
+    prefSet(LIST_WIDTH_KEY, String(listcol.offsetWidth));
   };
   sp.addEventListener("pointerup", end);
   sp.addEventListener("pointercancel", end);
@@ -998,7 +1084,7 @@ async function initGlassSlider() {
 
 function paintStaticIcons() {
   const labeled = {
-    "#settingsbtn": ["settings", "Réglages"], "#themebtn": ["theme", "Thème"], "#compose": ["edit", "Écrire"],
+    "#settingsbtn": ["settings", "Réglages"], "#compose": ["edit", "Écrire"],
     "#c-send": ["send", "Envoyer"], "#c-attach": ["paperclip", "Joindre"],
   };
   for (const [sel, [name, label]] of Object.entries(labeled)) {
@@ -1010,19 +1096,27 @@ function paintStaticIcons() {
     const b = el(sel);
     if (b) { b.innerHTML = ico(name); b.classList.add("io"); b.dataset.tip = tip; b.title = tip; }
   }
-  ["#c-close", "#theme-close", "#settings-close", "#imap-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
+  ["#c-close", "#settings-close", "#imap-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
 }
 
 async function main() {
-  setTheme(localStorage.getItem("maily_theme") || "glass");
+  setClassicMode(prefGet(CLASSIC_MODE_KEY, "auto"));
+  setTheme(prefGet(THEME_KEY, DEFAULT_THEME) || DEFAULT_THEME);
   paintStaticIcons();
-  el("#themebtn").onclick = openThemeMenu;
-  el("#theme-close").onclick = closeThemeMenu;
-  el("#thememodal").addEventListener("click", (e) => { if (e.target.id === "thememodal") closeThemeMenu(); });
   document.querySelectorAll(".theme-opt").forEach((b) => {
-    b.onclick = () => { setTheme(b.dataset.themeVal); closeThemeMenu(); };
+    b.onclick = () => setTheme(b.dataset.themeVal);
   });
-  el("#settingsbtn").onclick = openSettings;
+  document.querySelectorAll(".seg-opt").forEach((b) => {
+    b.onclick = () => setClassicMode(b.dataset.modeVal);
+  });
+  document.querySelectorAll(".settings-tab").forEach((t) => {
+    t.onclick = () => showSettingsPane(t.dataset.pane);
+  });
+  el("#remote-images").onchange = (e) => {
+    prefSet(REMOTE_IMAGES_KEY, e.target.checked ? "1" : "0");
+    if (state.currentId) openMessage(state.currentId);   // re-rendu du mail ouvert
+  };
+  el("#settingsbtn").onclick = () => openSettings();
   el("#settings-close").onclick = closeSettings;
   el("#settingsmodal").addEventListener("click", (e) => { if (e.target.id === "settingsmodal") closeSettings(); });
   el("#sync").onclick = syncAll;
@@ -1040,6 +1134,13 @@ async function main() {
   el("#c-attach").onclick = () => el("#c-file").click();
   el("#c-file").onchange = (e) => addComposerFiles(e.target.files);
   el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
+  // Echap ferme la fenetre modale ouverte (réglages, formulaire IMAP, composer).
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!el("#settingsmodal").hidden) closeSettings();
+    else if (!el("#imapmodal").hidden) closeImapForm();
+    else if (!el("#composer").hidden) closeComposer();
+  });
   initSearch();
   initGlassSlider();
   initSplitter();

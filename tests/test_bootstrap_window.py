@@ -20,7 +20,7 @@ def test_windows_opaque_with_fallback_background():
     k = window_kwargs("win32")
     assert "transparent" not in k
     assert "vibrancy" not in k
-    assert k["background_color"] == "#EDF0FB"
+    assert k["background_color"] == "#FFFFFF"
 
 
 class _FakeWin:

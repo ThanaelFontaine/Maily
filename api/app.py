@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from core.sanitize import sanitize_html
+from core.sanitize import sanitize_html_report
 
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 _CATEGORY_LABELS = {
@@ -66,6 +66,12 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/about", dependencies=[Depends(guard)])
+    def about():
+        import core
+        from core import paths
+        return {"version": core.__version__, "data_dir": str(paths.runtime_dir())}
 
     @app.get("/glass", dependencies=[Depends(guard)])
     def glass_get():
@@ -200,7 +206,7 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         m = store.get_message(message_id)
         if not m:
             raise HTTPException(status_code=404, detail="not found")
-        html = sanitize_html(m["body_html"] or "", allow_remote=allow_remote)
+        html, blocked = sanitize_html_report(m["body_html"] or "", allow_remote=allow_remote)
         if inline_fn:
             for att in store.list_attachments(message_id):
                 cid = att["content_id"]
@@ -214,7 +220,9 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                         uri = None
                     if uri:
                         html = pattern.sub(lambda m: uri, html)
-        return HTMLResponse(html)
+        # Nombre de ressources distantes retirees (pixels espions, images web) :
+        # l'interface s'en sert pour proposer « Afficher les images ».
+        return HTMLResponse(html, headers={"X-Maily-Blocked-Remote": str(blocked)})
 
     @app.get("/messages/{message_id}/eml", dependencies=[Depends(guard)])
     def message_eml(message_id: int):

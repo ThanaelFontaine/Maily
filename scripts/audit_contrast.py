@@ -1,25 +1,29 @@
 """Audit de lisibilité : mesure le contraste WCAG réel (texte / fond) des
 éléments clés du composer et des réglages, dans chaque thème. Sort 0 si tout
-est >= seuil, 1 sinon. Sert de garde-fou visuel (peu importe le mode)."""
-import sys, threading, time
+est >= seuil, 1 sinon. Sert de garde-fou visuel (peu importe le mode).
+
+Tourne sur une base de démonstration dans un dossier temporaire : jamais sur
+les vraies données ni les vrais secrets (le jeton d'API est généré en mémoire).
+Nécessite macOS et un écran (pywebview). Lancement :
+  MAILY_GUI_TESTS=1 uv run pytest tests/test_contrast.py
+"""
+import os, pathlib, secrets, sys, tempfile, threading, time
+os.environ["MAILY_DATA_DIR"] = tempfile.mkdtemp(prefix="maily-audit-")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import uvicorn, webview
-from core import paths, runtime
+from core import paths
 from core.db import Database
 from core.store import Store
-from core.config import load_settings
 from api.app import create_app
-from app.bootstrap import (make_sync_fn, make_send_fn, make_act_fn, make_labels_fn,
-                           make_attachment_fns, _frontend_dir, window_kwargs,
-                           set_glass_alpha, get_glass_alpha)
+from app.bootstrap import _frontend_dir, window_kwargs
+import demo
 
 layout = paths.ensure_runtime_dirs(paths.runtime_dir())
 store = Store(Database(layout["db"]))
-token = runtime.get_or_create_api_token()
-dl, inl = make_attachment_fns(store, layout["attachments"])
-app = create_app(store, token, sync_fn=make_sync_fn(store, load_settings().backfill_months),
-                 send_fn=make_send_fn(store), act_fn=make_act_fn(store), download_fn=dl, inline_fn=inl,
-                 labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
-                 glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha)
+demo.seed(store)
+token = secrets.token_urlsafe(24)
+app = create_app(store, token, frontend_dir=_frontend_dir())
 PORT = 8796
 threading.Thread(target=uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=PORT, log_level="critical")).run, daemon=True).start()
 time.sleep(1.0)
@@ -41,7 +45,7 @@ JS = r"""
     return acc;
   }
   var theme=document.documentElement.dataset.theme;
-  var bases={aero:{r:190,g:225,b:245},glass:{r:22,g:24,b:30},dedsec:{r:10,g:11,b:14}};
+  var bases={classic:{r:255,g:255,b:255},aero:{r:190,g:225,b:245},glass:{r:22,g:24,b:30},dedsec:{r:10,g:11,b:14}};
   var base=bases[theme]||{r:20,g:20,b:24};
   var cases=window.__cases||[];
   var out=[];
@@ -62,6 +66,8 @@ CASES = [
     {"sel": ".settingsmenu .composer-head span", "min": 4.5},
     {"sel": ".settings-name", "min": 4.5},
     {"sel": ".settings-email", "min": 3.0},
+    {"sel": ".settings-tab.on", "min": 4.5},
+    {"sel": ".settings-help", "min": 4.5},
 ]
 
 RESULTS = {}
@@ -70,9 +76,9 @@ RESULTS = {}
 def probe(w):
     time.sleep(2.0)
     ok = True
-    for theme in ("aero", "glass", "dedsec"):
+    for theme in ("classic", "aero", "glass", "dedsec"):
         w.evaluate_js("setTheme('%s'); window.__cases=%s;" % (theme, __import__("json").dumps(CASES)))
-        w.evaluate_js("document.getElementById('compose').click(); document.getElementById('settingsbtn') && document.getElementById('settingsbtn').click();")
+        w.evaluate_js("document.getElementById('compose').click(); openSettings('accounts');")
         time.sleep(0.6)
         res = __import__("json").loads(w.evaluate_js(JS))
         for r in res:
@@ -80,7 +86,7 @@ def probe(w):
             if r["ratio"] < r["min"]:
                 ok = False
             print(f"[{theme:6}] {r['sel']:35} ratio={r['ratio']:5}  min={r['min']}  {status}", flush=True)
-        w.evaluate_js("document.getElementById('c-close').click(); document.getElementById('settings-close') && document.getElementById('settings-close').click();")
+        w.evaluate_js("document.getElementById('c-close').click(); closeSettings();")
     print("AUDIT_RESULT:", "PASS" if ok else "FAIL", flush=True)
     import os
     os._exit(0 if ok else 1)

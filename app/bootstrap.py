@@ -333,7 +333,7 @@ def window_kwargs(platform: str, width: int = 1240, height: int = 820) -> dict:
     elif platform.startswith("linux"):
         kwargs["transparent"] = True
     else:
-        kwargs["background_color"] = "#EDF0FB"
+        kwargs["background_color"] = "#FFFFFF"
     return kwargs
 
 

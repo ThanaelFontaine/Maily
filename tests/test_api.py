@@ -302,3 +302,28 @@ def test_add_imap_endpoint_not_wired_is_501(database):
     c = TestClient(create_app(Store(database), TOKEN))
     assert c.post("/accounts/imap", headers=_auth(),
                   json={"email": "a@orange.fr", "password": "x"}).status_code == 501
+
+
+def test_message_html_reports_blocked_remote(database):
+    store = Store(database)
+    a = store.upsert_account("me@example.com")
+    mid = store.upsert_message(a, "g9", subject="Pixel",
+                               body_html='<p>x</p><img src="https://tracker.example/p.gif">',
+                               internal_date=1, label_ids='["INBOX"]')
+    c = TestClient(create_app(store, TOKEN))
+    r = c.get(f"/messages/{mid}/html", headers=_auth())
+    assert r.headers["x-maily-blocked-remote"] == "1"
+    assert "tracker.example" not in r.text
+    r2 = c.get(f"/messages/{mid}/html?allow_remote=true", headers=_auth())
+    assert r2.headers["x-maily-blocked-remote"] == "0"
+    assert "tracker.example" in r2.text
+
+
+def test_about_endpoint(client, monkeypatch, tmp_path):
+    import core
+    c, _ = client
+    monkeypatch.setenv("MAILY_DATA_DIR", str(tmp_path / "d"))
+    assert c.get("/about").status_code == 401
+    r = c.get("/about", headers=_auth())
+    assert r.status_code == 200
+    assert r.json() == {"version": core.__version__, "data_dir": str(tmp_path / "d")}

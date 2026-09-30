@@ -29,11 +29,19 @@ _ATTRS.setdefault("tr", set()).update({"bgcolor", "align", "valign"})
 _ATTRS.setdefault("font", set()).update({"color", "face", "size"})
 
 
-def sanitize_html(html: str, allow_remote: bool = False) -> str:
+def sanitize_html_report(html: str, allow_remote: bool = False) -> tuple[str, int]:
+    """Nettoie le HTML d'un mail et compte les ressources distantes bloquees.
+
+    Rend (html_nettoye, nombre_de_ressources_distantes_retirees). Le compteur
+    permet a l'interface de proposer « Afficher les images » seulement quand
+    il y a vraiment quelque chose de bloque.
+    """
     if not html:
-        return ""
+        return "", 0
+    blocked = 0
 
     def attr_filter(tag: str, attr: str, value: str):
+        nonlocal blocked
         low = value.strip().lower()
         # Liens : jamais de data:/javascript:/vbscript: (phishing/XSS)
         if attr == "href" and low.startswith(("data:", "javascript:", "vbscript:")):
@@ -42,10 +50,12 @@ def sanitize_html(html: str, allow_remote: bool = False) -> str:
         # (cid: images integrees, data: images inline). Bloque http(s), //host, et relatif.
         if attr in _RESOURCE_ATTRS and not allow_remote:
             if not low.startswith(("cid:", "data:")):
+                if low:
+                    blocked += 1
                 return None
         return value
 
-    return nh3.clean(
+    cleaned = nh3.clean(
         html,
         attributes=_ATTRS,
         filter_style_properties=_STYLE_PROPS,
@@ -53,3 +63,8 @@ def sanitize_html(html: str, allow_remote: bool = False) -> str:
         attribute_filter=attr_filter,
         link_rel="noopener noreferrer nofollow",
     )
+    return cleaned, blocked
+
+
+def sanitize_html(html: str, allow_remote: bool = False) -> str:
+    return sanitize_html_report(html, allow_remote=allow_remote)[0]

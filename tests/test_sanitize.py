@@ -64,3 +64,19 @@ def test_blocks_data_and_js_href():
 def test_keeps_data_image_src():
     out = sanitize_html('<img src="data:image/png;base64,AAAA">')
     assert "data:image/png;base64,AAAA" in out
+
+
+def test_report_counts_blocked_remote_resources():
+    from core.sanitize import sanitize_html_report
+    html = ('<img src="https://tracker.example/p.gif"><img src="cid:logo">'
+            '<img src="//cdn.example/a.png"><img src="data:image/png;base64,AAAA">')
+    out, blocked = sanitize_html_report(html)
+    assert blocked == 2
+    assert "tracker.example" not in out and "cid:logo" in out
+    out2, blocked2 = sanitize_html_report(html, allow_remote=True)
+    assert blocked2 == 0 and "tracker.example" in out2
+
+
+def test_report_empty_html():
+    from core.sanitize import sanitize_html_report
+    assert sanitize_html_report("") == ("", 0)
