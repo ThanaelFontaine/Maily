@@ -32,7 +32,7 @@ def test_creds_dict_roundtrip():
 
 def test_load_credentials_refreshes_and_persists(monkeypatch):
     secrets_store.save_client_config("cid", "sec")
-    secrets_store.save_account_token("me@example.org", {
+    secrets_store.save_account_token("me@example.com", {
         "token": "old", "refresh_token": "1//r",
         "token_uri": "https://oauth2.googleapis.com/token",
         "client_id": "cid", "client_secret": "sec", "scopes": auth.SCOPES,
@@ -43,14 +43,14 @@ def test_load_credentials_refreshes_and_persists(monkeypatch):
     monkeypatch.setattr("google.oauth2.credentials.Credentials.refresh", fake_refresh)
     monkeypatch.setattr("google.oauth2.credentials.Credentials.expired", property(lambda self: True))
 
-    creds = auth.load_credentials("me@example.org")
+    creds = auth.load_credentials("me@example.com")
     assert creds.token == "new-token"
-    assert secrets_store.load_account_token("me@example.org")["token"] == "new-token"
+    assert secrets_store.load_account_token("me@example.com")["token"] == "new-token"
 
 
 def test_load_credentials_reauth_on_refresh_error(monkeypatch):
     secrets_store.save_client_config("cid", "sec")
-    secrets_store.save_account_token("me@example.org", {
+    secrets_store.save_account_token("me@example.com", {
         "token": "old", "refresh_token": "1//r",
         "token_uri": "https://oauth2.googleapis.com/token",
         "client_id": "cid", "client_secret": "sec", "scopes": auth.SCOPES,
@@ -62,12 +62,12 @@ def test_load_credentials_reauth_on_refresh_error(monkeypatch):
     monkeypatch.setattr("google.oauth2.credentials.Credentials.expired", property(lambda self: True))
 
     with pytest.raises(auth.ReauthRequired):
-        auth.load_credentials("me@example.org")
+        auth.load_credentials("me@example.com")
 
 
 def test_load_credentials_reauth_when_no_token():
     with pytest.raises(auth.ReauthRequired):
-        auth.load_credentials("absent@example.org")
+        auth.load_credentials("absent@example.com")
 
 
 def test_client_config_dict_reauth_when_absent():
@@ -101,11 +101,11 @@ def test_run_local_auth_persists_token(monkeypatch):
             return self.credentials
 
     monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
-    monkeypatch.setattr(auth, "_fetch_email", lambda creds: "me@example.org")
+    monkeypatch.setattr(auth, "_fetch_email", lambda creds: "me@example.com")
 
     email = auth.run_local_auth(open_browser=False)
-    assert email == "me@example.org"
-    assert secrets_store.load_account_token("me@example.org")["refresh_token"] == "1//r"
+    assert email == "me@example.com"
+    assert secrets_store.load_account_token("me@example.com")["refresh_token"] == "1//r"
 
 
 def test_run_local_auth_forwards_timeout(monkeypatch):
@@ -126,7 +126,7 @@ def test_run_local_auth_forwards_timeout(monkeypatch):
             return FakeCreds()
 
     monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
-    monkeypatch.setattr(auth, "_fetch_email", lambda creds: "me@example.org")
+    monkeypatch.setattr(auth, "_fetch_email", lambda creds: "me@example.com")
 
     auth.run_local_auth(open_browser=False, timeout_seconds=90)
     assert captured.get("timeout_seconds") == 90

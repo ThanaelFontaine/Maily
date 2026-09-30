@@ -4,7 +4,7 @@
       "command": "uv",
       "args": [
         "--directory",
-        "/Users/you/Documents/GitHub/fetch-multi-mail-viewer-sender",
+        "${CLAUDE_PROJECT_DIR:-.}",
         "run",
         "python",
         "-m",

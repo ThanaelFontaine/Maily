@@ -18,7 +18,7 @@ def test_client_config_roundtrip():
 
 
 def test_account_token_roundtrip():
-    secrets_store.save_account_token("me@example.org", {"refresh_token": "1//abc"})
-    assert secrets_store.load_account_token("me@example.org")["refresh_token"] == "1//abc"
-    secrets_store.delete_account_token("me@example.org")
-    assert secrets_store.load_account_token("me@example.org") is None
+    secrets_store.save_account_token("me@example.com", {"refresh_token": "1//abc"})
+    assert secrets_store.load_account_token("me@example.com")["refresh_token"] == "1//abc"
+    secrets_store.delete_account_token("me@example.com")
+    assert secrets_store.load_account_token("me@example.com") is None

@@ -4,11 +4,11 @@ from core.rfc822_parse import parse_rfc822, extract_part
 
 def _sample() -> bytes:
     m = EmailMessage()
-    m["From"] = "Alice <alice@orange.fr>"
-    m["To"] = "bob@exemple.fr"
-    m["Cc"] = "carol@exemple.fr"
+    m["From"] = "Alice <alice@example.net>"
+    m["To"] = "bob@example.com"
+    m["Cc"] = "carol@example.com"
     m["Subject"] = "Réunion café ☕"
-    m["Message-ID"] = "<abc123@orange.fr>"
+    m["Message-ID"] = "<abc123@example.net>"
     m["Date"] = "Mon, 18 Aug 2025 10:30:00 +0200"
     m.set_content("Bonjour, ceci est le corps texte.")
     m.add_alternative("<p>Bonjour, <b>HTML</b>.</p>", subtype="html")
@@ -19,12 +19,12 @@ def _sample() -> bytes:
 
 def test_parse_headers_and_bodies():
     fields, atts = parse_rfc822(_sample())
-    assert fields["addr_from"] == "Alice <alice@orange.fr>"
-    assert fields["addr_to"] == "bob@exemple.fr"
-    assert fields["addr_cc"] == "carol@exemple.fr"
+    assert fields["addr_from"] == "Alice <alice@example.net>"
+    assert fields["addr_to"] == "bob@example.com"
+    assert fields["addr_cc"] == "carol@example.com"
     assert fields["subject"] == "Réunion café ☕"
-    assert fields["rfc822_message_id"] == "<abc123@orange.fr>"
-    assert fields["thread_id"] == "<abc123@orange.fr>"      # fil = message-id
+    assert fields["rfc822_message_id"] == "<abc123@example.net>"
+    assert fields["thread_id"] == "<abc123@example.net>"      # fil = message-id
     assert "corps texte" in fields["body_text"]
     assert "<b>HTML</b>" in fields["body_html"]
     assert fields["direction"] == "in"

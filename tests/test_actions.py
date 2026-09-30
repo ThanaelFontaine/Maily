@@ -10,7 +10,7 @@ def store(database):
 
 
 def test_apply_local_labels(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "g1", label_ids='["INBOX","UNREAD"]', is_unread=1)
     store.apply_local_labels(mid, remove=["UNREAD"])
     m = store.get_message(mid)
@@ -21,7 +21,7 @@ def test_apply_local_labels(store):
 
 
 def test_set_trashed(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "g1")
     store.set_trashed(mid, True)
     assert store.get_message(mid)["is_trashed"] == 1
@@ -42,20 +42,20 @@ class FakeClient:
 
 
 def test_modify_message_updates_local(store, monkeypatch):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "g1", label_ids='["INBOX","UNREAD"]', is_unread=1)
     fc = FakeClient()
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: fc)
-    svc.modify_message(store, "me@example.org", mid, remove=["UNREAD"])
+    svc.modify_message(store, "me@example.com", mid, remove=["UNREAD"])
     assert ("modify", "g1", None, ["UNREAD"]) in fc.calls
     assert store.get_message(mid)["is_unread"] == 0
 
 
 def test_trash_message_updates_local(store, monkeypatch):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "g1")
     fc = FakeClient()
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: fc)
-    svc.trash_message(store, "me@example.org", mid)
+    svc.trash_message(store, "me@example.com", mid)
     assert ("trash", "g1") in fc.calls
     assert store.get_message(mid)["is_trashed"] == 1

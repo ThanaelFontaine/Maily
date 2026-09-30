@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Stocke le client OAuth (client_id/secret) dans le Trousseau, sans jamais exposer le secret.
+"""Stocke le client OAuth (client_id/secret) dans le magasin chiffre, sans jamais afficher le secret.
 
 Usage:
   uv run python scripts/store_client_config.py /chemin/vers/client_secret_xxx.json
   uv run python scripts/store_client_config.py        # mode interactif (saisie masquee)
 
-Le client_secret n'est ni affiche ni logge. Il est ecrit uniquement dans le
-Trousseau macOS (service "Maily"). macOS peut afficher une demande d'acces au
-Trousseau : cliquer "Autoriser".
+Le client_secret n'est ni affiche ni logge. Il est ecrit uniquement dans
+secrets.enc (chiffre, 0600) dans le dossier de donnees de Maily.
 """
 from __future__ import annotations
 import json
@@ -48,7 +47,7 @@ def main():
         cid, secret = interactive()
     secrets_store.save_client_config(cid, secret)
     tail = cid[-16:] if len(cid) > 16 else cid
-    print(f"OK : identifiants client stockes dans le Trousseau (client_id ...{tail}).")
+    print(f"OK : identifiants client stockes dans le magasin chiffre (client_id ...{tail}).")
     print("Le client_secret n'a jamais ete affiche.")
 
 

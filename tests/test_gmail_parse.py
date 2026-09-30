@@ -15,7 +15,7 @@ def test_parse_simple_multipart():
             "mimeType": "multipart/alternative",
             "headers": [
                 {"name": "From", "value": "Rec <rh@boite.co>"},
-                {"name": "To", "value": "me@example.org"},
+                {"name": "To", "value": "me@example.com"},
                 {"name": "Subject", "value": "Candidature"},
                 {"name": "Message-ID", "value": "<abc@mail>"},
             ],

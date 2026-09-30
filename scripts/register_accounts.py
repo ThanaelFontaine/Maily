@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Enregistre dans la base locale les comptes deja connectes (token present au Trousseau).
+"""Enregistre dans la base locale les comptes deja connectes (jeton present dans le magasin chiffre).
 
 Usage:
   uv run python scripts/register_accounts.py email1 [email2 ...]
 
-Pour chaque email : verifie qu'un token existe au Trousseau, puis cree/actualise
+Pour chaque email : verifie qu'un jeton existe dans secrets.enc, puis cree/actualise
 la ligne compte en base (le rail de l'app liste les comptes de la base). N'ouvre
 pas de navigateur. Idempotent.
 """
@@ -31,7 +31,7 @@ def main():
             store.upsert_account(e)
             print(f"  enregistre : {e}")
         else:
-            print(f"  IGNORE (aucun token au Trousseau, connecte-le d'abord) : {e}")
+            print(f"  IGNORE (aucun jeton enregistre, connecte-le d'abord) : {e}")
     db.close()
     print("Termine.")
 

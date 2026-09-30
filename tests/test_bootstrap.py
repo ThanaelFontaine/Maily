@@ -30,7 +30,7 @@ def test_wait_for_health_false_on_error():
 def test_make_sync_fn(monkeypatch):
     class FakeStore:
         def get_account(self, aid):
-            return {"email": "me@example.org"} if aid == 1 else None
+            return {"email": "me@example.com"} if aid == 1 else None
 
         def get_sync_state(self, aid, key):
             return "1"  # backfill deja fait -> chemin incremental

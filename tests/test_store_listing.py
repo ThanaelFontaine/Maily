@@ -8,8 +8,8 @@ def store(database):
 
 
 def _seed(store):
-    a = store.upsert_account("me@example.org")
-    b = store.upsert_account("perso@gmail.com")
+    a = store.upsert_account("me@example.com")
+    b = store.upsert_account("perso@example.org")
     store.upsert_message(a, "g1", thread_id="t1", subject="Un", internal_date=100, label_ids='["INBOX"]')
     store.upsert_message(a, "g2", thread_id="t1", subject="Un-reponse", internal_date=200, label_ids='["INBOX"]')
     store.upsert_message(b, "g3", thread_id="t2", subject="Deux", internal_date=300, label_ids='["INBOX","IMPORTANT"]')
@@ -45,7 +45,7 @@ def test_list_messages_exclude_label(store):
 
 
 def test_labels_replace_and_list(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     store.replace_labels(acc, [{"id": "Label_1", "name": "Perso", "type": "user"},
                                {"id": "INBOX", "name": "INBOX", "type": "system"}])
     labs = store.list_labels(acc)

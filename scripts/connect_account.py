@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Connecte une boite Gmail en live via OAuth loopback, et range le token au Trousseau.
+"""Connecte une boite Gmail via OAuth (loopback) et range le jeton dans le magasin chiffre.
 
 Usage:
   uv run python scripts/connect_account.py
 
 Ouvre le navigateur pour le consentement Google. A l'ecran "app non verifiee" :
 Parametres avances -> Continuer vers Maily. Le refresh token est ensuite stocke
-dans le Trousseau, indexe par l'adresse email du compte connecte.
+dans secrets.enc (chiffre), indexe par l'adresse email du compte connecte.
+Equivalent en ligne de commande du bouton « + Ajouter un compte » de l'app.
 """
 from __future__ import annotations
 import sys

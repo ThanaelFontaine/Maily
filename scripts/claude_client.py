@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Client pret a l'emploi pour Claude / automatisations.
+"""Client pret a l'emploi pour les automatisations locales (scripts, agents).
 
-Lit runtime.json (ecrit par l'app au lancement) + le jeton d'API au Trousseau,
-et parle a l'API locale de Maily. L'app Maily doit etre lancee.
+Lit runtime.json (ecrit par l'app au lancement) et le jeton de l'API locale
+(dans le magasin de secrets chiffre), puis parle a l'API HTTP locale de Maily.
+L'app Maily doit etre lancee.
 
 Exemples (depuis la racine du repo) :
   uv run python scripts/claude_client.py accounts
   uv run python scripts/claude_client.py inbox --account 1
   uv run python scripts/claude_client.py read 42
-  uv run python scripts/claude_client.py send --account 1 --to dest@x.co --subject "Coucou" --body "Salut"
+  uv run python scripts/claude_client.py send --account 1 --to dest@example.com --subject "Coucou" --body "Salut"
 
 Importable aussi : `from scripts.claude_client import accounts, messages, read_message, send, sync`.
 """
@@ -32,7 +33,7 @@ def _base_and_token():
         raise SystemExit("Maily ne semble pas lance (runtime.json absent). Lance l'app d'abord.")
     token = runtime.read_api_token()
     if not token:
-        raise SystemExit("Jeton d'API introuvable au Trousseau. Lance l'app au moins une fois.")
+        raise SystemExit("Jeton d'API introuvable. Lance l'app au moins une fois.")
     return rt["base_url"], token
 
 

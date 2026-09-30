@@ -45,7 +45,7 @@ def store(database):
 
 
 def test_incremental_applies_label_changes(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", labels=["INBOX", "UNREAD"])}), acc).backfill()
     updated = {"g1": _msg("g1", labels=["INBOX", "STARRED"])}  # lu + starred cote serveur
     hist = [{"id": "11", "labelsRemoved": [{"message": {"id": "g1"}}]},
@@ -56,7 +56,7 @@ def test_incremental_applies_label_changes(store):
 
 
 def test_incremental_trash_via_label(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", labels=["INBOX", "UNREAD"])}), acc).backfill()
     trashed = {"g1": _msg("g1", labels=["TRASH"])}
     hist = [{"id": "11", "labelsAdded": [{"message": {"id": "g1"}}]}]
@@ -67,7 +67,7 @@ def test_incremental_trash_via_label(store):
 
 
 def test_incremental_skips_deleted_in_flight(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1")}), acc).backfill()
     msgs = {"g1": _msg("g1"), "g3": _msg("g3", "Trois")}
     hist = [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}, {"message": {"id": "g3"}}]}]
@@ -77,7 +77,7 @@ def test_incremental_skips_deleted_in_flight(store):
 
 
 def test_incremental_delete_unknown_is_noop(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1")}), acc).backfill()
     before = store.db.read().execute("SELECT COUNT(*) c FROM messages").fetchone()["c"]
     hist = [{"id": "11", "messagesDeleted": [{"message": {"id": "ghost"}}]}]
@@ -87,7 +87,7 @@ def test_incremental_delete_unknown_is_noop(store):
 
 
 def test_backfill_empty_mailbox_sets_checkpoint(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     n = Syncer(store, FakeClient({}, profile_hist="500"), acc).backfill()
     assert n == 0
     assert store.get_sync_state(acc, "last_history_id") == "500"

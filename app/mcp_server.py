@@ -1,14 +1,16 @@
-"""Serveur MCP local « Maily » - expose les boites mail multi-profils de Maily
-comme outils pour une session Claude tournant sur ce Mac (app Claude / Claude Code).
+"""Serveur MCP local « Maily » : expose les boites mail multi-profils de Maily
+comme outils pour un client MCP tournant sur la meme machine (Claude Code,
+Claude Desktop, ou tout autre client MCP en stdio).
 
 Il importe directement le moteur Maily (meme base SQLite locale, memes secrets
-chiffres dans ~/Library/Application Support/Maily). Aucun reseau, aucun port :
-transport stdio. La lecture des secrets ne demande PAS Touch ID (la porte
-biometrique ne protege que le lancement de l'app graphique) - c'est voulu pour
-que l'agent local puisse travailler sans friction.
+chiffres dans le dossier de donnees, voir core/paths.py et MAILY_DATA_DIR).
+Aucun reseau, aucun port : transport stdio. La lecture des secrets ne demande
+PAS Touch ID (la porte biometrique ne protege que le lancement de l'app
+graphique) : c'est voulu, pour que les automatisations locales travaillent sans
+friction. Voir docs/MCP.md.
 
-Lancement (enregistre dans la config MCP de l'app Claude) :
-    uv --directory <repo> run --group agent python -m app.mcp_server
+Lancement (commande a declarer dans la configuration MCP du client) :
+    uv --directory <chemin-du-depot> run python -m app.mcp_server
 """
 from __future__ import annotations
 import datetime
@@ -149,7 +151,7 @@ def maily_list_messages(profile: str, category: str = "inbox",
                         limit: int = 20, unread_only: bool = False) -> dict:
     """Liste les messages recents d'un profil.
 
-    profile   : email ou nom du profil (ex: 'you@example.com' ou 'Europe').
+    profile   : email ou nom du profil (ex: 'alex@example.com' ou 'Perso').
     category  : 'inbox' | 'primary' | 'promotions' | 'social' | 'updates' | 'forums' | 'archived' | 'all'.
     limit     : nombre max (defaut 20).
     unread_only : ne garder que les non-lus.

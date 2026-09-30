@@ -18,7 +18,7 @@ def _auth():
 
 
 def test_replace_and_list_attachments(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "g1")
     att = {"filename": "cv.pdf", "mime_type": "application/pdf", "size": 10,
            "gmail_attachment_id": "att1", "content_id": None}
@@ -29,7 +29,7 @@ def test_replace_and_list_attachments(store):
 
 
 def test_fetch_attachment_caches(store, tmp_path, monkeypatch):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     mid = store.upsert_message(acc, "gX")
     store.replace_attachments(mid, [{"filename": "c v.pdf", "mime_type": "application/pdf",
                                      "size": 3, "gmail_attachment_id": "att1", "content_id": None}])
@@ -44,9 +44,9 @@ def test_fetch_attachment_caches(store, tmp_path, monkeypatch):
 
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: FakeClient())
 
-    data, mime, fn = svc.fetch_attachment(store, "me@example.org", mid, att_id, str(tmp_path))
+    data, mime, fn = svc.fetch_attachment(store, "me@example.com", mid, att_id, str(tmp_path))
     assert data == b"PDF" and mime == "application/pdf"
-    data2, _, _ = svc.fetch_attachment(store, "me@example.org", mid, att_id, str(tmp_path))
+    data2, _, _ = svc.fetch_attachment(store, "me@example.com", mid, att_id, str(tmp_path))
     assert data2 == b"PDF" and calls["n"] == 1  # 2e appel = cache
     basename = store.get_attachment(att_id)["local_path"].split("/")[-1]
     assert " " not in basename and "c_v.pdf" in basename
@@ -54,7 +54,7 @@ def test_fetch_attachment_caches(store, tmp_path, monkeypatch):
 
 def test_attachments_endpoints(database):
     store = Store(database)
-    a = store.upsert_account("me@example.org")
+    a = store.upsert_account("me@example.com")
     mid = store.upsert_message(a, "g1", body_html='<img src="cid:logo1"><p>hi</p>')
     store.replace_attachments(mid, [{"filename": "logo.png", "mime_type": "image/png",
                                      "size": 3, "gmail_attachment_id": "att1", "content_id": "logo1"}])

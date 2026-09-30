@@ -121,7 +121,7 @@ def test_send_attachments_passthrough(store):
 
     c = TestClient(create_app(store, TOKEN, send_fn=send_fn))
     r = c.post("/send", headers=_auth(), json={
-        "account_id": 1, "to": "d@x.co",
+        "account_id": 1, "to": "d@example.com",
         "attachments": [{"filename": "a.txt", "mime_type": "text/plain", "data": base64.b64encode(b"hi").decode()}],
         "idempotency_key": "k1",
     })

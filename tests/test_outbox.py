@@ -9,11 +9,11 @@ def store(database):
 
 
 def test_add_and_mark_outbox(store):
-    acc = store.upsert_account("me@example.org")
-    oid = store.add_outbox(acc, "d@x.co", "Sujet", "corps", None, "<mid1@maily>")
+    acc = store.upsert_account("me@example.com")
+    oid = store.add_outbox(acc, "d@example.com", "Sujet", "corps", None, "<mid1@maily>")
     row = store.get_outbox(oid)
     assert row["status"] == "queued"
-    assert row["addr_to"] == "d@x.co"
+    assert row["addr_to"] == "d@example.com"
 
     store.mark_outbox(oid, "sending")
     assert store.get_outbox(oid)["status"] == "sending"
@@ -26,7 +26,7 @@ def test_add_and_mark_outbox(store):
 
 
 def test_idempotency_key_unique(store):
-    acc = store.upsert_account("me@example.org")
-    store.add_outbox(acc, "d@x.co", "S", "c", None, "<dup@maily>")
+    acc = store.upsert_account("me@example.com")
+    store.add_outbox(acc, "d@example.com", "S", "c", None, "<dup@maily>")
     with pytest.raises(sqlite3.IntegrityError):
-        store.add_outbox(acc, "d@x.co", "S", "c", None, "<dup@maily>")
+        store.add_outbox(acc, "d@example.com", "S", "c", None, "<dup@maily>")

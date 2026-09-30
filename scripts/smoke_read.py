@@ -4,7 +4,7 @@
 Usage:
   uv run python scripts/smoke_read.py [email]
 
-Sans argument, prend la premiere boite connectee trouvee. Affiche l'expediteur et
+Sans argument, prend le premier compte Gmail enregistre dans la base locale. Affiche l'expediteur et
 le sujet des messages importes (donnees locales, sur ta machine).
 """
 from __future__ import annotations
@@ -21,13 +21,21 @@ from core.gmail import GmailClient, parse_gmail_message
 
 
 def main():
-    email = sys.argv[1] if len(sys.argv) > 1 else "you@example.com"
+    layout = paths.ensure_runtime_dirs(paths.runtime_dir())
+    if len(sys.argv) > 1:
+        email = sys.argv[1]
+    else:
+        db0 = Database(layout["db"])
+        accs = [a for a in Store(db0).list_accounts() if (a["provider"] or "gmail") == "gmail"]
+        db0.close()
+        if not accs:
+            sys.exit("Aucun compte Gmail en base : connecte-en un (scripts/connect_account.py) ou passe l'email en argument.")
+        email = accs[0]["email"]
     print(f"Chargement des credentials pour {email}...")
     creds = auth.load_credentials(email)
     service = build("gmail", "v1", credentials=creds, cache_discovery=False)
     client = GmailClient(service)
 
-    layout = paths.ensure_runtime_dirs(paths.runtime_dir())
     db = Database(layout["db"])
     store = Store(db)
     acc = store.upsert_account(email)

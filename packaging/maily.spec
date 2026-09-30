@@ -5,12 +5,17 @@ Build :  pyinstaller packaging/maily.spec --noconfirm
 Sortie :  dist/Maily.app (macOS) ou dist/Maily/ (Linux/Windows).
 """
 import os
+import re
 import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # racine du repo
 ICNS = os.path.join(ROOT, "packaging", "Maily.icns")
 ICON = ICNS if os.path.exists(ICNS) else None
+
+# Version lue dans core/__init__.py (source alignee sur pyproject.toml).
+with open(os.path.join(ROOT, "core", "__init__.py"), encoding="utf-8") as _f:
+    VERSION = re.search(r'__version__ = "([^"]+)"', _f.read()).group(1)
 
 datas = [(os.path.join(ROOT, "frontend"), "frontend"),
          (os.path.join(ROOT, "migrations"), "migrations")]
@@ -71,10 +76,11 @@ if sys.platform == "darwin":
         coll,
         name="Maily.app",
         icon=ICON,
-        bundle_identifier="org.example.maily",
+        bundle_identifier="io.github.thanaelfontaine.maily",
         info_plist={
             "NSHighResolutionCapable": True,
             "LSMinimumSystemVersion": "12.0",
-            "CFBundleShortVersionString": "0.5.1",
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
         },
     )

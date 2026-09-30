@@ -9,7 +9,7 @@ TOKEN = "test-token"
 @pytest.fixture
 def client(database):
     store = Store(database)
-    a = store.upsert_account("me@example.org")
+    a = store.upsert_account("me@example.com")
     store.upsert_message(a, "g1", thread_id="t1", subject="Bonjour",
                          body_html="<b>hi</b><script>x</script>",
                          internal_date=100, label_ids='["INBOX"]', is_unread=1)
@@ -60,7 +60,7 @@ def test_sync_endpoint(client):
 
 def test_send_endpoint(database):
     store = Store(database)
-    store.upsert_account("me@example.org")
+    store.upsert_account("me@example.com")
     captured = {}
 
     def send_fn(payload):
@@ -70,15 +70,15 @@ def test_send_endpoint(database):
     app = create_app(store, TOKEN, send_fn=send_fn)
     c = TestClient(app)
     r = c.post("/send", headers=_auth(),
-               json={"account_id": 1, "to": "d@x.co", "subject": "Hi", "body_text": "yo"})
+               json={"account_id": 1, "to": "d@example.com", "subject": "Hi", "body_text": "yo"})
     assert r.status_code == 200 and r.json()["gmail_id"] == "gX"
-    assert captured["to"] == "d@x.co"
-    assert c.post("/send", json={"account_id": 1, "to": "d@x.co"}).status_code == 401
+    assert captured["to"] == "d@example.com"
+    assert c.post("/send", json={"account_id": 1, "to": "d@example.com"}).status_code == 401
 
 
 def test_action_endpoints(database):
     store = Store(database)
-    a = store.upsert_account("me@example.org")
+    a = store.upsert_account("me@example.com")
     store.upsert_message(a, "g1", subject="x", label_ids='["INBOX"]')
     calls = []
 
@@ -166,10 +166,10 @@ def test_glass_get_default_and_auth(database):
 
 def test_add_google_endpoint_nominal(database):
     app = create_app(Store(database), TOKEN,
-                     add_google_fn=lambda: {"account_id": 3, "email": "z@example.org"})
+                     add_google_fn=lambda: {"account_id": 3, "email": "z@example.com"})
     c = TestClient(app)
     r = c.post("/accounts/google", headers=_auth())
-    assert r.status_code == 200 and r.json()["email"] == "z@example.org"
+    assert r.status_code == 200 and r.json()["email"] == "z@example.com"
 
 
 def test_add_google_endpoint_requires_auth(database):
@@ -215,7 +215,7 @@ def test_add_google_endpoint_in_progress_is_409(database):
 
 def test_delete_account_endpoint(database):
     store = Store(database)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     calls = []
     app = create_app(store, TOKEN, logout_fn=lambda account_id: calls.append(account_id))
     c = TestClient(app)
@@ -226,21 +226,21 @@ def test_delete_account_endpoint(database):
 
 def test_delete_account_requires_auth(database):
     store = Store(database)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     app = create_app(store, TOKEN, logout_fn=lambda account_id: None)
     assert TestClient(app).delete(f"/accounts/{aid}").status_code == 401
 
 
 def test_delete_account_not_wired_is_501(database):
     store = Store(database)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     c = TestClient(create_app(store, TOKEN))
     assert c.delete(f"/accounts/{aid}", headers=_auth()).status_code == 501
 
 
 def test_eml_endpoint(database):
     store = Store(database)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     mid = store.upsert_message(aid, "g1", subject="X", label_ids='["INBOX"]')
     app = create_app(store, TOKEN, eml_fn=lambda message_id: (b"RAW-EML-BYTES", "x.eml"))
     c = TestClient(app)
@@ -253,14 +253,14 @@ def test_eml_endpoint(database):
 
 def test_eml_endpoint_requires_auth(database):
     store = Store(database)
-    mid = store.upsert_message(store.upsert_account("me@example.org"), "g1", subject="X")
+    mid = store.upsert_message(store.upsert_account("me@example.com"), "g1", subject="X")
     app = create_app(store, TOKEN, eml_fn=lambda message_id: (b"x", "x.eml"))
     assert TestClient(app).get(f"/messages/{mid}/eml").status_code == 401
 
 
 def test_eml_endpoint_not_wired_is_501(database):
     store = Store(database)
-    mid = store.upsert_message(store.upsert_account("me@example.org"), "g1", subject="X")
+    mid = store.upsert_message(store.upsert_account("me@example.com"), "g1", subject="X")
     c = TestClient(create_app(store, TOKEN))
     assert c.get(f"/messages/{mid}/eml", headers=_auth()).status_code == 501
 
@@ -276,8 +276,8 @@ def test_add_imap_endpoint_nominal(database):
     app = create_app(store, TOKEN, add_imap_fn=add_imap_fn)
     c = TestClient(app)
     r = c.post("/accounts/imap", headers=_auth(),
-               json={"email": "me@orange.fr", "password": "pw"})
-    assert r.status_code == 200 and r.json()["email"] == "me@orange.fr"
+               json={"email": "me@example.net", "password": "pw"})
+    assert r.status_code == 200 and r.json()["email"] == "me@example.net"
     assert captured["host"] == "imap.orange.fr" and captured["port"] == 993
     assert captured["password"] == "pw"
 
@@ -294,14 +294,14 @@ def test_add_imap_endpoint_bad_credentials_is_400(database):
         raise ImapError("bad creds")
 
     c = TestClient(create_app(Store(database), TOKEN, add_imap_fn=boom))
-    r = c.post("/accounts/imap", headers=_auth(), json={"email": "a@orange.fr", "password": "x"})
+    r = c.post("/accounts/imap", headers=_auth(), json={"email": "a@example.net", "password": "x"})
     assert r.status_code == 400
 
 
 def test_add_imap_endpoint_not_wired_is_501(database):
     c = TestClient(create_app(Store(database), TOKEN))
     assert c.post("/accounts/imap", headers=_auth(),
-                  json={"email": "a@orange.fr", "password": "x"}).status_code == 501
+                  json={"email": "a@example.net", "password": "x"}).status_code == 501
 
 
 def test_message_html_reports_blocked_remote(database):

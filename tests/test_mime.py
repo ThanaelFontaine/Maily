@@ -8,17 +8,17 @@ def _parse(raw):
 
 
 def test_build_basic():
-    raw, mid = build_mime("me@example.org", "dest@x.co", "Bonjour", "Corps texte")
+    raw, mid = build_mime("me@example.com", "dest@example.com", "Bonjour", "Corps texte")
     msg = _parse(raw)
-    assert msg["From"] == "me@example.org"
-    assert msg["To"] == "dest@x.co"
+    assert msg["From"] == "me@example.com"
+    assert msg["To"] == "dest@example.com"
     assert msg["Subject"] == "Bonjour"
     assert msg["Message-ID"] == mid
     assert "Corps texte" in msg.get_content()
 
 
 def test_build_reply_headers():
-    raw, mid = build_mime("me@example.org", "dest@x.co", "Re: Sujet", "ok",
+    raw, mid = build_mime("me@example.com", "dest@example.com", "Re: Sujet", "ok",
                           in_reply_to="<orig@mail>")
     msg = _parse(raw)
     assert msg["In-Reply-To"] == "<orig@mail>"
@@ -26,7 +26,7 @@ def test_build_reply_headers():
 
 
 def test_build_with_attachment():
-    raw, mid = build_mime("me@x.co", "d@x.co", "S", "corps",
+    raw, mid = build_mime("me@x.co", "d@example.com", "S", "corps",
                           attachments=[{"filename": "a.txt", "mime_type": "text/plain", "data": b"hello"}])
     msg = _parse(raw)
     assert msg.is_multipart()
@@ -35,9 +35,9 @@ def test_build_with_attachment():
 
 
 def test_build_multipart_html():
-    raw, mid = build_mime("me@example.org", "d@x.co", "S", "texte", body_html="<b>html</b>", cc="c@x.co")
+    raw, mid = build_mime("me@example.com", "d@example.com", "S", "texte", body_html="<b>html</b>", cc="c@example.com")
     msg = _parse(raw)
-    assert msg["Cc"] == "c@x.co"
+    assert msg["Cc"] == "c@example.com"
     assert msg.is_multipart()
     types = {p.get_content_type() for p in msg.walk()}
     assert "text/plain" in types and "text/html" in types

@@ -8,10 +8,10 @@ from core.imap_client import parse_imap_key
 
 def _raw(subject, body="corps"):
     m = EmailMessage()
-    m["From"] = "a@orange.fr"
-    m["To"] = "me@orange.fr"
+    m["From"] = "a@example.net"
+    m["To"] = "me@example.net"
     m["Subject"] = subject
-    m["Message-ID"] = f"<{subject}@orange.fr>"
+    m["Message-ID"] = f"<{subject}@example.net>"
     m["Date"] = "Mon, 18 Aug 2025 10:30:00 +0200"
     m.set_content(body)
     return m.as_bytes()
@@ -54,7 +54,7 @@ class FakeImap:
 def _mk(tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
+    aid = store.upsert_account("me@example.net", provider="imap")
     return db, store, aid
 
 

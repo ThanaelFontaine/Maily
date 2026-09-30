@@ -14,7 +14,7 @@ def test_build_gmail_client(monkeypatch):
         return "SERVICE"
 
     monkeypatch.setattr(svc, "build", fake_build)
-    client = svc.build_gmail_client("me@example.org")
+    client = svc.build_gmail_client("me@example.com")
     assert client.service == "SERVICE"
     assert captured["svc"][0] == ("gmail", "v1")
     assert captured["svc"][1]["credentials"] == "CREDS"
@@ -37,12 +37,12 @@ def test_sync_account_calls_incremental(monkeypatch, tmp_path):
 
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
-    aid = store.upsert_account("me@example.org")   # provider gmail par défaut
+    aid = store.upsert_account("me@example.com")   # provider gmail par défaut
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: "CLIENT")
     monkeypatch.setattr(svc, "Syncer", FakeSyncer)
-    n = svc.sync_account(store, "me@example.org", aid)
+    n = svc.sync_account(store, "me@example.com", aid)
     assert n == 3 and calls["mode"] == "inc"
-    n2 = svc.sync_account(store, "me@example.org", aid, full=True)
+    n2 = svc.sync_account(store, "me@example.com", aid, full=True)
     assert n2 == 5 and calls["mode"] == "full"
     db.close()
 
@@ -51,9 +51,9 @@ def test_add_google_account_creates_account(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
     monkeypatch.setattr(auth, "run_local_auth",
-                        lambda open_browser=True, timeout_seconds=None: "new@example.org")
+                        lambda open_browser=True, timeout_seconds=None: "new@example.com")
     out = svc.add_google_account(store, timeout_seconds=120)
-    assert out["email"] == "new@example.org"
+    assert out["email"] == "new@example.com"
     assert out["account_id"] == store.list_accounts()[0]["id"]
     db.close()
 
@@ -66,7 +66,7 @@ def test_add_google_account_forwards_timeout(monkeypatch, tmp_path):
     def fake_auth(open_browser=True, timeout_seconds=None):
         seen["timeout"] = timeout_seconds
         seen["browser"] = open_browser
-        return "x@example.org"
+        return "x@example.com"
 
     monkeypatch.setattr(auth, "run_local_auth", fake_auth)
     svc.add_google_account(store, timeout_seconds=77)
@@ -91,7 +91,7 @@ def test_add_google_account_rejects_concurrent(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
     monkeypatch.setattr(auth, "run_local_auth",
-                        lambda open_browser=True, timeout_seconds=None: "y@example.org")
+                        lambda open_browser=True, timeout_seconds=None: "y@example.com")
     assert svc._add_account_lock.acquire(blocking=False)  # simule un flow deja en cours
     try:
         with pytest.raises(svc.AddAccountInProgress):
@@ -120,13 +120,13 @@ def test_add_google_account_releases_lock_after_error(monkeypatch, tmp_path):
 def test_logout_account_deletes_secret_and_cache(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     store.upsert_message(aid, "g1", subject="x", label_ids='["INBOX"]')
     deleted = {}
     monkeypatch.setattr(svc.secrets_store, "delete_account_token",
                         lambda email: deleted.setdefault("gmail", email))
     svc.logout_account(store, aid)
-    assert deleted == {"gmail": "me@example.org"}
+    assert deleted == {"gmail": "me@example.com"}
     assert store.get_account(aid) is None
     assert store.list_messages(aid) == []
     db.close()
@@ -145,7 +145,7 @@ def test_export_eml_gmail(monkeypatch, tmp_path):
     import base64
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
-    aid = store.upsert_account("me@example.org")
+    aid = store.upsert_account("me@example.com")
     mid = store.upsert_message(aid, "gmABC", subject="Ma facture", label_ids='["INBOX"]')
     raw_bytes = b"From: a@b.co\r\nSubject: Ma facture\r\n\r\nCorps du mail."
     b64 = base64.urlsafe_b64encode(raw_bytes).decode().rstrip("=")  # style Gmail (sans padding)
@@ -197,11 +197,11 @@ def test_add_imap_account_ok(monkeypatch, tmp_path):
     monkeypatch.setattr(svc, "ImapClient", lambda **kw: _FakeImapClient(**kw))
     monkeypatch.setattr(svc.secrets_store, "save_imap_credentials",
                         lambda email, creds: saved.update({email: creds}))
-    out = svc.add_imap_account(store, "me@orange.fr", "secret", host="imap.orange.fr", port=993)
-    assert out["email"] == "me@orange.fr"
+    out = svc.add_imap_account(store, "me@example.net", "secret", host="imap.orange.fr", port=993)
+    assert out["email"] == "me@example.net"
     acc = dict(store.get_account(out["account_id"]))
     assert acc["provider"] == "imap"
-    assert saved["me@orange.fr"]["password"] == "secret"
+    assert saved["me@example.net"]["password"] == "secret"
     db.close()
 
 
@@ -211,7 +211,7 @@ def test_add_imap_account_bad_credentials(monkeypatch, tmp_path):
     monkeypatch.setattr(svc, "ImapClient", lambda **kw: _FakeImapClient(fail=True, **kw))
     monkeypatch.setattr(svc.secrets_store, "save_imap_credentials", lambda *a: None)
     with pytest.raises(ImapError):
-        svc.add_imap_account(store, "me@orange.fr", "wrong")
+        svc.add_imap_account(store, "me@example.net", "wrong")
     # aucun compte créé
     assert store.list_accounts() == []
     db.close()
@@ -219,7 +219,7 @@ def test_add_imap_account_bad_credentials(monkeypatch, tmp_path):
 
 def test_sync_account_branches_to_imap(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite"); store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
+    aid = store.upsert_account("me@example.net", provider="imap")
     calls = {}
 
     class FakeSyncer:
@@ -229,9 +229,9 @@ def test_sync_account_branches_to_imap(monkeypatch, tmp_path):
 
     monkeypatch.setattr(svc, "build_imap_client", lambda e: "IMAPCLIENT")
     monkeypatch.setattr(svc, "ImapSyncer", FakeSyncer)
-    assert svc.sync_account(store, "me@orange.fr", aid, full=True) == 4
+    assert svc.sync_account(store, "me@example.net", aid, full=True) == 4
     assert calls["mode"] == "full"
-    assert svc.sync_account(store, "me@orange.fr", aid) == 1
+    assert svc.sync_account(store, "me@example.net", aid) == 1
     assert calls["mode"] == "inc"
     db.close()
 
@@ -239,12 +239,12 @@ def test_sync_account_branches_to_imap(monkeypatch, tmp_path):
 def test_trash_message_imap(monkeypatch, tmp_path):
     from core.imap_client import imap_msg_key
     db = Database(tmp_path / "app.sqlite"); store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
+    aid = store.upsert_account("me@example.net", provider="imap")
     mid = store.upsert_message(aid, imap_msg_key("INBOX.Sent", 1000, 7),
                                subject="X", label_ids='["INBOX.Sent"]')
     fake = _FakeImapClient()
     monkeypatch.setattr(svc, "build_imap_client", lambda e: fake)
-    svc.trash_message(store, "me@orange.fr", mid)
+    svc.trash_message(store, "me@example.net", mid)
     assert ("select", "INBOX.Sent") in fake.events   # sélectionne le bon dossier
     assert ("trash", 7) in fake.events
     assert dict(store.get_message(mid))["is_trashed"] == 1
@@ -253,7 +253,7 @@ def test_trash_message_imap(monkeypatch, tmp_path):
 
 def test_export_eml_imap(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite"); store = Store(db)
-    aid = store.upsert_account("me@orange.fr", provider="imap")
+    aid = store.upsert_account("me@example.net", provider="imap")
     mid = store.upsert_message(aid, "1000.7", subject="Fac", label_ids='["INBOX"]')
     monkeypatch.setattr(svc, "_imap_fetch_raw", lambda email, gid: b"RAW-IMAP")
     data, filename = svc.export_eml(store, mid)

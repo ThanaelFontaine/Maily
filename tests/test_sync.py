@@ -38,7 +38,7 @@ def store(database):
 
 
 def test_backfill_imports_messages(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     client = FakeClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")})
     n = Syncer(store, client, acc).backfill()
     assert n == 2
@@ -48,7 +48,7 @@ def test_backfill_imports_messages(store):
 
 
 def test_incremental_adds_and_trashes(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
     hist = [
         {"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]},
@@ -63,7 +63,7 @@ def test_incremental_adds_and_trashes(store):
 
 
 def test_incremental_resyncs_on_history_expired(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
     client = FakeClient({"g1": _msg("g1", "Un"), "g9": _msg("g9", "Neuf")}, history_raises=True)
     Syncer(store, client, acc).incremental()
@@ -92,7 +92,7 @@ class PagedClient(FakeClient):
 
 
 def test_incremental_checkpoints_each_page_so_a_failure_does_not_restart_from_scratch(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
     pages = [[{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}], [{"id": "12", "messagesAdded": [{"message": {"id": "g3"}}]}]]
     msgs = {"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux"), "g3": _msg("g3", "Trois")}
@@ -106,7 +106,7 @@ def test_incremental_checkpoints_each_page_so_a_failure_does_not_restart_from_sc
 
 
 def test_incremental_refetches_a_message_once_per_run(store):
-    acc = store.upsert_account("me@example.org")
+    acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
     pages = [
         [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}, {"id": "12", "labelsAdded": [{"message": {"id": "g2"}}]}],
