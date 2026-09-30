@@ -1,7 +1,6 @@
-# Brainstorm / maquettes (compagnon visuel superpowers)
-.superpowers/
-
-# Secrets et identifiants (BYO OAuth) : JAMAIS commités
+# ---------------------------------------------------------------------------
+# Secrets and credentials (bring-your-own OAuth): NEVER commit them
+# ---------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
@@ -9,40 +8,84 @@ client_secret*.json
 credentials*.json
 *token*.json
 secrets/
+secrets.enc
+secrets.key
+runtime.json
+*.pem
+*.p12
 
-# Donnees runtime locales (base, pieces jointes, cache)
+# ---------------------------------------------------------------------------
+# Local runtime data (database, attachments, logs, webview storage)
+# ---------------------------------------------------------------------------
 data/
 *.sqlite
 *.sqlite3
+*.sqlite-wal
+*.sqlite-shm
 *.db
 attachments/
+logs/
+*.log
+webview/
+glass_alpha
 
+# ---------------------------------------------------------------------------
 # Python
+# ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
 .venv/
 venv/
+env/
+.python-version.local
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
 *.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
 
-# Build / packaging
+# ---------------------------------------------------------------------------
+# Build and packaging
+# ---------------------------------------------------------------------------
 build/
 dist/
 *.spec.bak
 *.app/
 *.dmg
+*.iconset/
+Maily-*.zip
+Maily-*.tar.gz
 
-# Frontend
+# ---------------------------------------------------------------------------
+# Frontend tooling (none today, kept for safety)
+# ---------------------------------------------------------------------------
 node_modules/
 frontend/dist/
 
-# OS / editeur
+# ---------------------------------------------------------------------------
+# Editors, OS and local agent tooling
+# ---------------------------------------------------------------------------
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
+*.swp
+*~
+.superpowers/
+.claude/settings.local.json
 
-# Duplicatas iCloud/Finder (« nom 2.ext »)
+# ---------------------------------------------------------------------------
+# iCloud / Finder duplicates ("name 2.ext")
+# ---------------------------------------------------------------------------
+* [0-9]
 * [0-9].*
+* [0-9][0-9]
 * [0-9][0-9].*
