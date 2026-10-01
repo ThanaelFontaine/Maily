@@ -109,3 +109,22 @@ def test_theme_labels_are_in_english():
 def test_no_hardcoded_locale_in_formatting():
     assert "fr-FR" not in JS and "en-US" not in JS
     assert "I18N.locale()" in JS
+
+
+def test_no_restore_button_for_imap_messages():
+    # The engine refuses to restore an IMAP message (untrash_message), so the
+    # reading pane offers Restore for Gmail messages only.
+    head = JS[JS.index("const isImap"):JS.index("read.appendChild(head)")]
+    assert '(isImap ? "" : iconButton("untrashbtn", "restore", "read.restore"))' in head
+    assert 'const untrashBtn = head.querySelector("#untrashbtn");\n  if (untrashBtn) {' in JS
+
+
+def test_engine_refuses_imap_restore(database):
+    import pytest
+    from core import accounts_service as svc
+    from core.store import Store
+    store = Store(database)
+    aid = store.upsert_account("old@example.net", provider="imap")
+    mid = store.upsert_message(aid, "INBOX\x1f1\x1f7", subject="Trashed", is_trashed=1)
+    with pytest.raises(ValueError, match="IMAP"):
+        svc.untrash_message(store, "old@example.net", mid)

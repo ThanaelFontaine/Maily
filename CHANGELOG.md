@@ -37,6 +37,7 @@ Maily now speaks five languages, its hacker-style theme has an original name, ev
 
 ### Fixed
 
+- The reading pane no longer offers *Restore* for a trashed IMAP message: the engine refuses to restore IMAP messages, so the button only led to an error. The documentation now says that trash is reversible for Gmail accounts only, that `.env` only sets the `core/config.py` settings (`MAILY_DATA_DIR` and `MAILY_NO_BIOMETRIC` are environment variables only), and which `category` values `maily_list_messages` accepts.
 - The blinking caret of the Zero Day terminal line referenced an animation that did not exist; it now blinks (and stays still when the system asks for reduced motion).
 
 ### Removed

@@ -345,8 +345,10 @@ def maily_download_attachment(message_id: int, attachment_id: int,
 
 @mcp.tool()
 def maily_trash(message_id: int) -> dict:
-    """Moves a message to the trash (reversible). Management action: confirm
-    with the user before calling this tool."""
+    """Moves a message to the trash. Reversible for a Gmail profile; for an
+    IMAP profile the message goes to the server's trash folder and Maily
+    cannot restore it. Management action: confirm with the user before
+    calling this tool."""
     from core.accounts_service import trash_message
     m, acc = _account_of(message_id)
     if not acc:

@@ -733,7 +733,9 @@ async function openMessage(id) {
   const head = document.createElement("div");
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
-  // IMAP (Orange, etc.) is read-only: no reply or forward (no SMTP).
+  // IMAP (Orange, etc.) is read-only: no reply or forward (no SMTP), and a
+  // message moved to the server's trash cannot be restored from Maily
+  // (core/accounts_service.untrash_message refuses it), so no Restore button.
   const isImap = ((state.accounts.find((a) => a.id === m.account_id) || {}).provider === "imap");
   const sendButtons = isImap ? "" :
     `<button class="gel" id="replybtn">${ico("reply")} ${esc(tr("read.reply"))}</button>
@@ -746,7 +748,7 @@ async function openMessage(id) {
        ${sendButtons}
        ${iconButton("emlbtn", "download", "read.downloadEml")}
        ${inTrash
-        ? iconButton("untrashbtn", "restore", "read.restore")
+        ? (isImap ? "" : iconButton("untrashbtn", "restore", "read.restore"))
         : iconButton("archbtn", "archive", "read.archive") + iconButton("trashbtn", "trash", "read.trash")}
      </div>`;
   read.appendChild(head);
@@ -762,12 +764,13 @@ async function openMessage(id) {
   const fwdBtn = head.querySelector("#fwdbtn");
   if (fwdBtn) fwdBtn.onclick = () => forward(m);
   head.querySelector("#emlbtn").onclick = () => exportEml(id);
-  if (inTrash) {
-    head.querySelector("#untrashbtn").onclick = async () => {
+  const untrashBtn = head.querySelector("#untrashbtn");
+  if (untrashBtn) {
+    untrashBtn.onclick = async () => {
       try { await postAction(`/messages/${id}/untrash`); afterAction(msgSpec("toast.restored")); }
       catch (e) { banner(errSpec("toast.actionFailed", e)); }
     };
-  } else {
+  } else if (!inTrash) {
     head.querySelector("#archbtn").onclick = async () => {
       try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction(msgSpec("toast.archived")); }
       catch (e) { banner(errSpec("toast.actionFailed", e)); }
