@@ -6,15 +6,52 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-01
+
+Maily now speaks five languages, its hacker-style theme has an original name, everything in the repository is in English, it starts with `uv run maily`, and every release comes with a downloadable macOS app.
+
+### Added
+
+- **The interface is available in five languages: English (the default), French, German, Spanish and Portuguese.** Every text of the window goes through a small dependency-free translation layer (`frontend/i18n.js`, one JSON file per language in `frontend/i18n/`, keys in English): menus, buttons, tooltips, accessible names (`aria-label`), placeholders, confirmations, notifications, empty states, error messages, the Settings panel and the add-account flows.
+- **Language choice.** On first launch, Maily follows the language of the system (or of the browser in demo mode) when it is one of the five, and English otherwise. A new *Language* tab in Settings lists the languages by their native names (English, Français, Deutsch, Español, Português); the choice applies at once, is stored in `prefs.json` like the theme (new `language` preference, `GET/POST /prefs`), and is kept between launches. `<html lang>` follows the active language.
+- Replies and forwards always start their subject with `Re:` and `Fwd:`, whatever the interface language, so that every mail client understands them; prefixes already written by other clients (`AW:`, `Tr:`, `WG:`, `RV:`, `Enc:`, ...) are kept as they are. The quoted header lines of the body follow the interface language.
+- Changing the language loads the new translation first: if it cannot be loaded, the interface keeps its language and nothing is saved, and when several languages are clicked quickly, the last one wins. Every visible text follows at once, including notifications, form messages, the empty reading pane and the density percentage, and the open message keeps its *Show images* choice.
+- **Dates, times, sizes and percentages** are formatted with `Intl` in the active language (the French format was hard-coded). Plurals follow the rules of each language (`Intl.PluralRules`).
+- **Stable error codes.** Every API error now carries a code in the `X-Maily-Error` header (`account_not_found`, `imap_login_failed`, `auth_timeout`, `provider_error`, ...) that the interface translates; the `detail` text is in English and only goes to logs and scripts.
+- **`uv run maily`** launches the app from a clone: a `maily` console script is declared in `pyproject.toml` (`[project.scripts]`, pointing at `app.bootstrap:main`). `uv run python -m app.bootstrap` still works, with the same `--data-dir` option.
+- **Downloadable macOS app.** The release workflow now builds `Maily.app` with PyInstaller on a macOS Apple Silicon runner (it fails if the app is not `arm64`), then creates the tag and a draft release with `Maily-X.Y.Z-macos-arm64.zip` and its `.sha256` checksum file, and publishes it last: a release is never visible without its macOS app, and running the workflow again after a failure resumes safely. Version and notes come from `scripts/release_notes.py`. The app is not signed nor notarized: `docs/BUILD.md` explains what macOS says and how to open it.
+- Tests for the translations (every language has exactly the keys of English, with the same placeholders and no em or en dash; every key used by the interface exists; every API error code is translated), for the language preference, for the theme migration and for the console script.
+- New screenshots: Glassmorphism theme and the *Language* tab of Settings.
+
+### Changed
+
+- **The dark terminal theme is renamed Zero Day** (id `zeroday`, formerly `dedsec`), with the same look: its former name belonged to a video game brand. The terminal line, class names, animations and documentation no longer refer to it. A saved `dedsec` preference is read as `zeroday` and `prefs.json` is rewritten once with the new id.
+- Theme names are in English in every language: *Classic*, *Frutiger Aero*, *Glassmorphism* (instead of *Glassmorphisme*) and *Zero Day*.
+- **English everywhere in the repository:** code comments, docstrings, log messages, command-line output of the scripts, error messages, test names, the MCP tool descriptions and results, the demo data and the documentation are now in English. This changelog is rewritten in English, and so are the release notes taken from it. Only the translation files of the interface hold other languages.
+- The Touch ID prompt, the startup error window and the MCP server's messages are in English.
+- The repository is now `ThanaelFontaine/Maily`: every link points to <https://github.com/ThanaelFontaine/Maily>.
+- The demo mode uses English fictitious data (accounts *Personal*, *Work* and *Old address*, labels *Invoices* and *Travel*).
+- Every screenshot in `docs/images/` is regenerated from the English interface; `theme-dedsec.png` becomes `theme-zeroday.png`.
+- The documentation explains how to add a language and that interface text always goes through a translation key (`CONTRIBUTING.md`, `docs/ARCHITECTURE.md`).
+- The default name of a downloaded attachment without a name is `attachment`.
+
+### Fixed
+
+- The blinking caret of the Zero Day terminal line referenced an animation that did not exist; it now blinks (and stays still when the system asks for reduced motion).
+
+### Removed
+
+- `README.fr.md` and the French copies of the guides in `docs/fr/` (the interface itself is translated instead).
+
 ## [0.6.0] - 2026-10-01
 
 First open-source release: a new default look, a single settings panel, a hardened secret store, complete documentation and an automated release process.
 
 ### Added
 
-- **Classic theme, now the default.** Light, flat and understated, in the spirit of Google's tools: white background, very light grey surfaces, blue accent `#1a73e8`, system font, no glass, light shadows only on floating windows, slightly rounded corners, WCAG AA contrast. It has a **dark variant** of the same design, in three modes: *Automatique* (follows the system), *Clair* (light) and *Sombre* (dark). Frutiger Aero, Glassmorphism and DedSec remain available.
-- **Settings panel (Réglages).** One panel with tabs replaces the *Theme* button and the scattered settings: *Apparence* (theme, Classic mode, glass density), *Confidentialité* (remote images), *Comptes* (name, color, disconnect) and *À propos* (version, data folder, license). The Escape key closes dialogs.
-- **Remote images: blocked by default, with a per-message override.** The API reports how many remote resources were removed (`X-Maily-Blocked-Remote` header) and the reading pane shows *Afficher les images* to load them for that message only.
+- **Classic theme, now the default.** Light, flat and understated, in the spirit of Google's tools: white background, very light grey surfaces, blue accent `#1a73e8`, system font, no glass, light shadows only on floating windows, slightly rounded corners, WCAG AA contrast. It has a **dark variant** of the same design, in three modes: *Automatic* (follows the system), *Light* and *Dark*. Frutiger Aero, Glassmorphism and the dark terminal theme (named Zero Day since 0.7.0) remain available.
+- **Settings panel.** One panel with tabs replaces the *Theme* button and the scattered settings: *Appearance* (theme, Classic mode, glass density), *Privacy* (remote images), *Accounts* (name, color, disconnect) and *About* (version, data folder, license). The Escape key closes dialogs.
+- **Remote images: blocked by default, with a per-message override.** The API reports how many remote resources were removed (`X-Maily-Blocked-Remote` header) and the reading pane shows *Show images* to load them for that message only.
 - **Automatic sync** of every mailbox every 3 minutes while the app is open (`MAILY_POLL_INTERVAL_SECONDS`), sharing a single lock with the Sync button; the last sync time and error of each account are recorded in `sync_state`.
 - **Custom data folder:** `MAILY_DATA_DIR` environment variable and `--data-dir` option, for tests, demos or a separate profile.
 - **Demo mode:** `scripts/demo.py` runs the interface on fictitious mailboxes, in a temporary folder, with an in-memory API token, and refuses to use the real data folder.
@@ -26,18 +63,18 @@ First open-source release: a new default look, a single settings panel, a harden
 - The MCP tool `maily_get_message` now lists the message's attachments with their `attachment_id`.
 - `runtime.json` now carries the local API token (file created with mode `0600`), so local automations can call the API without reading the secret store.
 - Logs are now written to `logs/maily.log` in the data folder (rotating, with secrets redacted); the logging setup existed but was never enabled.
-- **Documentation:** English README and French README, architecture guide, Google Cloud setup guide (English and French), MCP guide (English and French), build guide, `CONTRIBUTING.md`, `SECURITY.md` (private reporting and threat model), `CODE_OF_CONDUCT.md`, this changelog, and screenshots in `docs/images/`.
+- **Documentation:** README in English and in French, architecture guide, Google Cloud setup guide (English and French), MCP guide (English and French), build guide, `CONTRIBUTING.md`, `SECURITY.md` (private reporting and threat model), `CODE_OF_CONDUCT.md`, this changelog, and screenshots in `docs/images/`.
 - **MIT License.**
 - **CI:** tests on macOS and Linux for every push to `main` and every pull request; automatic tag and GitHub release on `main` (after green tests) when the version in `pyproject.toml` has no tag yet, with the matching CHANGELOG section as notes.
 
 ### Changed
 
-- The IMAP form is generic: *Adresse IMAP*, with Orange as the default server and any other IMAP server possible.
+- The IMAP form is generic: *IMAP address*, with Orange as the default server and any other IMAP server possible.
 - Dates are shown in the system time zone (the time zone was hard-coded).
-- Buttons painted with an account color (*Répondre*, *Envoyer*) always use white text, readable in every theme.
+- Buttons painted with an account color (*Reply*, *Send*) always use white text, readable in every theme.
 - The Windows fallback window background is white, matching the Classic theme.
 - The macOS bundle identifier is now `io.github.thanaelfontaine.maily`, and the bundle version is read from the code instead of being hard-coded.
-- The Glassmorphism, Aero and DedSec themes style the new settings panel.
+- The Glassmorphism, Aero and dark terminal (now Zero Day) themes style the new settings panel.
 - `.mcp.json` uses `${CLAUDE_PROJECT_DIR:-.}` instead of an absolute path.
 
 ### Fixed
@@ -73,7 +110,7 @@ First open-source release: a new default look, a single settings panel, a harden
 - Read-only IMAP accounts (Orange), with login check before saving and encrypted password storage.
 - Export any message as `.eml`, from the app and the MCP server.
 - Account management: rename, recolor and disconnect an account from the settings (`DELETE /accounts/{id}` removes its secrets and local copy).
-- **+ Ajouter un compte** button and Google account addition from the app (OAuth consent in the system browser).
+- **+ Add account** button and Google account addition from the app (OAuth consent in the system browser).
 - Banner close button and automatic dismissal after 5 seconds.
 
 ### Fixed
@@ -119,16 +156,17 @@ First open-source release: a new default look, a single settings panel, a harden
 - Reading with sanitized HTML, inline images, downloadable attachments, remote images blocked by default.
 - Sending, replying and forwarding with attachments (25 MB limit).
 - Archive, trash, restore, auto mark-as-read, Gmail categories, labels as folders, local full-text search, mail tabs.
-- Themes Frutiger Aero, DedSec and Glass (native macOS vibrancy), per-account names and colors.
+- Themes Frutiger Aero, a dark terminal theme (named Zero Day since 0.7.0) and Glass (native macOS vibrancy), per-account names and colors.
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.6.0...HEAD
-[0.6.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.5.1...v0.6.0
-[0.5.1]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.5.0...v0.5.1
-[0.5.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.2.1...v0.3.0
-[0.2.1]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ThanaelFontaine/Maily/releases/tag/v0.1.0

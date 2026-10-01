@@ -1,12 +1,12 @@
-"""Logo/icone Maily : squircle "liquid glass" (Apple) a teinte aqua/lavande
-discrete (Frutiger Aero), avec une enveloppe minimale. Rend un PNG 1024 ;
-voir scripts/build_macos.sh (ou make_icns) pour le .icns."""
+"""Maily logo/icon: a "liquid glass" squircle with a subtle aqua/lavender tint
+(Frutiger Aero), with a minimal envelope. Renders a 1024 PNG; see
+scripts/build_macos.sh for the .icns."""
 from __future__ import annotations
 import pathlib
 from PIL import Image, ImageDraw, ImageFilter
 
 S = 1024
-R = 236  # rayon du squircle
+R = 236  # squircle radius
 OUT = pathlib.Path(__file__).resolve().parent / "maily.png"
 
 
@@ -29,7 +29,7 @@ def clip(layer, mask):
 def main():
     mask = squircle_mask()
 
-    # Fond : degrade vertical doux aqua -> lavande (Frutiger Aero discret).
+    # Background: soft vertical gradient from aqua to lavender (subtle Frutiger Aero).
     top, bot = (214, 236, 255), (232, 227, 251)
     grad = Image.new("RGB", (S, S))
     gd = ImageDraw.Draw(grad)
@@ -37,17 +37,17 @@ def main():
         gd.line([(0, y), (S, y)], fill=lerp(top, bot, y / (S - 1)))
     icon = clip(grad.convert("RGBA"), mask)
 
-    # Profondeur : legere vignette sombre en bas (verre epais).
+    # Depth: light dark vignette at the bottom (thick glass).
     vg = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(vg).ellipse([-160, S - 360, S + 160, S + 260], fill=(60, 70, 120, 60))
     icon.alpha_composite(clip(vg.filter(ImageFilter.GaussianBlur(80)), mask))
 
-    # Sheen : grande brillance blanche en haut (bulle de verre).
+    # Sheen: large white highlight at the top (glass bubble).
     sh = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(sh).ellipse([-120, -300, S + 120, 430], fill=(255, 255, 255, 135))
     icon.alpha_composite(clip(sh.filter(ImageFilter.GaussianBlur(55)), mask))
 
-    # Liseré lumineux sur le bord haut (lumiere Apple glass).
+    # Bright rim along the top edge (glass light).
     rim = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(rim).rounded_rectangle([3, 3, S - 4, S - 4], radius=R - 2,
                                           outline=(255, 255, 255, 150), width=4)
@@ -55,18 +55,18 @@ def main():
 
     d = ImageDraw.Draw(icon)
 
-    # Ombre douce sous l'enveloppe.
-    bx0, by0, bx1, by1 = 196, 340, 828, 724   # enveloppe plus grosse
+    # Soft shadow under the envelope.
+    bx0, by0, bx1, by1 = 196, 340, 828, 724   # bigger envelope
     shadow = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(shadow).rounded_rectangle([bx0, by0 + 24, bx1, by1 + 26], radius=66,
                                              fill=(70, 90, 150, 120))
     icon.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(24)))
 
-    # Enveloppe minimale : blanc translucide + fin liseré bleu-gris.
+    # Minimal envelope: translucent white + thin blue-grey rim.
     d.rounded_rectangle([bx0, by0, bx1, by1], radius=66,
                         fill=(255, 255, 255, 238), outline=(150, 172, 208, 170), width=3)
 
-    # Rabat en "V" (bleu doux, jonctions arrondies).
+    # "V" flap (soft blue, rounded joints).
     blue = (108, 138, 190, 230)
     apex = (S // 2, by0 + 226)
     pl, pr = (bx0 + 56, by0 + 52), (bx1 - 56, by0 + 52)
@@ -74,7 +74,7 @@ def main():
     for p in (pl, apex, pr):
         d.ellipse([p[0] - 18, p[1] - 18, p[0] + 18, p[1] + 18], fill=blue)
 
-    # Reflet glossy sur le haut de l'enveloppe.
+    # Glossy highlight on the top of the envelope.
     gloss = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     ImageDraw.Draw(gloss).rounded_rectangle([bx0 + 18, by0 + 14, bx1 - 18, by0 + 112],
                                             radius=52, fill=(255, 255, 255, 90))

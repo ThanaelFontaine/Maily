@@ -47,10 +47,10 @@ def test_unreadable_secrets_are_shown_on_screen(monkeypatch, capsys):
     shown = []
     monkeypatch.setattr(bootstrap, "_show_fatal", lambda msg: shown.append(msg))
     with pytest.raises(SystemExit) as exc:
-        bootstrap.fail_unreadable_secrets(RuntimeError("cle differente"))
+        bootstrap.fail_unreadable_secrets(RuntimeError("different key"))
     assert exc.value.code == 2
-    assert shown == ["cle differente"]
-    assert "cle differente" in capsys.readouterr().err
+    assert shown == ["different key"]
+    assert "different key" in capsys.readouterr().err
 
 
 def test_fatal_page_escapes_message():

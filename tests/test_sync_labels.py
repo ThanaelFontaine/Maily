@@ -47,7 +47,7 @@ def store(database):
 def test_incremental_applies_label_changes(store):
     acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1", labels=["INBOX", "UNREAD"])}), acc).backfill()
-    updated = {"g1": _msg("g1", labels=["INBOX", "STARRED"])}  # lu + starred cote serveur
+    updated = {"g1": _msg("g1", labels=["INBOX", "STARRED"])}  # read + starred on the server
     hist = [{"id": "11", "labelsRemoved": [{"message": {"id": "g1"}}]},
             {"id": "12", "labelsAdded": [{"message": {"id": "g1"}}]}]
     Syncer(store, FakeClient(updated, history=hist), acc).incremental()
@@ -69,11 +69,11 @@ def test_incremental_trash_via_label(store):
 def test_incremental_skips_deleted_in_flight(store):
     acc = store.upsert_account("me@example.com")
     Syncer(store, FakeClient({"g1": _msg("g1")}), acc).backfill()
-    msgs = {"g1": _msg("g1"), "g3": _msg("g3", "Trois")}
+    msgs = {"g1": _msg("g1"), "g3": _msg("g3", "Three")}
     hist = [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}, {"message": {"id": "g3"}}]}]
     Syncer(store, FakeClient(msgs, history=hist, missing=["g2"]), acc).incremental()
-    assert store.search_messages("Trois")
-    assert store.get_sync_state(acc, "last_history_id") == "999"  # avance malgre le 404
+    assert store.search_messages("Three")
+    assert store.get_sync_state(acc, "last_history_id") == "999"  # moves forward despite the 404
 
 
 def test_incremental_delete_unknown_is_noop(store):
@@ -83,7 +83,7 @@ def test_incremental_delete_unknown_is_noop(store):
     hist = [{"id": "11", "messagesDeleted": [{"message": {"id": "ghost"}}]}]
     Syncer(store, FakeClient({"g1": _msg("g1")}, history=hist), acc).incremental()
     after = store.db.read().execute("SELECT COUNT(*) c FROM messages").fetchone()["c"]
-    assert after == before  # pas de ligne fantome
+    assert after == before  # no ghost row
 
 
 def test_backfill_empty_mailbox_sets_checkpoint(store):

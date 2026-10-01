@@ -37,7 +37,7 @@ def _imap_key(email: str) -> str:
 
 
 def save_imap_credentials(email: str, creds: dict) -> None:
-    """creds : {host, port, username, password}. Stocke chiffre."""
+    """creds: {host, port, username, password}. Stored encrypted."""
     secret_file.set(_imap_key(email), json.dumps(creds))
 
 

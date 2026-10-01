@@ -1,31 +1,30 @@
-"""Magasin de secrets local chiffre.
+"""Local encrypted secret store.
 
-Les jetons OAuth, le client OAuth, les identifiants IMAP et le jeton de l'API
-locale sont ranges dans un unique fichier `secrets.enc` (chiffre avec Fernet :
-AES-128-CBC + HMAC-SHA256) dans le dossier de donnees, la cle etant dans
-`secrets.key`. Les deux fichiers sont en 0600 (proprietaire seul).
+OAuth tokens, the OAuth client, IMAP credentials and the local API token are
+kept in a single `secrets.enc` file (encrypted with Fernet: AES-128-CBC +
+HMAC-SHA256) in the data folder, the key being in `secrets.key`. Both files
+are 0600 (owner only).
 
-Pourquoi un fichier et pas le Trousseau : dans l'app empaquetee, le Trousseau
-macOS reclamait le mot de passe a chaque acces car le binaire n'est pas celui
-qui avait cree les entrees. Un magasin possede par l'app supprime cette invite.
-Sur macOS, l'app graphique est en plus protegee par Touch ID au lancement
-(voir core/biometric.py).
+Why a file and not the Keychain: in the packaged app, the macOS Keychain asked
+for the password at every access because the binary was not the one that had
+created the entries. A store owned by the app removes that prompt. On macOS,
+the desktop app is also protected by Touch ID at launch (see core/biometric.py).
 
-Garanties d'integrite :
+Integrity guarantees:
 
-- Ecriture atomique : le nouveau contenu part dans un fichier temporaire 0600
-  du meme dossier, est force sur le disque (fsync), puis remplace l'ancien d'un
-  seul coup (os.replace) ; le dossier est ensuite synchronise. Une coupure en
-  plein milieu laisse l'ancien fichier intact, jamais un fichier tronque.
-- Verrou inter-processus : l'app, le serveur MCP et les scripts peuvent tourner
-  en meme temps. Chaque lecture-modification-ecriture se fait sous un verrou de
-  fichier (`secrets.lock`, fcntl.flock sur POSIX, msvcrt.locking sous Windows),
-  en plus d'un verrou de fil pour le processus courant. Sans lui, deux ecritures
-  concurrentes perdraient l'une des deux mises a jour.
-- Cle creee une seule fois, en O_EXCL et 0600 : jamais ecrasee.
-- Pas d'effacement silencieux : si `secrets.enc` ne se dechiffre pas (cle
-  changee, fichier abime), une SecretStoreError est levee. L'ancien comportement
-  (rendre {} en silence) faisait effacer tous les jetons a l'ecriture suivante.
+- Atomic writes: the new content goes to a temporary 0600 file in the same
+  folder, is forced to disk (fsync), then replaces the old one in one step
+  (os.replace); the folder is then synced. A power cut in the middle leaves the
+  old file intact, never a truncated file.
+- Inter-process lock: the app, the MCP server and scripts may run at the same
+  time. Every read-modify-write happens under a file lock (`secrets.lock`,
+  fcntl.flock on POSIX, msvcrt.locking on Windows), plus a thread lock for the
+  current process. Without it, two concurrent writes would lose one of the two
+  updates.
+- Key created once, with O_EXCL and 0600: never overwritten.
+- No silent erasure: if `secrets.enc` cannot be decrypted (changed key,
+  damaged file), a SecretStoreError is raised. The old behavior (silently
+  returning {}) made the next write erase every token.
 """
 from __future__ import annotations
 import contextlib
@@ -43,7 +42,7 @@ _HELD = threading.local()
 
 
 class SecretStoreError(RuntimeError):
-    """Le magasin de secrets est illisible ou incoherent : rien n'est ecrase."""
+    """The secret store is unreadable or inconsistent: nothing is overwritten."""
 
 
 def _key_path():
@@ -59,11 +58,11 @@ def _lock_path():
 
 
 def _ensure_dir(directory) -> None:
-    """Cree le dossier de donnees en 0700 s'il n'existe pas encore.
+    """Creates the data folder with mode 0700 if it does not exist yet.
 
-    Le serveur MCP ou un script peut passer avant l'app : sans cela, le dossier
-    serait cree avec l'umask (souvent 0755, lisible par les autres comptes).
-    Un dossier deja present n'est pas modifie.
+    The MCP server or a script may run before the app: without this, the folder
+    would be created with the umask (often 0755, readable by other accounts).
+    An existing folder is left unchanged.
     """
     directory = pathlib.Path(directory)
     if directory.exists():
@@ -74,7 +73,7 @@ def _ensure_dir(directory) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Verrou inter-processus
+# Inter-process lock
 # ---------------------------------------------------------------------------
 
 def _os_lock(fd) -> None:
@@ -87,7 +86,7 @@ def _os_lock(fd) -> None:
         return
     try:
         import msvcrt
-    except ImportError:  # plateforme exotique : verrou de fil seulement
+    except ImportError:  # unusual platform: thread lock only
         return
     while True:
         try:
@@ -119,10 +118,10 @@ def _os_unlock(fd) -> None:
 
 @contextlib.contextmanager
 def _locked():
-    """Verrou exclusif (fil + processus) autour d'une operation sur le magasin.
+    """Exclusive lock (thread + process) around an operation on the store.
 
-    Reentrant dans un meme fil : un appel imbrique ne reprend pas le verrou de
-    fichier (flock sur un second descripteur bloquerait le processus lui-meme).
+    Reentrant within a thread: a nested call does not take the file lock again
+    (flock on a second descriptor would block the process itself).
     """
     with _LOCK:
         depth = getattr(_HELD, "depth", 0)
@@ -149,11 +148,11 @@ def _locked():
 
 
 # ---------------------------------------------------------------------------
-# Ecritures atomiques
+# Atomic writes
 # ---------------------------------------------------------------------------
 
 def _fsync_dir(directory) -> None:
-    """Synchronise l'entree de dossier (POSIX) pour que le rename survive a une coupure."""
+    """Syncs the directory entry (POSIX) so that the rename survives a power cut."""
     if os.name != "posix":
         return
     try:
@@ -171,8 +170,8 @@ def _fsync_dir(directory) -> None:
 def _atomic_write(path, blob: bytes) -> None:
     path = pathlib.Path(path)
     _ensure_dir(path.parent)
-    # mkstemp cree le fichier en 0600, dans le meme dossier (meme systeme de
-    # fichiers : os.replace reste atomique).
+    # mkstemp creates the file with mode 0600, in the same folder (same file
+    # system: os.replace stays atomic).
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix="." + path.name + ".", suffix=".tmp")
     try:
         if os.name == "posix":
@@ -196,7 +195,7 @@ def _atomic_write(path, blob: bytes) -> None:
 
 
 def _create_key(p) -> bytes:
-    """Cree la cle en O_EXCL + 0600. Si un autre processus l'a creee, la relit."""
+    """Creates the key with O_EXCL + 0600. If another process created it, reads it back."""
     key = Fernet.generate_key()
     try:
         fd = os.open(str(p), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -219,9 +218,9 @@ def _read_key(p) -> bytes:
         Fernet(key)
     except Exception as e:
         raise SecretStoreError(
-            f"Cle de chiffrement invalide dans {p}. Le fichier n'a pas ete modifie ; "
-            "restaure une sauvegarde de secrets.key ou supprime secrets.key et "
-            "secrets.enc pour repartir de zero (les comptes seront a reconnecter)."
+            f"Invalid encryption key in {p}. The file was not changed; "
+            "restore a backup of secrets.key, or delete secrets.key and "
+            "secrets.enc to start from scratch (accounts will have to be connected again)."
         ) from e
     return key
 
@@ -231,15 +230,15 @@ def _load_key(create: bool = True) -> bytes:
     if p.exists():
         return _read_key(p)
     if _data_path().exists():
-        # Des secrets existent mais leur cle a disparu : en creer une nouvelle
-        # rendrait secrets.enc definitivement illisible, puis l'effacerait.
+        # Secrets exist but their key is gone: creating a new one would make
+        # secrets.enc permanently unreadable, then erase it.
         raise SecretStoreError(
-            f"{p.name} est introuvable alors que {_data_path().name} existe dans {p.parent}. "
-            "Rien n'a ete modifie ; restaure secrets.key ou supprime secrets.enc "
-            "pour repartir de zero (les comptes seront a reconnecter)."
+            f"{p.name} is missing while {_data_path().name} exists in {p.parent}. "
+            "Nothing was changed; restore secrets.key, or delete secrets.enc "
+            "to start from scratch (accounts will have to be connected again)."
         )
     if not create:
-        raise SecretStoreError(f"{p.name} introuvable dans {p.parent}.")
+        raise SecretStoreError(f"{p.name} not found in {p.parent}.")
     _ensure_dir(p.parent)
     return _create_key(p)
 
@@ -253,15 +252,15 @@ def _read_all() -> dict:
         raw = Fernet(key).decrypt(p.read_bytes())
     except InvalidToken as e:
         raise SecretStoreError(
-            f"Impossible de dechiffrer {p} (cle differente ou fichier abime). "
-            "Rien n'a ete modifie ; aucun jeton n'a ete efface."
+            f"Cannot decrypt {p} (different key or damaged file). "
+            "Nothing was changed; no token was erased."
         ) from e
     try:
         data = json.loads(raw)
     except ValueError as e:
-        raise SecretStoreError(f"Contenu dechiffre de {p} illisible (JSON invalide).") from e
+        raise SecretStoreError(f"Decrypted content of {p} is unreadable (invalid JSON).") from e
     if not isinstance(data, dict):
-        raise SecretStoreError(f"Contenu dechiffre de {p} inattendu (objet JSON attendu).")
+        raise SecretStoreError(f"Unexpected decrypted content of {p} (a JSON object is expected).")
     return data
 
 
@@ -271,7 +270,7 @@ def _write_all(data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
-# API publique
+# Public API
 # ---------------------------------------------------------------------------
 
 def get(key: str) -> str | None:
@@ -279,7 +278,7 @@ def get(key: str) -> str | None:
         return _read_all().get(key)
 
 
-def set(key: str, value: str) -> None:  # noqa: A001 (API deliberee)
+def set(key: str, value: str) -> None:  # noqa: A001 (deliberate API)
     with _locked():
         data = _read_all()
         data[key] = value
@@ -296,13 +295,13 @@ def delete(key: str) -> None:
 
 
 def migrate_from_keyring(names, service: str = "Maily") -> int:
-    """Importe une fois les entrees du Trousseau vers le fichier chiffre.
+    """Imports the Keychain entries into the encrypted file, once.
 
-    Ne demande rien si le processus courant possede deja les entrees (cas du
-    lancement en dev via `uv run`, qui les a creees). Best-effort : toute erreur
-    du Trousseau (indisponible, acces refuse) est ignoree, l'entree restera a
-    re-authentifier. N'ecrase jamais une valeur deja presente dans le fichier.
-    Une SecretStoreError (magasin illisible) remonte : on n'ecrit rien dessus.
+    Asks for nothing if the current process already owns the entries (the case
+    of a dev launch through `uv run`, which created them). Best effort: any
+    Keychain error (unavailable, access denied) is ignored, and the entry will
+    need a new sign-in. Never overwrites a value already in the file. A
+    SecretStoreError (unreadable store) is raised: nothing is written on it.
     """
     with _locked():
         try:

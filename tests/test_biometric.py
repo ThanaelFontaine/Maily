@@ -17,6 +17,6 @@ def test_non_darwin_never_gates(monkeypatch):
 def test_missing_framework_does_not_block(monkeypatch):
     monkeypatch.delenv("MAILY_NO_BIOMETRIC", raising=False)
     monkeypatch.setattr(biometric.sys, "platform", "darwin")
-    # Simule l'absence du framework LocalAuthentication.
+    # Simulates a missing LocalAuthentication framework.
     monkeypatch.setitem(sys.modules, "LocalAuthentication", None)
     assert biometric.require_unlock() is True

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Stocke le client OAuth (client_id/secret) dans le magasin chiffre, sans jamais afficher le secret.
+"""Stores the OAuth client (client_id/secret) in the encrypted store, without ever printing the secret.
 
 Usage:
-  uv run python scripts/store_client_config.py /chemin/vers/client_secret_xxx.json
-  uv run python scripts/store_client_config.py        # mode interactif (saisie masquee)
+  uv run python scripts/store_client_config.py /path/to/client_secret_xxx.json
+  uv run python scripts/store_client_config.py        # interactive mode (hidden input)
 
-Le client_secret n'est ni affiche ni logge. Il est ecrit uniquement dans
-secrets.enc (chiffre, 0600) dans le dossier de donnees de Maily.
+The client_secret is never printed nor logged. It is written only to
+secrets.enc (encrypted, 0600) in Maily's data folder.
 """
 from __future__ import annotations
 import json
@@ -14,7 +14,7 @@ import sys
 import getpass
 import pathlib
 
-# Rendre le script lançable directement (ajoute la racine du projet au path).
+# Make the script runnable directly (adds the project root to the path).
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from core import secrets_store
@@ -27,16 +27,16 @@ def from_json(path: str):
     cid = node.get("client_id")
     secret = node.get("client_secret")
     if not cid or not secret:
-        sys.exit("JSON invalide : client_id/client_secret introuvables "
-                 "(attendu un identifiant OAuth de type 'Application de bureau').")
+        sys.exit("Invalid JSON: client_id/client_secret not found "
+                 "(an OAuth client of type 'Desktop app' is expected).")
     return cid, secret
 
 
 def interactive():
     cid = input("Client ID: ").strip()
-    secret = getpass.getpass("Client secret (saisie masquee, rien ne s'affiche): ").strip()
+    secret = getpass.getpass("Client secret (hidden input, nothing is shown): ").strip()
     if not cid or not secret:
-        sys.exit("client_id/client_secret vides.")
+        sys.exit("Empty client_id/client_secret.")
     return cid, secret
 
 
@@ -47,8 +47,8 @@ def main():
         cid, secret = interactive()
     secrets_store.save_client_config(cid, secret)
     tail = cid[-16:] if len(cid) > 16 else cid
-    print(f"OK : identifiants client stockes dans le magasin chiffre (client_id ...{tail}).")
-    print("Le client_secret n'a jamais ete affiche.")
+    print(f"OK: client credentials stored in the encrypted store (client_id ...{tail}).")
+    print("The client_secret was never printed.")
 
 
 if __name__ == "__main__":

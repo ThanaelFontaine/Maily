@@ -1,11 +1,11 @@
-"""Synchronisation automatique de toutes les boites, tant que l'app est ouverte.
+"""Automatic sync of every mailbox, while the app is open.
 
-Jusqu'ici Maily ne synchronisait qu'au clic : `poll_interval_seconds` existait
-dans les reglages sans que rien ne le lise. Ce fil de fond passe sur chaque
-compte a intervalle regulier. Une seule synchro a la fois (le verrou est partage
-avec le bouton « Synchroniser » de l'interface et l'API), un compte en echec
-n'arrete pas les autres, et chaque passage laisse sa trace dans `sync_state`
-(`last_sync_at`, `last_sync_error`) pour qui lit la base.
+Maily used to sync only on click: `poll_interval_seconds` existed in the
+settings but nothing read it. This background thread visits every account at a
+regular interval. One sync at a time (the lock is shared with the "Sync" button
+of the interface and the API), a failing account does not stop the others, and
+each pass leaves its trace in `sync_state` (`last_sync_at`, `last_sync_error`)
+for whoever reads the database.
 """
 from __future__ import annotations
 import datetime
@@ -14,12 +14,12 @@ import threading
 
 log = logging.getLogger("maily.auto_sync")
 
-# Plancher : en dessous, on userait le quota Gmail pour rien.
+# Floor: below it, the Gmail quota would be used up for nothing.
 MIN_INTERVAL_SECONDS = 60
 
 
 def serialized(sync_fn, lock=None):
-    """Enveloppe `sync_fn` d'un verrou : deux synchros ne se croisent jamais."""
+    """Wraps `sync_fn` in a lock: two syncs never overlap."""
     lock = lock or threading.Lock()
 
     def _sync(account_id):
@@ -34,7 +34,7 @@ def _now_iso():
 
 
 def sync_all_once(store, sync_fn) -> dict:
-    """Un passage sur tous les comptes ; rend {account_id: nombre ou message d'erreur}."""
+    """One pass over every account; returns {account_id: count or error message}."""
     results = {}
     for acc in store.list_accounts():
         aid = acc["id"]
@@ -42,10 +42,10 @@ def sync_all_once(store, sync_fn) -> dict:
             results[aid] = sync_fn(aid)
             store.set_sync_state(aid, "last_sync_at", _now_iso())
             store.set_sync_state(aid, "last_sync_error", "")
-        except Exception as e:  # un compte en panne ne bloque pas les autres
+        except Exception as e:  # a failing account does not block the others
             message = f"{type(e).__name__}: {e}"[:500]
             results[aid] = message
-            log.warning("synchro automatique du compte %s en echec : %s", aid, message)
+            log.warning("automatic sync of account %s failed: %s", aid, message)
             try:
                 store.set_sync_state(aid, "last_sync_error", message)
             except Exception:
@@ -54,7 +54,7 @@ def sync_all_once(store, sync_fn) -> dict:
 
 
 class AutoSync:
-    """Fil de fond : un passage au demarrage, puis un toutes les `interval` secondes."""
+    """Background thread: one pass at startup, then one every `interval` seconds."""
 
     def __init__(self, store, sync_fn, interval_seconds, initial_delay_seconds=5.0):
         self.store = store
@@ -70,8 +70,8 @@ class AutoSync:
         while not self._stop.is_set():
             try:
                 sync_all_once(self.store, self.sync_fn)
-            except Exception as e:  # la liste des comptes elle-meme a echoue
-                log.warning("synchro automatique impossible : %s", e)
+            except Exception as e:  # listing the accounts itself failed
+                log.warning("automatic sync impossible: %s", e)
             if self._stop.wait(self.interval):
                 return
 

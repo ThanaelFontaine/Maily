@@ -1,5 +1,5 @@
-"""La version de l'app (core.__version__) suit pyproject.toml, source unique
-lue par la CI pour creer le tag et la release."""
+"""The app version (core.__version__) follows pyproject.toml, the single source
+read by the CI to create the tag and the release."""
 import pathlib
 import re
 import tomllib

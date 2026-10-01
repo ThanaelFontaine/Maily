@@ -5,7 +5,7 @@ from core.mime import build_mime
 def send_message(store, client, account_id, sender_addr, to, subject, body_text,
                  body_html=None, cc=None, in_reply_to=None, references=None,
                  thread_id=None, attachments=None, idempotency_key=None):
-    # Dedup anti double-envoi : si un envoi avec cette cle est deja parti (ou en cours), on ne renvoie pas.
+    # Duplicate guard: if a send with this key already went out (or is in progress), do not send again.
     if idempotency_key:
         existing = store.get_outbox_by_key(idempotency_key)
         if existing and existing["status"] in ("sent", "sending"):

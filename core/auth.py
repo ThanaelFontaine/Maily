@@ -18,7 +18,7 @@ class ReauthRequired(Exception):
 
 
 class AuthTimeout(Exception):
-    """Le consentement OAuth n'a pas ete recu dans le delai imparti (ou annule)."""
+    """The OAuth consent was not received in time (or was cancelled)."""
     pass
 
 
@@ -51,13 +51,13 @@ def dict_to_creds(d: dict) -> Credentials:
 def load_credentials(email: str) -> Credentials:
     token = secrets_store.load_account_token(email)
     if not token:
-        raise ReauthRequired(f"Aucun token pour {email}")
+        raise ReauthRequired(f"No token for {email}")
     creds = dict_to_creds(token)
     if creds.expired or not creds.token:
         try:
             creds.refresh(Request())
         except RefreshError as e:
-            raise ReauthRequired(f"Refresh impossible pour {email}: {e}") from e
+            raise ReauthRequired(f"Token refresh failed for {email}: {e}") from e
         secrets_store.save_account_token(email, creds_to_dict(creds))
     return creds
 
@@ -65,7 +65,7 @@ def load_credentials(email: str) -> Credentials:
 def client_config_dict() -> dict:
     cfg = secrets_store.load_client_config()
     if not cfg:
-        raise ReauthRequired("Identifiants client (client_id/secret) absents.")
+        raise ReauthRequired("OAuth client credentials (client_id/secret) are missing.")
     return {
         "installed": {
             "client_id": cfg["client_id"],
@@ -89,9 +89,9 @@ def run_local_auth(open_browser: bool = True, timeout_seconds: int | None = None
         creds = flow.run_local_server(host="127.0.0.1", port=0, open_browser=open_browser,
                                       timeout_seconds=timeout_seconds)
     except WSGITimeoutError as e:
-        raise AuthTimeout("Consentement Google non recu (delai depasse ou annule).") from e
+        raise AuthTimeout("Google consent not received (timed out or cancelled).") from e
     if creds is None:
-        raise AuthTimeout("Consentement Google non recu (delai depasse ou annule).")
+        raise AuthTimeout("Google consent not received (timed out or cancelled).")
     email = _fetch_email(creds)
     secrets_store.save_account_token(email, creds_to_dict(creds))
     return email

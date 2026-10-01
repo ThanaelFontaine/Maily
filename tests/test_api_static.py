@@ -32,6 +32,6 @@ def test_static_served(client):
 
 def test_get_account(database):
     store = Store(database)
-    a = store.upsert_account("me@example.com", display_name="Moi")
+    a = store.upsert_account("me@example.com", display_name="Me")
     assert store.get_account(a)["email"] == "me@example.com"
     assert store.get_account(9999) is None

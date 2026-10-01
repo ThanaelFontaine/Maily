@@ -16,24 +16,24 @@ from core.rfc822_parse import extract_part
 
 
 class AddAccountInProgress(Exception):
-    """Un ajout de compte est deja en cours (le flow OAuth loopback est mono-instance)."""
+    """An account is already being added (the OAuth loopback flow is single-instance)."""
     pass
 
 
-# Un seul ajout a la fois : le serveur loopback OAuth se lie a un port libre et
-# deux flows concurrents peuvent se marcher dessus / ouvrir deux navigateurs.
+# One addition at a time: the OAuth loopback server binds a free port, and two
+# concurrent flows could step on each other or open two browsers.
 _add_account_lock = threading.Lock()
 
 
 def add_google_account(store, timeout_seconds: int | None = 180) -> dict:
-    """Lance le consentement Google (navigateur systeme), enregistre le compte.
+    """Runs the Google consent (system browser) and saves the account.
 
-    Retourne {"account_id": int, "email": str}. Leve ReauthRequired si le client
-    OAuth n'est pas configure, AuthTimeout en cas d'abandon, AddAccountInProgress
-    si un ajout est deja en cours.
+    Returns {"account_id": int, "email": str}. Raises ReauthRequired if the
+    OAuth client is not configured, AuthTimeout if the consent is abandoned,
+    AddAccountInProgress if an account is already being added.
     """
     if not _add_account_lock.acquire(blocking=False):
-        raise AddAccountInProgress("Un ajout de compte est deja en cours.")
+        raise AddAccountInProgress("An account is already being added.")
     try:
         email = auth.run_local_auth(open_browser=True, timeout_seconds=timeout_seconds)
         account_id = store.upsert_account(email)
@@ -50,7 +50,7 @@ def _provider(store, account_id) -> str:
 def build_imap_client(email) -> ImapClient:
     creds = secrets_store.load_imap_credentials(email)
     if not creds:
-        raise ValueError(f"aucun identifiant IMAP pour {email}")
+        raise ValueError(f"no IMAP credentials for {email}")
     return ImapClient(creds["host"], creds["port"], creds["username"], creds["password"])
 
 
@@ -67,15 +67,16 @@ def _imap_fetch_raw(email, gmail_id) -> bytes:
 
 
 def add_imap_account(store, email, password, host="imap.orange.fr", port=993) -> dict:
-    """Connecte un compte IMAP (Orange...) : teste le login, stocke les creds
-    chiffrés, crée le compte `provider='imap'`. Lève ImapError si login/connexion
-    échoue, AddAccountInProgress si un ajout est déjà en cours."""
+    """Connects an IMAP account (Orange, ...): tests the login, stores the
+    encrypted credentials, creates the account with `provider='imap'`. Raises
+    ImapError if the login or the connection fails, AddAccountInProgress if an
+    account is already being added."""
     if not _add_account_lock.acquire(blocking=False):
-        raise AddAccountInProgress("Un ajout de compte est deja en cours.")
+        raise AddAccountInProgress("An account is already being added.")
     try:
         creds = {"host": host, "port": int(port), "username": email, "password": password}
         client = ImapClient(**creds)
-        client.connect()          # lève ImapError si identifiants/connexion KO
+        client.connect()          # raises ImapError on bad credentials or connection
         client.select_inbox()
         client.logout()
         secrets_store.save_imap_credentials(email, creds)
@@ -86,9 +87,10 @@ def add_imap_account(store, email, password, host="imap.orange.fr", port=993) ->
 
 
 def logout_account(store, account_id) -> None:
-    """Deconnecte un compte : supprime ses identifiants chiffres (token Google ou
-    creds IMAP selon le provider) ET son cache local (messages, PJ, labels...).
-    Reversible : reconnecter le compte relance un backfill. No-op si inconnu."""
+    """Disconnects an account: deletes its encrypted credentials (Google token
+    or IMAP credentials, depending on the provider) AND its local cache
+    (messages, attachments, labels...). Reversible: connecting the account again
+    runs a new backfill. No-op for an unknown account."""
     acc = store.get_account(account_id)
     if acc is not None:
         acc = dict(acc)
@@ -112,11 +114,11 @@ def _b64url_to_bytes(data: str) -> bytes:
 
 
 def export_eml(store, message_id) -> tuple[bytes, str]:
-    """Renvoie (octets RFC822 bruts, nom de fichier .eml) pour un message.
-    Branche selon le provider : Gmail (format raw) ou IMAP (fetch raw)."""
+    """Returns (raw RFC 822 bytes, .eml file name) for a message.
+    Depends on the provider: Gmail (raw format) or IMAP (raw fetch)."""
     m = store.get_message(message_id)
     if not m:
-        raise ValueError("message introuvable")
+        raise ValueError("message not found")
     m = dict(m)
     acc = store.get_account(m["account_id"])
     acc = dict(acc) if acc else {}
@@ -134,7 +136,7 @@ def export_eml(store, message_id) -> tuple[bytes, str]:
 def fetch_attachment(store, email, message_id, att_id, attachments_dir):
     att = store.get_attachment(att_id)
     if not att or att["owner_id"] != message_id or att["owner_kind"] != "message":
-        raise ValueError("piece jointe introuvable")
+        raise ValueError("attachment not found")
     lp = att["local_path"]
     if lp and os.path.exists(lp):
         with open(lp, "rb") as f:
@@ -163,7 +165,7 @@ def build_gmail_client(email) -> GmailClient:
 
 def refresh_labels(store, email, account_id) -> int:
     if _provider(store, account_id) == "imap":
-        return 0                      # pas de libellés IMAP (INBOX synthétique)
+        return 0                      # no IMAP labels here (folders come with the sync)
     client = build_gmail_client(email)
     labels = client.list_labels()
     store.replace_labels(account_id, labels)
@@ -173,8 +175,8 @@ def refresh_labels(store, email, account_id) -> int:
 def modify_message(store, email, message_id, add=None, remove=None) -> dict:
     m = store.get_message(message_id)
     if not m:
-        raise ValueError("message introuvable")
-    # IMAP : pas d'API de libellés -> on applique en local (marquer lu, archiver).
+        raise ValueError("message not found")
+    # IMAP: no label API, so the change is applied locally (mark read, archive).
     if _provider(store, m["account_id"]) != "imap":
         build_gmail_client(email).modify(m["gmail_id"], add=add, remove=remove)
     store.apply_local_labels(message_id, add=add, remove=remove)
@@ -184,7 +186,7 @@ def modify_message(store, email, message_id, add=None, remove=None) -> dict:
 def trash_message(store, email, message_id) -> dict:
     m = store.get_message(message_id)
     if not m:
-        raise ValueError("message introuvable")
+        raise ValueError("message not found")
     if _provider(store, m["account_id"]) == "imap":
         folder, uid = parse_imap_key(m["gmail_id"])
         c = build_imap_client(email)
@@ -203,9 +205,9 @@ def trash_message(store, email, message_id) -> dict:
 def untrash_message(store, email, message_id) -> dict:
     m = store.get_message(message_id)
     if not m:
-        raise ValueError("message introuvable")
+        raise ValueError("message not found")
     if _provider(store, m["account_id"]) == "imap":
-        raise ValueError("Restauration non disponible pour un compte Orange (IMAP).")
+        raise ValueError("Restoring is not available for an IMAP account.")
     build_gmail_client(email).untrash(m["gmail_id"])
     store.set_trashed(message_id, False)
     return {"ok": True}
@@ -222,7 +224,7 @@ def send_from_account(store, email, account_id, payload) -> dict:
         total += len(data)
         attachments.append({"filename": a.get("filename"), "mime_type": a.get("mime_type"), "data": data})
     if total > _MAX_SEND_BYTES:
-        raise ValueError("Pieces jointes trop volumineuses (max 25 Mo au total pour l'envoi simple).")
+        raise ValueError("Attachments too large (25 MB in total at most for a simple send).")
     client = build_gmail_client(email)
     return sender.send_message(
         store, client, account_id, email,

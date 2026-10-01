@@ -1,6 +1,6 @@
 [project]
 name = "maily"
-version = "0.6.0"
+version = "0.7.0"
 description = "Local, multi-account email client for Gmail and IMAP: your mail stays on your computer."
 readme = "README.md"
 license = "MIT"
@@ -30,19 +30,23 @@ dependencies = [
     "uvicorn>=0.30",
     "pywebview>=5.2",
     "pyobjc-framework-LocalAuthentication>=10.0 ; sys_platform == 'darwin'",
-    # Serveur MCP (app/mcp_server.py). En dependance principale (pas un groupe
-    # optionnel) pour eviter le va-et-vient d'installation qui corrompait l'env
-    # quand Claude Code lançait `uv run` (jsonschema est une dep de mcp, epinglee
-    # explicitement pour fiabiliser la resolution).
+    # MCP server (app/mcp_server.py). A main dependency (not an optional
+    # group) to avoid the install back-and-forth that broke the environment
+    # when an MCP client ran `uv run` (jsonschema is a dependency of mcp,
+    # pinned explicitly to make the resolution reliable).
     "mcp>=1.2,<2",
     "jsonschema>=4.20",
 ]
 
+[project.scripts]
+# `uv run maily` from a clone (same as `uv run python -m app.bootstrap`).
+maily = "app.bootstrap:main"
+
 [project.urls]
-Homepage = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender"
-Documentation = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender#readme"
-Changelog = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/blob/main/CHANGELOG.md"
-Issues = "https://github.com/ThanaelFontaine/fetch-multi-mail-viewer-sender/issues"
+Homepage = "https://github.com/ThanaelFontaine/Maily"
+Documentation = "https://github.com/ThanaelFontaine/Maily#readme"
+Changelog = "https://github.com/ThanaelFontaine/Maily/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ThanaelFontaine/Maily/issues"
 
 [dependency-groups]
 dev = [

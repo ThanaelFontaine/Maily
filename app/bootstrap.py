@@ -35,8 +35,8 @@ def make_sync_fn(store, backfill_months=12):
     def _sync(account_id):
         acc = store.get_account(account_id)
         if not acc:
-            raise ValueError(f"compte {account_id} introuvable")
-        # Premiere synchro : backfill borne (fenetre en mois) ; ensuite incremental.
+            raise ValueError(f"account {account_id} not found")
+        # First sync: bounded backfill (window in months); incremental afterwards.
         if not store.get_sync_state(account_id, "backfill_done"):
             return sync_account(store, acc["email"], account_id,
                                 full=True, query=f"newer_than:{backfill_months}m")
@@ -51,7 +51,7 @@ def make_send_fn(store):
     def _send(payload):
         acc = store.get_account(payload["account_id"])
         if not acc:
-            raise ValueError(f"compte {payload['account_id']} introuvable")
+            raise ValueError(f"account {payload['account_id']} not found")
         return send_from_account(store, acc["email"], payload["account_id"], payload)
 
     return _send
@@ -99,7 +99,7 @@ def make_labels_fn(store):
     def _labels(account_id):
         acc = store.get_account(account_id)
         if not acc:
-            raise ValueError(f"compte {account_id} introuvable")
+            raise ValueError(f"account {account_id} not found")
         return svc.refresh_labels(store, acc["email"], account_id)
 
     return _labels
@@ -111,7 +111,7 @@ def make_act_fn(store):
     def _act(message_id, action, add=None, remove=None):
         m = store.get_message(message_id)
         if not m:
-            raise ValueError("message introuvable")
+            raise ValueError("message not found")
         acc = store.get_account(m["account_id"])
         email = acc["email"]
         if action == "modify":
@@ -120,13 +120,13 @@ def make_act_fn(store):
             return svc.trash_message(store, email, message_id)
         if action == "untrash":
             return svc.untrash_message(store, email, message_id)
-        raise ValueError(f"action inconnue: {action}")
+        raise ValueError(f"unknown action: {action}")
 
     return _act
 
 
 def _migrate_secrets(store) -> None:
-    """Rapatrie les secrets du Trousseau vers le fichier chiffre (une seule fois)."""
+    """Moves the Keychain secrets into the encrypted file (once)."""
     from core import secret_file
     names = ["oauth_client", "api_token"]
     try:
@@ -140,7 +140,7 @@ def _migrate_secrets(store) -> None:
 
 
 def _frontend_dir() -> pathlib.Path:
-    # En binaire figé (PyInstaller), le frontend est embarque a la racine.
+    # In a frozen binary (PyInstaller), the frontend is embedded at the root.
     if getattr(sys, "frozen", False):
         return pathlib.Path(getattr(sys, "_MEIPASS", ".")) / "frontend"
     return pathlib.Path(__file__).resolve().parent.parent / "frontend"
@@ -175,18 +175,18 @@ def make_attachment_fns(store, attachments_dir):
     return download_fn, inline_fn
 
 
-# NSVisualEffectView (vibrancy) : material moderne translucide. Le material 0
-# (AppearanceBased) est DEPRECIE (10.14) et rend opaque sur macOS 26. 21 =
-# UnderWindowBackground, concu pour laisser voir le bureau depoli sous une fenetre.
+# NSVisualEffectView (vibrancy): modern translucent material. Material 0
+# (AppearanceBased) is DEPRECATED (10.14) and renders opaque on macOS 26. 21 =
+# UnderWindowBackground, designed to show the frosted desktop under a window.
 _GLASS_MATERIAL = 21       # NSVisualEffectMaterialUnderWindowBackground
 _GLASS_STATE_ACTIVE = 1    # NSVisualEffectStateActive
 _GLASS_BLEND_BEHIND = 0    # NSVisualEffectBlendingModeBehindWindow
 _GLASS_AUTORESIZE = 18     # NSViewWidthSizable(2) | NSViewHeightSizable(16)
 
-# uids deja traites (le re-parentage ne doit se faire qu'une fois par fenetre).
+# uids already handled (the re-parenting must happen once per window only).
 _GLASS_DONE = set()
-# Reference de la couche vibrancy par fenetre, pour regler sa densite (alphaValue)
-# via le slider du frontend. alpha 1 = depoli plein ; 0 = bureau net.
+# Vibrancy layer of each window, to set its density (alphaValue) from the
+# frontend slider. alpha 1 = fully frosted; 0 = sharp desktop.
 _GLASS_VEV = {}
 _GLASS_ALPHA_DEFAULT = 0.6
 
@@ -197,7 +197,7 @@ def _glass_alpha_path():
 
 
 def get_glass_alpha():
-    """Densite du depoli persistee (0..1), defaut 0.6 - lue au demarrage."""
+    """Persisted frosted glass density (0..1), 0.6 by default, read at startup."""
     try:
         return max(0.0, min(1.0, float(_glass_alpha_path().read_text().strip())))
     except Exception:
@@ -205,12 +205,12 @@ def get_glass_alpha():
 
 
 def set_glass_alpha(alpha):
-    """Regle la densite du depoli (vibrancy) + persiste - appele par l'API."""
+    """Sets the frosted glass density (vibrancy) and persists it; called by the API."""
     try:
         a = max(0.0, min(1.0, float(alpha)))
     except Exception:
         return
-    try:  # persistance robuste (independante du localStorage / mode prive)
+    try:  # robust persistence (independent of localStorage / private mode)
         p = _glass_alpha_path()
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(str(a))
@@ -232,22 +232,24 @@ def set_glass_alpha(alpha):
 
 
 def _apply_macos_transparency(win):
-    # Revele le VRAI bureau DEPOLI (flou) derriere le chrome translucide (Verre).
+    # Reveals the REAL FROSTED (blurred) desktop behind the translucent chrome
+    # (Glassmorphism).
     #
-    # Sur macOS 26, deux choses masquaient le bureau :
-    #   1. La WKWebView peignait une underPageBackgroundColor opaque (forcee clair)
-    #      et la cle KVC `drawsTransparentBackground` de pywebview est deprecie/
-    #      no-op (on utilise `drawsBackground`).
-    #   2. pywebview ajoute la NSVisualEffectView EN SOUS-VUE de la WKWebView (qui
-    #      EST la contentView). Imbriquee ainsi, la vibrancy "behind window" ne
-    #      compose pas le bureau (aplat opaque) ; en plus son material par defaut
-    #      (0) est deprecie.
-    # Correctif : re-parenter -> contentView = conteneur portant [vibrancy au fond
-    # (material 21), WKWebView transparente devant]. La vibrancy floute alors le
-    # bureau et le contenu web transparent se pose dessus. Thread principal, 1x.
+    # On macOS 26, two things hid the desktop:
+    #   1. The WKWebView painted an opaque underPageBackgroundColor (forced light)
+    #      and pywebview's KVC key `drawsTransparentBackground` is deprecated /
+    #      a no-op (`drawsBackground` is used instead).
+    #   2. pywebview adds the NSVisualEffectView AS A SUBVIEW of the WKWebView
+    #      (which IS the contentView). Nested like that, the "behind window"
+    #      vibrancy does not composite the desktop (opaque flat color); its
+    #      default material (0) is also deprecated.
+    # Fix: re-parent, so that contentView = a container holding [vibrancy at the
+    # back (material 21), transparent WKWebView in front]. The vibrancy then
+    # blurs the desktop and the transparent web content sits on top. Main
+    # thread, once.
     #
-    # Prerequis systeme : Reglages > Accessibilite > Ecran > Reduire la
-    # transparence = OFF (sinon macOS force un fond opaque).
+    # System prerequisite: System Settings > Accessibility > Display > Reduce
+    # transparency = OFF (otherwise macOS forces an opaque background).
     if win.uid in _GLASS_DONE:
         return
     try:
@@ -265,9 +267,9 @@ def _apply_macos_transparency(win):
         try:
             clear = AppKit.NSColor.clearColor()
             window = bv.window
-            webview = bv.webview  # WKWebView (WebKitHost), la contentView
+            webview = bv.webview  # WKWebView (WebKitHost), the contentView
 
-            # 1) WKWebView reellement transparente (voie moderne).
+            # 1) A really transparent WKWebView (modern way).
             for setter in (
                 lambda: webview.setValue_forKey_(False, "drawsBackground"),
                 lambda: webview.setUnderPageBackgroundColor_(clear),
@@ -277,7 +279,7 @@ def _apply_macos_transparency(win):
                 except Exception:
                     pass
 
-            # 2) Recupere/cree la vibrancy et lui donne un material translucide.
+            # 2) Gets or creates the vibrancy and gives it a translucent material.
             vev = None
             for sub in list(webview.subviews()):
                 if sub.isKindOfClass_(AppKit.NSVisualEffectView):
@@ -291,7 +293,7 @@ def _apply_macos_transparency(win):
             vev.setBlendingMode_(_GLASS_BLEND_BEHIND)
             vev.setState_(_GLASS_STATE_ACTIVE)
 
-            # 3) Nouveau contentView = conteneur ; [vibrancy au fond, web devant].
+            # 3) New contentView = container; [vibrancy at the back, web in front].
             container = AppKit.NSView.alloc().initWithFrame_(webview.frame())
             container.setAutoresizesSubviews_(True)
             window.setContentView_(container)
@@ -302,11 +304,11 @@ def _apply_macos_transparency(win):
             webview.setAutoresizingMask_(_GLASS_AUTORESIZE)
             container.addSubview_positioned_relativeTo_(webview, AppKit.NSWindowAbove, vev)
 
-            # Densite reglable du depoli, restauree depuis la valeur persistee.
+            # Adjustable frosted density, restored from the persisted value.
             _GLASS_VEV[win.uid] = vev
             vev.setAlphaValue_(get_glass_alpha())
 
-            # 4) Fenetre transparente + active (recompositing live du bureau).
+            # 4) Transparent and active window (live recompositing of the desktop).
             window.makeFirstResponder_(webview)
             window.setOpaque_(False)
             window.setBackgroundColor_(clear)
@@ -323,22 +325,22 @@ def _apply_macos_transparency(win):
 
 
 def fatal_page(message: str) -> str:
-    """Page HTML autonome qui explique pourquoi Maily ne peut pas demarrer."""
+    """Standalone HTML page that explains why Maily cannot start."""
     import html as _html
     return (
-        "<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Maily</title>"
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'><title>Maily</title>"
         "<style>body{font:14px/1.5 -apple-system,'Segoe UI',system-ui,sans-serif;color:#1f1f1f;"
         "background:#fff;margin:0;padding:28px 32px}h1{font-size:18px;margin:0 0 12px}"
         "p{margin:0 0 10px}code{background:#f1f3f4;padding:1px 4px;border-radius:4px}</style></head><body>"
-        "<h1>Maily ne peut pas démarrer</h1>"
+        "<h1>Maily cannot start</h1>"
         f"<p>{_html.escape(message)}</p>"
-        "<p>Rien n'a été modifié. Le dépannage est expliqué dans le README, section "
-        "<code>Troubleshooting</code> / <code>Dépannage</code>.</p></body></html>"
+        "<p>Nothing was changed. Troubleshooting is explained in the README, section "
+        "<code>Troubleshooting</code>.</p></body></html>"
     )
 
 
 def _show_fatal(message: str) -> None:
-    """Affiche l'erreur dans une fenetre (l'app empaquetee n'a pas de terminal)."""
+    """Shows the error in a window (the packaged app has no terminal)."""
     try:
         import webview
         webview.create_window("Maily", html=fatal_page(message), width=640, height=340)
@@ -348,17 +350,17 @@ def _show_fatal(message: str) -> None:
 
 
 def fail_unreadable_secrets(error) -> None:
-    """Magasin de secrets illisible : message sur stderr ET a l'ecran, puis sortie."""
+    """Unreadable secret store: message on stderr AND on screen, then exit."""
     message = str(error)
-    print(f"Maily ne peut pas demarrer : {message}", file=sys.stderr)
+    print(f"Maily cannot start: {message}", file=sys.stderr)
     _show_fatal(message)
     raise SystemExit(2)
 
 
 def window_kwargs(platform: str, width: int = 1240, height: int = 820) -> dict:
-    # Transparence de la fenetre native selon la plateforme :
-    # macOS -> vibrancy (flou depoli natif du bureau) ; Linux -> transparent
-    # (le compositeur floute) ; ailleurs (Windows) -> opaque + fond de repli clair.
+    # Native window transparency per platform:
+    # macOS: vibrancy (native frosted blur of the desktop); Linux: transparent
+    # (the compositor blurs); elsewhere (Windows): opaque with a light fallback.
     kwargs = {"width": width, "height": height}
     if platform == "darwin":
         kwargs["transparent"] = True
@@ -381,28 +383,28 @@ def run():
     from core.config import load_settings
     from core.logging_setup import configure_logging
     settings = load_settings()
-    # Journaux dans <donnees>/logs/maily.log (rotation, secrets masques).
+    # Logs in <data>/logs/maily.log (rotating, secrets redacted).
     configure_logging(layout["logs"], settings.log_level)
     db = Database(layout["db"])
     store = Store(db)
 
-    # Secrets : migration unique Trousseau -> fichier chiffre local (supprime
-    # l'invite de mot de passe du Trousseau dans l'app empaquetee), puis porte
-    # Touch ID au lancement.
+    # Secrets: one-time migration from the Keychain to the local encrypted file
+    # (removes the Keychain password prompt in the packaged app), then the
+    # Touch ID gate at launch.
     _migrate_secrets(store)
     from core import biometric
-    if not biometric.require_unlock("Deverrouiller Maily"):
+    if not biometric.require_unlock("Unlock Maily"):
         return
 
     from core.secret_file import SecretStoreError
     try:
         token = runtime.get_or_create_api_token()
     except SecretStoreError as e:
-        # Magasin de secrets illisible : on s'arrete sans rien ecrire dessus.
+        # Unreadable secret store: stop without writing anything on it.
         fail_unreadable_secrets(e)
     months = settings.backfill_months
-    # Une seule synchro a la fois : le bouton de l'interface et le fil
-    # automatique partagent ce verrou.
+    # One sync at a time: the interface button and the automatic thread share
+    # this lock.
     from core.auto_sync import AutoSync, serialized
     sync_fn = serialized(make_sync_fn(store, months))
     download_fn, inline_fn = make_attachment_fns(store, layout["attachments"])
@@ -420,30 +422,30 @@ def run():
     _start_server(app, port)
     base = f"http://127.0.0.1:{port}"
     if not wait_for_health(base):
-        raise RuntimeError("Le serveur local n'a pas demarre a temps.")
+        raise RuntimeError("The local server did not start in time.")
     runtime.write_runtime_file(layout["runtime_json"], "127.0.0.1", port, token=token)
-    # Synchro automatique de toutes les boites tant que la fenetre est ouverte
-    # (MAILY_POLL_INTERVAL_SECONDS, 180 par defaut).
+    # Automatic sync of every mailbox while the window is open
+    # (MAILY_POLL_INTERVAL_SECONDS, 180 by default).
     AutoSync(store, sync_fn, settings.poll_interval_seconds).start()
 
     win = webview.create_window("Maily", base, **window_kwargs(sys.platform))
     if sys.platform == "darwin":
-        # Applique la correction de transparence une fois la webview native prete
-        # (l'evenement `loaded` garantit son existence).
+        # Applies the transparency fix once the native webview is ready (the
+        # `loaded` event guarantees that it exists).
         win.events.loaded += lambda: _apply_macos_transparency(win)
-    # Stockage persistant (pas de mode prive) : localStorage conserve entre deux
-    # lancements -> theme, opacite du verre, largeur de la liste memorises.
+    # Persistent storage (no private mode). Preferences do not rely on it (see
+    # core/prefs.py), but cookies and caches are kept between launches.
     storage = str(paths.runtime_dir() / "webview")
     webview.start(private_mode=False, storage_path=storage)
 
 
 def parse_args(argv=None):
-    """Options de ligne de commande du lanceur (toutes facultatives)."""
+    """Command-line options of the launcher (all optional)."""
     import argparse
-    ap = argparse.ArgumentParser(prog="maily", description="Maily, client mail local multi-comptes.")
-    ap.add_argument("--data-dir", metavar="DOSSIER",
-                    help="dossier des donnees locales (base, secrets chiffres). "
-                         "Equivalent de la variable MAILY_DATA_DIR.")
+    ap = argparse.ArgumentParser(prog="maily", description="Maily, a local multi-account email client.")
+    ap.add_argument("--data-dir", metavar="FOLDER",
+                    help="folder of the local data (database, encrypted secrets). "
+                         "Same as the MAILY_DATA_DIR variable.")
     return ap.parse_args(argv)
 
 

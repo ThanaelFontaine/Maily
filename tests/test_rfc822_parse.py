@@ -7,13 +7,13 @@ def _sample() -> bytes:
     m["From"] = "Alice <alice@example.net>"
     m["To"] = "bob@example.com"
     m["Cc"] = "carol@example.com"
-    m["Subject"] = "Réunion café ☕"
+    m["Subject"] = "Café meeting ☕"
     m["Message-ID"] = "<abc123@example.net>"
     m["Date"] = "Mon, 18 Aug 2025 10:30:00 +0200"
-    m.set_content("Bonjour, ceci est le corps texte.")
-    m.add_alternative("<p>Bonjour, <b>HTML</b>.</p>", subtype="html")
+    m.set_content("Hello, this is the text body.")
+    m.add_alternative("<p>Hello, <b>HTML</b>.</p>", subtype="html")
     m.add_attachment(b"%PDF-1.4 fake", maintype="application", subtype="pdf",
-                     filename="facture.pdf")
+                     filename="invoice.pdf")
     return m.as_bytes()
 
 
@@ -22,10 +22,10 @@ def test_parse_headers_and_bodies():
     assert fields["addr_from"] == "Alice <alice@example.net>"
     assert fields["addr_to"] == "bob@example.com"
     assert fields["addr_cc"] == "carol@example.com"
-    assert fields["subject"] == "Réunion café ☕"
+    assert fields["subject"] == "Café meeting ☕"
     assert fields["rfc822_message_id"] == "<abc123@example.net>"
     assert fields["thread_id"] == "<abc123@example.net>"      # fil = message-id
-    assert "corps texte" in fields["body_text"]
+    assert "text body" in fields["body_text"]
     assert "<b>HTML</b>" in fields["body_html"]
     assert fields["direction"] == "in"
     assert fields["has_attachments"] == 1
@@ -37,7 +37,7 @@ def test_parse_attachments_metadata():
     _fields, atts = parse_rfc822(_sample())
     assert len(atts) == 1
     a = atts[0]
-    assert a["filename"] == "facture.pdf"
+    assert a["filename"] == "invoice.pdf"
     assert a["mime_type"] == "application/pdf"
     assert a["size"] == len(b"%PDF-1.4 fake")
     assert a["gmail_attachment_id"] == "imap:0"
@@ -48,7 +48,7 @@ def test_extract_part_returns_bytes():
     data, mime, filename = extract_part(raw, "imap:0")
     assert data == b"%PDF-1.4 fake"
     assert mime == "application/pdf"
-    assert filename == "facture.pdf"
+    assert filename == "invoice.pdf"
 
 
 def test_parse_plain_only():
@@ -56,8 +56,8 @@ def test_parse_plain_only():
     m["From"] = "x@example.org"
     m["Subject"] = "Simple"
     m["Date"] = "Mon, 18 Aug 2025 10:30:00 +0200"
-    m.set_content("juste du texte")
+    m.set_content("just some text")
     fields, atts = parse_rfc822(m.as_bytes())
-    assert fields["body_text"].strip() == "juste du texte"
+    assert fields["body_text"].strip() == "just some text"
     assert fields["has_attachments"] == 0
     assert atts == []
