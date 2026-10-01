@@ -116,7 +116,8 @@ nav { margin-left: auto; }
 .nav { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; }
 .nav a { display: block; padding: 6px 12px; border-radius: 999px; color: var(--soft); text-decoration: none; font-size: .95rem; }
 .nav a:hover { background: var(--surface-2); color: var(--ink); }
-@media (max-width: 760px) { .nav { display: none; } .topbar .btn { margin-left: auto; } }
+.topbar-cta { display: flex; gap: 8px; }
+@media (max-width: 760px) { .nav { display: none; } .topbar-cta { margin-left: auto; } }
 
 /* Buttons */
 .btn {
@@ -127,6 +128,7 @@ nav { margin-left: auto; }
   transition: background-color .15s, border-color .15s;
 }
 .btn-sm { min-height: 36px; padding: 6px 16px; font-size: .9rem; }
+.btn-lg { min-height: 52px; padding: 14px 28px; font-size: 1.05rem; }
 .btn-primary { background: var(--accent); color: var(--on-accent); }
 .btn-primary:hover { background: var(--accent-hover); }
 .btn-ghost { background: var(--bg); color: var(--accent-ink); border-color: var(--line); }
@@ -152,6 +154,29 @@ nav { margin-left: auto; }
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
+
+/* Hero icon: the app's own icon carries the art direction */
+.hero-icon { margin: 0 auto 20px; border-radius: 20px; }
+
+/* Benefits */
+.benefits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 28px; }
+.benefit { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; }
+.benefit h3 { font-size: 1.1rem; }
+.benefit p { color: var(--soft); margin: 0; }
+.b-icon {
+  display: block; width: 44px; height: 44px; padding: 8px; margin-bottom: 16px;
+  border-radius: 12px; background: var(--selected); color: var(--selected-ink);
+}
+#benefits .cta { margin-top: 36px; }
+@media (max-width: 1060px) { .benefits { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .benefits { grid-template-columns: 1fr; } }
+.why-quote { max-width: 760px; margin-top: 40px; }
+
+/* Final call to action */
+.final { padding: 80px 0; background: var(--surface-2); border-top: 1px solid var(--line); }
+.final img { margin: 0 auto 20px; border-radius: 16px; }
+.final .lead { margin: 0 auto; }
+.final .fine { max-width: 620px; margin: 8px auto 0; }
 
 /* Cards */
 .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
