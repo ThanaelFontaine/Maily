@@ -52,7 +52,14 @@ description. The grid of cards adapts by itself.
 
 ## Deployment
 
-The page is served by Cloudflare Pages from this folder (project connected to the GitHub repository,
-no build command, build output directory `site`), on the custom domain `maily.thanaelfontaine.eu`, with `404.html` as the not-found page.
+The page is served by Cloudflare Workers static assets (Worker `maily-thanaelfontaine-eu`, configured
+in `wrangler.jsonc` at the repository root) on the custom domain `maily.thanaelfontaine.eu`, with
+`404.html` as the not-found page. To publish a change, from the repository root:
+
+```bash
+npx wrangler deploy
+```
+
 `_headers` sets the security headers (a strict Content Security Policy that allows the one inline
 script by its hash) and the cache rules; if that inline script changes, update its hash.
+`.assetsignore` keeps this README out of the published files.
