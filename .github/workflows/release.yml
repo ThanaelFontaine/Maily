@@ -172,7 +172,8 @@ jobs:
       # Payload: https://docs.discord.com/developers/resources/webhook#execute-webhook
       # (content up to 2000 characters, allowed_mentions with an empty parse
       # list so that nothing pings, flags 4 = SUPPRESS_EMBEDS so that links show
-      # no preview, wait=true to get 200 and the message back).
+      # no preview, wait=true to get 200 and the message back). The message is one
+      # embed, like the other Mini Ultron announcements.
       - name: Announce the release on Discord
         if: ${{ steps.publish.outputs.announce == 'true' }}
         continue-on-error: true
@@ -193,17 +194,30 @@ jobs:
           release = json.load(open("release.json"))
           if release["isDraft"]:
               raise SystemExit("The release is still a draft: no announcement.")
-          head = f"**{release['name']}** is out: <{release['url']}>"
+          # Same embed as the other "Mini Ultron" production announcements.
           lines, size = [], 0
           for line in open("release-notes.md", encoding="utf-8").read().splitlines():
               if not line.strip():
                   continue
-              if len(lines) == 6 or size + len(line) > 1500:
+              if len(lines) == 8 or size + len(line) > 3500:
                   break
               lines.append(line)
               size += len(line) + 1
-          content = "\n\n".join([head, "\n".join(lines)]) if lines else head
-          print(json.dumps({"content": content[:2000], "allowed_mentions": {"parse": []}, "flags": 4}))
+          tag = release["name"].split()[-1]
+          print(json.dumps({
+              "allowed_mentions": {"parse": []},
+              "embeds": [{
+                  "title": f"{release['name']} est publiée",
+                  "url": release["url"],
+                  "description": "\n".join(lines)[:3800] or "Le détail est dans les notes de la release.",
+                  "color": 15608894,
+                  "fields": [
+                      {"name": "Version", "value": tag, "inline": True},
+                      {"name": "Télécharger", "value": release["url"], "inline": True},
+                  ],
+                  "footer": {"text": "Publication par GitHub Actions"},
+              }],
+          }, ensure_ascii=False))
           PY
           # The address reaches curl through its config on stdin, not its arguments.
           CODE="$(printf 'url = "%s?wait=true"\n' "$DISCORD_WEBHOOK_URL" \
