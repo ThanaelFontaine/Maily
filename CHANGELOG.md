@@ -22,6 +22,7 @@ Maily now speaks five languages, its hacker-style theme has an original name, ev
 - **Downloadable macOS app.** The release workflow now builds `Maily.app` with PyInstaller on a macOS Apple Silicon runner (it fails if the app is not `arm64`), then creates the tag and a draft release with `Maily-X.Y.Z-macos-arm64.zip` and its `.sha256` checksum file, and publishes it last: a release is never visible without its macOS app, and running the workflow again after a failure resumes safely. Version and notes come from `scripts/release_notes.py`. The app is not signed nor notarized: `docs/BUILD.md` explains what macOS says and how to open it.
 - Tests for the translations (every language has exactly the keys of English, with the same placeholders and no em or en dash; every key used by the interface exists; every API error code is translated), for the language preference, for the theme migration and for the console script.
 - New screenshots: Glassmorphism theme and the *Language* tab of Settings.
+- **Product page.** The source of the product page for <https://maily.thanaelfontaine.eu> lives in `site/` (static HTML and CSS, no build step, automatic dark mode); `site/README.md` explains the local preview. It is not deployed yet.
 
 ### Changed
 
