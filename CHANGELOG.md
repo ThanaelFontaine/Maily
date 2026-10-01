@@ -19,12 +19,16 @@ First open-source release: a new default look, a single settings panel, a harden
 - **Custom data folder:** `MAILY_DATA_DIR` environment variable and `--data-dir` option, for tests, demos or a separate profile.
 - **Demo mode:** `scripts/demo.py` runs the interface on fictitious mailboxes, in a temporary folder, with an in-memory API token, and refuses to use the real data folder.
 - `GET /about` endpoint (version and data folder).
+- **Preferences are now really remembered between launches.** Theme, Classic mode, remote images and list width are stored in `prefs.json` (mode `0600`) in the data folder, through `GET/POST /prefs` (token required), and read when the window starts. They used to live in the webview's `localStorage`, which was lost at every launch because the local API uses a new random port (hence a new origin) each time, and pywebview ignores its storage folder on macOS. Values found in the old `localStorage` are migrated once.
+- Settings tabs follow the ARIA tablist pattern: arrow keys, Home and End move between tabs.
+- If the secret store is unreadable at launch, the desktop app now shows the explanation in a window (the packaged app has no terminal), in addition to stderr.
+- `docs/ACCES_MAILY_MCP.md` is kept as a short page pointing to the new MCP guide, so that existing links keep working.
 - The MCP tool `maily_get_message` now lists the message's attachments with their `attachment_id`.
 - `runtime.json` now carries the local API token (file created with mode `0600`), so local automations can call the API without reading the secret store.
 - Logs are now written to `logs/maily.log` in the data folder (rotating, with secrets redacted); the logging setup existed but was never enabled.
 - **Documentation:** English README and French README, architecture guide, Google Cloud setup guide (English and French), MCP guide (English and French), build guide, `CONTRIBUTING.md`, `SECURITY.md` (private reporting and threat model), `CODE_OF_CONDUCT.md`, this changelog, and screenshots in `docs/images/`.
 - **MIT License.**
-- **CI:** tests on macOS and Linux for every push and pull request; automatic tag and GitHub release on `main` (after green tests) when the version in `pyproject.toml` has no tag yet, with the matching CHANGELOG section as notes.
+- **CI:** tests on macOS and Linux for every push to `main` and every pull request; automatic tag and GitHub release on `main` (after green tests) when the version in `pyproject.toml` has no tag yet, with the matching CHANGELOG section as notes.
 
 ### Changed
 
@@ -52,6 +56,9 @@ First open-source release: a new default look, a single settings panel, a harden
 ### Security
 
 - Tests are isolated from real data: every test gets a temporary data folder, a null keyring backend and the Touch ID gate disabled.
+- The data folder is created with mode `0700` even when the MCP server or a script creates it before the app.
+- The local API no longer accepts the `testserver` host outside the test suite.
+- The demo mode also refuses any subfolder of the real data folder.
 
 ## [0.5.1] - 2026-08-23
 

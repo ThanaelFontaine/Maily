@@ -69,7 +69,7 @@ Menu de gauche, **Audience**.
 
 > **Pourquoi publier ?** La documentation de Google précise qu'un projet dont l'écran de consentement est *External* et au statut *Testing* reçoit des jetons de rafraîchissement qui **expirent au bout de 7 jours**. Il faudrait te reconnecter chaque semaine. En *In production*, la connexion dure.
 >
-> Publier ne rend rien public : personne ne peut utiliser ton client sans son secret, et l'app reste « non vérifiée » (voir l'étape 8). Google limite une app non vérifiée à 100 utilisateurs au total, bien plus qu'il n'en faut pour un usage personnel.
+> Publier ne référence ton app nulle part et ne donne à personne l'accès à tes mails : chaque boîte doit toujours être connectée par son propriétaire via l'écran de consentement, et l'app reste « non vérifiée » (voir l'étape 8). Note que pour un client *Desktop app*, la documentation de Google part du principe que le secret client ne peut pas rester secret (une app installée « ne peut pas garder de secrets ») : il identifie ton app mais ce n'est pas lui qui protège tes mails. Tes boîtes sont protégées par le consentement donné compte par compte et par les jetons que Maily garde chiffrés. Garde tout de même le fichier JSON pour toi. Google limite une app non vérifiée à 100 utilisateurs au total, bien plus qu'il n'en faut pour un usage personnel.
 
 ## 6. Onglet Data Access : les scopes (facultatif)
 

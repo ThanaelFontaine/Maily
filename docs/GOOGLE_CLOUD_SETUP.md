@@ -69,7 +69,7 @@ Left menu, **Audience**.
 
 > **Why publish?** Google's documentation states that a project with an External consent screen in *Testing* status is issued refresh tokens that **expire after 7 days**. You would have to reconnect every week. Once *In production*, the connection lasts.
 >
-> Publishing does not make anything public: nobody can use your client without its secret, and the app stays "unverified" (see step 8). Google limits unverified apps to 100 users in total, far more than personal use needs.
+> Publishing does not list your app anywhere and does not give anyone access to your mail: every mailbox still has to be connected by its owner through the consent screen, and the app stays "unverified" (see step 8). Note that for a *Desktop app* client, Google's documentation assumes the client secret cannot be kept secret (installed apps "cannot keep secrets"): it identifies your app but is not what protects your mail. Your mailboxes are protected by the per-account consent and the tokens Maily keeps encrypted. Still, keep the JSON file private. Google limits unverified apps to 100 users in total, far more than personal use needs.
 
 ## 6. Data Access tab: scopes (optional)
 
