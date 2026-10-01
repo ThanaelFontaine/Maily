@@ -55,11 +55,11 @@ def og_image(source: Image.Image) -> None:
     logo = source.resize((96, 96), Image.LANCZOS)
     og.paste(logo, (72, 72), logo)
     draw.text((188, 88), "Maily", font=font(60, True), fill="#1f1f1f")
-    y = 230
-    for line in ["Your AI assistant,", "every mailbox,", "nothing in between."]:
-        draw.text((72, y), line, font=font(52, True), fill="#1f1f1f")
-        y += 64
-    draw.text((72, y + 24), "Free, open source desktop mail app", font=font(28), fill="#444746")
+    y = 206
+    for line in ["Every mailbox", "in one app.", "Your AI assistant", "in all of them."]:
+        draw.text((72, y), line, font=font(46, True), fill="#1f1f1f")
+        y += 58
+    draw.text((72, y + 24), "Free, open source mail app for macOS", font=font(28), fill="#444746")
     draw.text((72, y + 62), "with a local MCP server. Gmail + IMAP.", font=font(28), fill="#444746")
     shot = Image.open(ROOT / "docs" / "images" / "classic-light.png").convert("RGB")
     shot_w = 560
