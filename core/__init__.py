@@ -3,4 +3,4 @@
 # Application version. Must stay equal to `version` in pyproject.toml (checked
 # by tests/test_version.py); the CI creates the tag and the release from
 # pyproject.toml.
-__version__ = "0.7.0"
+__version__ = "0.8.0"
