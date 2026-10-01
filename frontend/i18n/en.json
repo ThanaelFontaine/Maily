@@ -1,6 +1,6 @@
 {
   "about.dataFolder": "Local data",
-  "about.help": "Everything stays on this computer: the SQLite database, attachments and encrypted secrets are in the folder above. No third-party server.",
+  "about.help": "Your mail stays with your provider (Gmail, IMAP). Maily keeps a synced copy in the folder above, for speed and search: the SQLite database, attachments and encrypted secrets. No Maily server, no Maily account.",
   "about.license": "License",
   "about.version": "Version",
   "add.google": "Google account",

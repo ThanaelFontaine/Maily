@@ -1,6 +1,6 @@
 {
   "about.dataFolder": "Datos locales",
-  "about.help": "Todo se queda en este ordenador: la base de datos SQLite, los archivos adjuntos y los secretos cifrados están en la carpeta de arriba. Ningún servidor de terceros.",
+  "about.help": "Tu correo sigue en tu proveedor (Gmail, IMAP). Maily guarda una copia sincronizada en la carpeta de arriba, para ir rápido y poder buscar: la base de datos SQLite, los archivos adjuntos y los secretos cifrados. Sin servidor de Maily ni cuenta de Maily.",
   "about.license": "Licencia",
   "about.version": "Versión",
   "add.google": "Cuenta de Google",

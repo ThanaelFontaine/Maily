@@ -1,6 +1,6 @@
 {
   "about.dataFolder": "Lokale Daten",
-  "about.help": "Alles bleibt auf diesem Computer: Die SQLite-Datenbank, die Anhänge und die verschlüsselten Geheimnisse liegen im Ordner oben. Kein fremder Server.",
+  "about.help": "Ihre E-Mails bleiben bei Ihrem Anbieter (Gmail, IMAP). Maily hält eine synchronisierte Kopie im Ordner oben, damit alles schnell geht und durchsuchbar ist: die SQLite-Datenbank, die Anhänge und die verschlüsselten Geheimnisse. Kein Maily-Server, kein Maily-Konto.",
   "about.license": "Lizenz",
   "about.version": "Version",
   "add.google": "Google-Konto",
