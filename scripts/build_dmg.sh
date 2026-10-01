@@ -14,10 +14,17 @@
 # Needs: macOS, uv, and the build group (`uv sync --group build`, which brings
 # Pillow and dmgbuild). See docs/BUILD.md.
 set -euo pipefail
-cd "$(dirname "$0")/.."
 
-APP="${1:-dist/Maily.app}"
-OUT_DIR="${2:-dist}"
+# Relative APP and OUT_DIR arguments are relative to where the script is called;
+# the defaults are relative to the repository root.
+CALLER_DIR="$PWD"
+APP="${1:-}"
+OUT_DIR="${2:-}"
+if [ -n "$APP" ] && [ "${APP#/}" = "$APP" ]; then APP="$CALLER_DIR/$APP"; fi
+if [ -n "$OUT_DIR" ] && [ "${OUT_DIR#/}" = "$OUT_DIR" ]; then OUT_DIR="$CALLER_DIR/$OUT_DIR"; fi
+cd "$(dirname "$0")/.."
+APP="${APP:-dist/Maily.app}"
+OUT_DIR="${OUT_DIR:-dist}"
 
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "build_dmg.sh runs on macOS only (hdiutil)." >&2
@@ -38,7 +45,12 @@ fi
 DMG="Maily-$VERSION-macos-arm64.dmg"
 mkdir -p "$OUT_DIR"
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/maily-dmg.XXXXXX")"
-trap 'rm -rf "$WORK"' EXIT
+MNT="$WORK/mnt"
+cleanup() {
+  hdiutil detach "$MNT" -quiet >/dev/null 2>&1 || true
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 
 echo "==> Background (1x and Retina 2x)"
 uv run --no-sync python packaging/make_dmg_background.py "$WORK/bg" >/dev/null
@@ -56,7 +68,6 @@ uv run --no-sync dmgbuild -s packaging/dmg_settings.py \
 echo "==> Checking the image"
 hdiutil verify "$OUT_DIR/$DMG" >/dev/null
 # Mounted read-only and without showing it in Finder, then detached.
-MNT="$WORK/mnt"
 mkdir -p "$MNT"
 hdiutil attach "$OUT_DIR/$DMG" -readonly -nobrowse -noautoopen -mountpoint "$MNT" >/dev/null
 STATUS=0

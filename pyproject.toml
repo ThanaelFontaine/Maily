@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Thanaël Fontaine" }]
-keywords = ["email", "gmail", "imap", "desktop", "local-first", "mcp"]
+keywords = ["email", "gmail", "imap", "desktop", "mcp"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: MacOS X",

@@ -1,6 +1,6 @@
 {
   "about.dataFolder": "Données locales",
-  "about.help": "Vos e-mails restent chez votre fournisseur (Gmail, IMAP). Maily en garde une copie synchronisée dans le dossier ci-dessus, pour la rapidité et la recherche : la base SQLite, les pièces jointes et les secrets chiffrés. Aucun serveur Maily, aucun compte Maily.",
+  "about.help": "Vos e-mails restent chez votre fournisseur (Gmail, IMAP). Maily en garde une copie synchronisée dans le dossier ci-dessus, pour la rapidité et la recherche : la base SQLite et les pièces jointes. Les identifiants de vos comptes sont chiffrés, à part de cette copie. Aucun serveur Maily, aucun compte Maily.",
   "about.license": "Licence",
   "about.version": "Version",
   "add.google": "Compte Google",
