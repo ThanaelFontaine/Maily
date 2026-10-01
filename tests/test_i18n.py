@@ -55,7 +55,7 @@ def test_no_em_or_en_dash_in_translations(code):
 
 
 def _used_keys():
-    keys = set(re.findall(r'\btr\("([a-zA-Z0-9_.]+)"', JS))
+    keys = set(re.findall(r'\b(?:tr|msgSpec|errSpec)\("([a-zA-Z0-9_.]+)"', JS))
     keys |= set(re.findall(r'data-i18n(?:-[a-z-]+)?="([^"]+)"', HTML))
     keys |= set(re.findall(r'label: "([a-z]+\.[a-zA-Z.]+)"', JS))           # CATEGORIES
     keys |= set(re.findall(r'\["[a-z_]+", "([a-z]+\.[a-zA-Z]+)"\]', JS))    # paintStaticIcons
@@ -105,3 +105,40 @@ def test_no_french_left_in_the_frontend_code():
     # Interface text lives in the translation files only.
     for word in ("Réglages", "Écrire", "Envoyer", "Synchroniser", "Corbeille", "Répondre"):
         assert word not in JS and word not in HTML
+
+
+def test_reply_and_forward_prefixes_are_the_same_in_every_language():
+    # "Re:" and "Fwd:" are understood by every mail client: never translated.
+    assert 'REPLY_PREFIX_OUT = "Re:"' in JS and 'FORWARD_PREFIX_OUT = "Fwd:"' in JS
+    for code in LANGS:
+        table = _table(code)
+        assert "composer.replyPrefix" not in table and "composer.forwardPrefix" not in table
+    # Localized prefixes written by other clients are still recognised.
+    for prefix in ("re", "aw", "fwd", "tr", "wg", "rv", "enc"):
+        assert prefix in JS[JS.index("const REPLY_PREFIX ="):JS.index("function replyTo")]
+
+
+def test_language_change_loads_before_applying_and_saving():
+    body = JS[JS.index("async function changeLanguage"):JS.index("// Re-renders everything")]
+    assert body.index("await I18N.load(code)") < body.index("I18N.use(code)") < body.index('savePref("language"')
+    # A failed load keeps the current language and saves nothing.
+    failed = body[body.index("catch (e)"):body.index("I18N.use(code)")]
+    assert "return;" in failed and "savePref" not in failed and "toast.languageLoadFailed" in failed
+    # Only the last choice is applied when the user switches quickly.
+    assert "const seq = ++state.langSeq" in body and body.count("seq !== state.langSeq") == 2
+
+
+def test_language_change_refreshes_every_visible_text():
+    body = JS[JS.index("function refreshTexts"):JS.index("/* ------- Settings panel")]
+    for needle in ("updateGlassValue()", "renderBanner(b)", '"#c-status", "#imap-status"', "state.readNotice",
+                   "I18N.applyDom()", "paintStaticIcons()", "openMessage(state.currentId)"):
+        assert needle in body
+    # The "Show images" choice of the open message survives the re-render.
+    assert "state.remoteShownFor = id" in JS and "remoteImagesAllowed() || state.remoteShownFor === id" in JS
+
+
+def test_translation_helpers_are_never_shadowed():
+    # A local variable named like a helper (e.g. `m` for a message) once broke
+    # the archive button: keep the helpers' names out of local declarations.
+    for name in ("tr", "msgSpec", "errSpec", "specText"):
+        assert not re.search(rf"\b(?:const|let|var)\s+{name}\b|\(\s*{name}\s*[,)]|\b{name}\s*=>", JS), name

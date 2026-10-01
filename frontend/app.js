@@ -46,7 +46,7 @@ async function loadPrefs() {
 
 function savePref(key, value) {
   PREFS[key] = value;
-  postAction("/prefs", { [key]: value }).catch(() => banner(tr("toast.prefNotSaved")));
+  postAction("/prefs", { [key]: value }).catch(() => banner(msgSpec("toast.prefNotSaved")));
 }
 
 /* Clean line icons (stroke, currentColor). */
@@ -88,6 +88,7 @@ const state = {
   accountId: null, currentId: null, query: "", tabs: [],
   folder: { type: "inbox" }, category: "primary", accounts: [], currentMsgs: [],
   composerAtts: [], pendingReads: [], composerKey: null, openSeq: 0, listSeq: 0,
+  remoteShownFor: null, readNotice: null, langSeq: 0,
 };
 const accountColors = {};
 const el = (sel) => document.querySelector(sel);
@@ -112,11 +113,20 @@ async function apiFailure(r) {
 // Translated message for a failed action: the action's own message, followed by
 // the translated reason when the API gave a known error code.
 function errText(key, e, vars) {
-  if (e) console.warn(key, e);
   const base = tr(key, vars);
   const code = e && e.code;
   if (code && I18N.has("error." + code)) return base + " " + tr("error." + code);
   return base;
+}
+
+/* Messages shown in banners and status lines are kept as "specs" (functions
+   that build the text), so that a language change can render them again. */
+function msgSpec(key, vars) { return () => tr(key, vars); }
+function errSpec(key, e, vars) { if (e) console.warn(key, e); return () => errText(key, e, vars); }
+function specText(spec) { return typeof spec === "function" ? spec() : (spec || ""); }
+function setStatus(node, spec) {
+  node._spec = spec || null;
+  node.textContent = specText(spec);
 }
 
 async function api(path) {
@@ -140,16 +150,21 @@ function dismissBanner() {
   if (b) b.classList.remove("show");
   if (_bannerTimer) { clearTimeout(_bannerTimer); _bannerTimer = null; }
 }
-function banner(msg) {
+function banner(spec) {
   let b = el(".banner");
   if (!b) { b = document.createElement("div"); b.className = "banner"; b.setAttribute("role", "status"); el(".win").insertBefore(b, el(".body")); }
-  const close = esc(tr("common.close"));
-  b.innerHTML = `<span class="banner-msg"></span><button class="banner-x" title="${close}" aria-label="${close}">×</button>`;
-  b.querySelector(".banner-msg").textContent = msg;   // textContent: no HTML injection
-  b.querySelector(".banner-x").onclick = dismissBanner;
+  b._spec = spec;
+  renderBanner(b);
   b.classList.add("show");
   if (_bannerTimer) clearTimeout(_bannerTimer);
   _bannerTimer = setTimeout(dismissBanner, 5000);      // closes itself after 5 s
+}
+
+function renderBanner(b) {
+  const close = esc(tr("common.close"));
+  b.innerHTML = `<span class="banner-msg"></span><button class="banner-x" title="${close}" aria-label="${close}">×</button>`;
+  b.querySelector(".banner-msg").textContent = specText(b._spec);   // textContent: no HTML injection
+  b.querySelector(".banner-x").onclick = dismissBanner;
 }
 
 function esc(s) {
@@ -222,7 +237,7 @@ async function updateAccount(id, patch) {
     });
     if (!r.ok) throw await apiFailure(r);
     acc = await r.json();
-  } catch (e) { banner(errText("toast.profileUpdateFailed", e)); return null; }
+  } catch (e) { banner(errSpec("toast.profileUpdateFailed", e)); return null; }
   const a = state.accounts.find((x) => x.id === id);
   if (a) Object.assign(a, acc);
   if (patch.color) {
@@ -300,10 +315,10 @@ function openAddMenu(anchor) {
 async function addGoogleAccount() {
   const btn = el("#addaccount");
   btn.disabled = true;
-  banner(tr("toast.authorizeInBrowser"));
+  banner(msgSpec("toast.authorizeInBrowser"));
   try {
     const acc = await postAction("/accounts/google");
-    banner(tr("toast.accountAdded", { email: acc.email || "" }));
+    banner(msgSpec("toast.accountAdded", { email: acc.email || "" }));
     await loadAccounts();
     if (acc.account_id) {
       selectAccount(acc.account_id);
@@ -313,7 +328,7 @@ async function addGoogleAccount() {
         .catch(() => {});
     }
   } catch (e) {
-    banner(errText("toast.addAccountFailed", e));
+    banner(errSpec("toast.addAccountFailed", e));
   } finally {
     btn.disabled = false;
   }
@@ -324,7 +339,7 @@ function openImapForm() {
   el("#imap-pass").value = "";
   el("#imap-host").value = "imap.orange.fr";
   el("#imap-port").value = "993";
-  el("#imap-status").textContent = "";
+  setStatus(el("#imap-status"), null);
   el("#imapmodal").hidden = false;
   el("#imap-email").focus();
 }
@@ -336,10 +351,10 @@ async function connectImap() {
   const status = el("#imap-status");
   const email = el("#imap-email").value.trim();
   const password = el("#imap-pass").value;
-  if (!email || !password) { status.textContent = tr("imap.required"); return; }
+  if (!email || !password) { setStatus(status, msgSpec("imap.required")); return; }
   const btn = el("#imap-connect");
   btn.disabled = true;
-  status.textContent = tr("imap.connecting");
+  setStatus(status, msgSpec("imap.connecting"));
   try {
     const data = await postAction("/accounts/imap", {
       email, password,
@@ -347,7 +362,7 @@ async function connectImap() {
       port: Number(el("#imap-port").value) || 993,
     });
     closeImapForm();
-    banner(tr("toast.imapConnected", { email: data.email }));
+    banner(msgSpec("toast.imapConnected", { email: data.email }));
     await loadAccounts();
     if (data.account_id) {
       selectAccount(data.account_id);
@@ -356,7 +371,7 @@ async function connectImap() {
         .catch(() => {});
     }
   } catch (e) {
-    status.textContent = errText("imap.failed", e);
+    setStatus(status, errSpec("imap.failed", e));
   } finally {
     btn.disabled = false;
   }
@@ -501,7 +516,7 @@ async function loadMessages() {
   el("#listbar-title").textContent = listTitle();
   let msgs;
   try { msgs = await api(messagesQuery()); }
-  catch (e) { banner(errText("toast.loadFailed", e)); return; }
+  catch (e) { banner(errSpec("toast.loadFailed", e)); return; }
   if (seq !== state.listSeq) return;  // a more recent request took over
   state.currentMsgs = msgs;
 
@@ -533,7 +548,7 @@ async function loadMessages() {
 
 async function markAllRead() {
   const unread = state.currentMsgs.filter((m) => m.is_unread);
-  if (!unread.length) { banner(tr("toast.noUnread")); return; }
+  if (!unread.length) { banner(msgSpec("toast.noUnread")); return; }
   const btn = el("#markread");
   btn.disabled = true;
   let ok = 0;
@@ -542,9 +557,9 @@ async function markAllRead() {
       await postAction(`/messages/${m.id}/modify`, { remove_labels: ["UNREAD"] });
       ok++;
     }
-    banner(tr("toast.markedRead", { count: ok }));
+    banner(msgSpec("toast.markedRead", { count: ok }));
   } catch (e) {
-    banner(errText("toast.markReadStopped", e, { count: ok }));
+    banner(errSpec("toast.markReadStopped", e, { count: ok }));
   } finally {
     await loadMessages();
     btn.disabled = false;
@@ -612,7 +627,7 @@ async function downloadAttachment(id, attId, att) {
     a.href = url; a.download = (att && att.filename) || "attachment";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-  } catch (e) { banner(errText("toast.downloadFailed", e)); }
+  } catch (e) { banner(errSpec("toast.downloadFailed", e)); }
 }
 
 async function exportEml(id) {
@@ -628,8 +643,8 @@ async function exportEml(id) {
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    banner(tr("toast.emlExported", { name }));
-  } catch (e) { banner(errText("toast.emlFailed", e)); }
+    banner(msgSpec("toast.emlExported", { name }));
+  } catch (e) { banner(errSpec("toast.emlFailed", e)); }
 }
 
 function openSingle(id) { state.tabs = []; openMessage(id); }
@@ -679,6 +694,7 @@ function readEmpty(text) {
 
 function closeReading() {
   state.currentId = null;
+  state.readNotice = null;
   state.tabs = [];
   el("#read").innerHTML = readEmpty(tr("read.empty"));
   updateLayout();
@@ -693,7 +709,10 @@ function iconButton(id, icon, labelKey) {
 
 async function openMessage(id) {
   const seq = ++state.openSeq;
+  // "Show images" applies to one message: it is kept while that message stays open.
+  if (state.remoteShownFor !== id) state.remoteShownFor = null;
   state.currentId = id;
+  state.readNotice = null;
   updateLayout();
   // Optimistic update: the unread dot disappears as soon as the row is clicked.
   const listRow = document.querySelector(`.li[data-id="${id}"]`);
@@ -704,7 +723,7 @@ async function openMessage(id) {
   }
   let m;
   try { m = await api("/messages/" + id); }
-  catch (e) { banner(errText("toast.openFailed", e)); return; }
+  catch (e) { banner(errSpec("toast.openFailed", e)); return; }
   if (seq !== state.openSeq) return;  // another message was opened in the meantime
 
   const read = el("#read");
@@ -745,17 +764,17 @@ async function openMessage(id) {
   head.querySelector("#emlbtn").onclick = () => exportEml(id);
   if (inTrash) {
     head.querySelector("#untrashbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/untrash`); afterAction(tr("toast.restored")); }
-      catch (e) { banner(errText("toast.actionFailed", e)); }
+      try { await postAction(`/messages/${id}/untrash`); afterAction(msgSpec("toast.restored")); }
+      catch (e) { banner(errSpec("toast.actionFailed", e)); }
     };
   } else {
     head.querySelector("#archbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction(tr("toast.archived")); }
-      catch (e) { banner(errText("toast.actionFailed", e)); }
+      try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction(msgSpec("toast.archived")); }
+      catch (e) { banner(errSpec("toast.actionFailed", e)); }
     };
     head.querySelector("#trashbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/trash`); afterAction(tr("toast.trashed")); }
-      catch (e) { banner(errText("toast.actionFailed", e)); }
+      try { await postAction(`/messages/${id}/trash`); afterAction(msgSpec("toast.trashed")); }
+      catch (e) { banner(errSpec("toast.actionFailed", e)); }
     };
   }
 
@@ -784,31 +803,33 @@ async function openMessage(id) {
       imgBar.innerHTML = `<span>${esc(tr("read.remoteBlocked", { count: blocked }))}</span>` +
         `<button class="ghost img-bar-btn">${esc(tr("read.showImages"))}</button>`;
       imgBar.querySelector("button").onclick = () => {
+        state.remoteShownFor = id;
         imgBar.hidden = true;
-        render(true).catch((e) => banner(errText("toast.openFailed", e)));
+        render(true).catch((e) => banner(errSpec("toast.openFailed", e)));
       };
       imgBar.hidden = false;
     } else {
       imgBar.hidden = true;
     }
   };
-  try { await render(remoteImagesAllowed()); }
-  catch (e) { banner(errText("toast.openFailed", e)); }
+  try { await render(remoteImagesAllowed() || state.remoteShownFor === id); }
+  catch (e) { banner(errSpec("toast.openFailed", e)); }
 
   if (m.is_unread) {
     postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] })
       .then(loadMessages)
-      .catch((e) => { banner(errText("toast.markReadFailed", e)); loadMessages(); });
+      .catch((e) => { banner(errSpec("toast.markReadFailed", e)); loadMessages(); });
   } else {
     loadMessages();
   }
 }
 
-function afterAction(msg) {
-  banner(msg);
+function afterAction(spec) {
+  banner(spec);
   state.currentId = null;
   state.tabs = [];
-  el("#read").innerHTML = readEmpty(msg);
+  state.readNotice = spec;                 // shown in the empty reading pane
+  el("#read").innerHTML = readEmpty(specText(spec));
   updateLayout();
   loadMessages();
 }
@@ -830,7 +851,7 @@ function openComposer(prefill) {
   fromSel.innerHTML = "";
   // Only accounts that can send (Gmail): IMAP accounts are read-only.
   const sendable = (state.accounts || []).filter((a) => a.provider !== "imap");
-  if (!sendable.length) { banner(tr("toast.noSendableAccount")); return; }
+  if (!sendable.length) { banner(msgSpec("toast.noSendableAccount")); return; }
   sendable.forEach((a) => {
     const o = document.createElement("option");
     o.value = a.id; o.textContent = a.display_name || a.email;
@@ -846,7 +867,7 @@ function openComposer(prefill) {
   el("#c-cc").value = "";
   el("#c-subject").value = prefill.subject || "";
   el("#c-body").value = prefill.body || "";
-  el("#c-status").textContent = "";
+  setStatus(el("#c-status"), null);
   c.dataset.inReplyTo = prefill.inReplyTo || "";
   c.dataset.threadId = prefill.threadId || "";
   state.composerAtts = [];
@@ -881,7 +902,7 @@ function addComposerFiles(fileList) {
         renderComposerAtts();
         resolve();
       };
-      reader.onerror = () => { banner(tr("toast.fileReadFailed", { name: f.name })); resolve(); };
+      reader.onerror = () => { banner(msgSpec("toast.fileReadFailed", { name: f.name })); resolve(); };
       reader.readAsDataURL(f);
     });
     state.pendingReads.push(p);
@@ -892,9 +913,9 @@ function addComposerFiles(fileList) {
 async function sendComposer() {
   const status = el("#c-status");
   const to = el("#c-to").value.trim();
-  if (!to) { status.textContent = tr("composer.needRecipient"); return; }
+  if (!to) { setStatus(status, msgSpec("composer.needRecipient")); return; }
   el("#c-send").disabled = true;
-  status.textContent = tr("composer.preparing");
+  setStatus(status, msgSpec("composer.preparing"));
   await Promise.allSettled(state.pendingReads);  // wait until attachments are read
   const payload = {
     account_id: Number(el("#c-from").value),
@@ -906,27 +927,31 @@ async function sendComposer() {
     attachments: state.composerAtts || [],
     idempotency_key: state.composerKey,
   };
-  status.textContent = tr("composer.sending");
+  setStatus(status, msgSpec("composer.sending"));
   try {
     await postAction("/send", payload);
     closeComposer();
-    banner(tr("toast.sent"));
+    banner(msgSpec("toast.sent"));
     fetch("/accounts/" + payload.account_id + "/sync", { method: "POST", ...AUTH })
       .then(loadMessages).catch(() => {});
-  } catch (e) { status.textContent = errText("composer.sendFailed", e); }
+  } catch (e) { setStatus(status, errSpec("composer.sendFailed", e)); }
   el("#c-send").disabled = false;
 }
 
-// Subject prefixes already present are kept as they are, whatever the language
-// of the client that wrote them.
-const REPLY_PREFIX = /^\s*(re|aw|sv|antw)\s*:/i;
+// New subjects always use "Re:" and "Fwd:", the prefixes every mail client
+// understands, whatever the interface language. Prefixes already present are
+// kept as they are, including localized ones written by other clients
+// (French "Tr", German "AW"/"WG", Spanish "RV", Portuguese "Enc", ...).
+const REPLY_PREFIX_OUT = "Re:";
+const FORWARD_PREFIX_OUT = "Fwd:";
+const REPLY_PREFIX = /^\s*(re|aw|sv|antw|r)\s*:/i;
 const FORWARD_PREFIX = /^\s*(fwd?|tr|wg|rv|enc|i)\s*:/i;
 
 function replyTo(m) {
   const subject = m.subject || "";
   openComposer({
     titleKey: "composer.reply", accountId: m.account_id, to: emailOnly(m.addr_from),
-    subject: REPLY_PREFIX.test(subject) ? subject : tr("composer.replyPrefix") + " " + subject,
+    subject: REPLY_PREFIX.test(subject) ? subject : REPLY_PREFIX_OUT + " " + subject,
     inReplyTo: m.rfc822_message_id || "", threadId: m.thread_id || "",
     body: "\n\n" + tr("composer.originalMessage") + "\n" + (m.body_text || ""),
   });
@@ -936,7 +961,7 @@ function forward(m) {
   const subject = m.subject || "";
   openComposer({
     titleKey: "composer.forward", accountId: m.account_id,
-    subject: FORWARD_PREFIX.test(subject) ? subject : tr("composer.forwardPrefix") + " " + subject,
+    subject: FORWARD_PREFIX.test(subject) ? subject : FORWARD_PREFIX_OUT + " " + subject,
     body: "\n\n" + tr("composer.forwardedMessage") + "\n" +
       tr("composer.forwardedFrom", { from: m.addr_from || "" }) + "\n" +
       tr("composer.forwardedSubject", { subject }) + "\n\n" + (m.body_text || ""),
@@ -968,7 +993,7 @@ async function syncAll() {
       await loadAccounts();
       await loadMessages();
     }
-  } catch (e) { banner(errText("toast.syncFailed", e)); }
+  } catch (e) { banner(errSpec("toast.syncFailed", e)); }
   btn.disabled = false;
   btn.classList.remove("spinning");
 }
@@ -1028,10 +1053,24 @@ function renderLanguagePane() {
   });
 }
 
+// Loads the language file first; only then applies and saves it. If the file
+// cannot be loaded, the current language stays and nothing is saved. When the
+// user switches quickly, only the last choice is applied.
 async function changeLanguage(code) {
-  if (code === I18N.language && PREFS.language === code) return;
+  const seq = ++state.langSeq;
+  if (code === I18N.language && PREFS.language === code) { renderLanguagePane(); return; }
+  try {
+    await I18N.load(code);
+  } catch (e) {
+    if (seq !== state.langSeq) return;
+    console.warn("language", code, e);
+    renderLanguagePane();                  // back to the language really in use
+    banner(msgSpec("toast.languageLoadFailed"));
+    return;
+  }
+  if (seq !== state.langSeq) return;        // a more recent choice took over
+  I18N.use(code);
   savePref("language", code);
-  await I18N.setLanguage(code);
   refreshTexts();
   const btn = el(`.lang-opt[data-lang-val="${code}"]`);
   if (btn) btn.focus();
@@ -1043,10 +1082,16 @@ function refreshTexts() {
   paintStaticIcons();
   renderCats();
   renderLanguagePane();
+  updateGlassValue();
+  closeAddMenu();
+  closeColorPicker();
   const c = el("#composer");
   if (c.dataset.titleKey) el("#composer-title").textContent = tr(c.dataset.titleKey);
+  ["#c-status", "#imap-status"].forEach((sel) => { const n = el(sel); if (n._spec) n.textContent = specText(n._spec); });
+  const b = el(".banner");
+  if (b && b._spec) renderBanner(b);
   if (!el("#pane-accounts").hidden) renderSettings();
-  if (!state.currentId) el("#read").innerHTML = readEmpty(tr("read.empty"));
+  if (!state.currentId) el("#read").innerHTML = readEmpty(state.readNotice ? specText(state.readNotice) : tr("read.empty"));
   loadAccounts().catch(() => {});
   if (state.currentId) openMessage(state.currentId);
   else loadMessages();
@@ -1116,12 +1161,12 @@ async function logoutAccount(id, email) {
   try {
     const r = await fetch(`/accounts/${id}`, { method: "DELETE", headers: { Authorization: "Bearer " + TOKEN } });
     if (!r.ok) throw await apiFailure(r);
-    banner(tr("toast.disconnected", { email }));
+    banner(msgSpec("toast.disconnected", { email }));
     if (state.accountId === id) { state.accountId = null; state.folder = { type: "inbox" }; }
     await loadAccounts();
     renderSettings();
     loadMessages();
-  } catch (e) { banner(errText("toast.disconnectFailed", e)); }
+  } catch (e) { banner(errSpec("toast.disconnectFailed", e)); }
 }
 function openSettings(pane) {
   refreshAppearancePane();
@@ -1179,6 +1224,13 @@ function initSplitter() {
   sp.addEventListener("pointercancel", end);
 }
 
+// Percentage next to the density slider, in the active language ("60 %" in French).
+function updateGlassValue() {
+  const s = el("#glass-alpha");
+  const val = el("#glass-alpha-val");
+  if (s && val) val.textContent = I18N.formatNumber(s.value / 100, { style: "percent" });
+}
+
 async function initGlassSlider() {
   const s = el("#glass-alpha");
   const val = el("#glass-alpha-val");
@@ -1188,12 +1240,11 @@ async function initGlassSlider() {
     const r = await fetch("/glass", { headers: { Authorization: "Bearer " + TOKEN } });
     if (r.ok) a0 = Math.max(0, Math.min(1, (await r.json()).alpha));
   } catch { /* no native backend: no effect */ }
-  const pct = () => I18N.formatNumber(s.value / 100, { style: "percent" });
   s.value = Math.round(a0 * 100);
-  if (val) val.textContent = pct();
+  updateGlassValue();
   // (the native side already applied the persisted value when the window was created)
   s.addEventListener("input", () => {
-    if (val) val.textContent = pct();
+    updateGlassValue();
     applyGlassAlpha(s.value / 100);        // applies live AND persists
   });
 }
@@ -1301,7 +1352,7 @@ async function main() {
     await loadAccounts();
     await loadMessages();
   } catch (e) {
-    banner(errText("toast.apiUnreachable", e));
+    banner(errSpec("toast.apiUnreachable", e));
   }
 }
 

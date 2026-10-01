@@ -49,15 +49,35 @@ const I18N = (() => {
     return tables[code];
   }
 
-  async function setLanguage(code) {
-    if (!supported(code)) code = DEFAULT;
-    try { await fetchTable(DEFAULT); } catch { tables[DEFAULT] = tables[DEFAULT] || {}; }
+  // Loads a language WITHOUT applying it; rejects if the file cannot be read.
+  // A language change loads first and applies only on success, so a failed
+  // download never leaves the interface half translated.
+  async function load(code) {
+    if (!supported(code)) throw new Error(`unsupported language: ${code}`);
+    await fetchTable(code);
     if (code !== DEFAULT) {
-      try { await fetchTable(code); } catch { code = DEFAULT; }
+      try { await fetchTable(DEFAULT); } catch { /* English fallback unavailable: keys stay */ }
     }
+    return code;
+  }
+
+  // Makes an already loaded language the active one (synchronous).
+  function use(code) {
+    if (!tables[code]) throw new Error(`language not loaded: ${code}`);
     current = code;
     document.documentElement.lang = code;
     return code;
+  }
+
+  // Startup: the wanted language, or English when it cannot be loaded.
+  async function setLanguage(code) {
+    if (!supported(code)) code = DEFAULT;
+    try { await load(code); }
+    catch {
+      code = DEFAULT;
+      try { await fetchTable(DEFAULT); } catch { tables[DEFAULT] = tables[DEFAULT] || {}; }
+    }
+    return use(code);
   }
 
   function lookup(key) {
@@ -113,7 +133,7 @@ const I18N = (() => {
   }
 
   return {
-    LANGUAGES, DEFAULT, detect, setLanguage, t, has, locale, formatNumber, applyDom,
+    LANGUAGES, DEFAULT, detect, load, use, setLanguage, t, has, locale, formatNumber, applyDom,
     get language() { return current; },
   };
 })();
