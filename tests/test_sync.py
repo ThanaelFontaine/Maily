@@ -39,22 +39,22 @@ def store(database):
 
 def test_backfill_imports_messages(store):
     acc = store.upsert_account("me@example.com")
-    client = FakeClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")})
+    client = FakeClient({"g1": _msg("g1", "One"), "g2": _msg("g2", "Two")})
     n = Syncer(store, client, acc).backfill()
     assert n == 2
     assert store.get_sync_state(acc, "backfill_done") == "1"
     assert store.get_sync_state(acc, "last_history_id") == "10"
-    assert len(store.search_messages("Deux")) == 1
+    assert len(store.search_messages("Two")) == 1
 
 
 def test_incremental_adds_and_trashes(store):
     acc = store.upsert_account("me@example.com")
-    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    Syncer(store, FakeClient({"g1": _msg("g1", "One")}), acc).backfill()
     hist = [
         {"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]},
         {"id": "12", "messagesDeleted": [{"message": {"id": "g1"}}]},
     ]
-    client = FakeClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")}, history=hist)
+    client = FakeClient({"g1": _msg("g1", "One"), "g2": _msg("g2", "Two")}, history=hist)
     n = Syncer(store, client, acc).incremental()
     assert n == 2
     assert store.get_sync_state(acc, "last_history_id") == "999"
@@ -64,54 +64,54 @@ def test_incremental_adds_and_trashes(store):
 
 def test_incremental_resyncs_on_history_expired(store):
     acc = store.upsert_account("me@example.com")
-    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
-    client = FakeClient({"g1": _msg("g1", "Un"), "g9": _msg("g9", "Neuf")}, history_raises=True)
+    Syncer(store, FakeClient({"g1": _msg("g1", "One")}), acc).backfill()
+    client = FakeClient({"g1": _msg("g1", "One"), "g9": _msg("g9", "Nine")}, history_raises=True)
     Syncer(store, client, acc).incremental()
-    assert store.search_messages("Neuf")
+    assert store.search_messages("Nine")
 
 
 class PagedClient(FakeClient):
-    """Deux pages d'historique ; la seconde peut tomber en panne (quota Gmail)."""
+    """Two history pages; the second one can fail (Gmail quota)."""
 
-    def __init__(self, messages, pages, panne_page2=False):
+    def __init__(self, messages, pages, fail_page2=False):
         super().__init__(messages)
         self.pages = pages
-        self.panne_page2 = panne_page2
-        self.relectures = []
+        self.fail_page2 = fail_page2
+        self.fetches = []
 
     def get_message(self, gid, fmt="full"):
-        self.relectures.append(gid)
+        self.fetches.append(gid)
         return self.messages[gid]
 
     def list_history(self, start_history_id, page_token=None):
         if page_token is None:
             return self.pages[0], "p2", "999"
-        if self.panne_page2:
+        if self.fail_page2:
             raise RuntimeError("quota")
         return self.pages[1], None, "999"
 
 
 def test_incremental_checkpoints_each_page_so_a_failure_does_not_restart_from_scratch(store):
     acc = store.upsert_account("me@example.com")
-    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    Syncer(store, FakeClient({"g1": _msg("g1", "One")}), acc).backfill()
     pages = [[{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}], [{"id": "12", "messagesAdded": [{"message": {"id": "g3"}}]}]]
-    msgs = {"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux"), "g3": _msg("g3", "Trois")}
+    msgs = {"g1": _msg("g1", "One"), "g2": _msg("g2", "Two"), "g3": _msg("g3", "Three")}
     with pytest.raises(RuntimeError):
-        Syncer(store, PagedClient(msgs, pages, panne_page2=True), acc).incremental()
+        Syncer(store, PagedClient(msgs, pages, fail_page2=True), acc).incremental()
     assert store.get_sync_state(acc, "last_history_id") == "11"
-    assert store.search_messages("Deux")
+    assert store.search_messages("Two")
     Syncer(store, PagedClient(msgs, pages), acc).incremental()
     assert store.get_sync_state(acc, "last_history_id") == "999"
-    assert store.search_messages("Trois")
+    assert store.search_messages("Three")
 
 
 def test_incremental_refetches_a_message_once_per_run(store):
     acc = store.upsert_account("me@example.com")
-    Syncer(store, FakeClient({"g1": _msg("g1", "Un")}), acc).backfill()
+    Syncer(store, FakeClient({"g1": _msg("g1", "One")}), acc).backfill()
     pages = [
         [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}]}, {"id": "12", "labelsAdded": [{"message": {"id": "g2"}}]}],
         [{"id": "13", "labelsRemoved": [{"message": {"id": "g2"}}]}],
     ]
-    client = PagedClient({"g1": _msg("g1", "Un"), "g2": _msg("g2", "Deux")}, pages)
+    client = PagedClient({"g1": _msg("g1", "One"), "g2": _msg("g2", "Two")}, pages)
     Syncer(store, client, acc).incremental()
-    assert client.relectures == ["g2"]
+    assert client.fetches == ["g2"]

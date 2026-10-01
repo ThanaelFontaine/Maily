@@ -6,22 +6,22 @@ import time
 from googleapiclient.errors import HttpError
 
 _RETRYABLE = {429, 500, 502, 503}
-# Gmail signale aussi ses quotas par un 403 (quota par minute et par utilisateur) : celui-la se
-# reessaie, un 403 d'acces refuse, jamais.
-_RAISONS_QUOTA = ("rateLimitExceeded", "userRateLimitExceeded")
+# Gmail also reports its quotas with a 403 (per-minute, per-user quota): that one is
+# retried, a 403 for denied access never is.
+_QUOTA_REASONS = ("rateLimitExceeded", "userRateLimitExceeded")
 
 
-def _est_quota(e: HttpError) -> bool:
+def _is_quota(e: HttpError) -> bool:
     status = getattr(e, "status_code", None) or getattr(getattr(e, "resp", None), "status", None)
     if status != 403:
         return False
-    contenu = getattr(e, "content", b"") or b""
-    texte = contenu.decode("utf-8", errors="replace") if isinstance(contenu, (bytes, bytearray)) else str(contenu)
-    return any(r in texte for r in _RAISONS_QUOTA) or any(r in str(e) for r in _RAISONS_QUOTA)
+    content = getattr(e, "content", b"") or b""
+    text = content.decode("utf-8", errors="replace") if isinstance(content, (bytes, bytearray)) else str(content)
+    return any(r in text for r in _QUOTA_REASONS) or any(r in str(e) for r in _QUOTA_REASONS)
 
 
 # --------------------------------------------------------------------------- #
-# Parsing (fonction pure, sans reseau)
+# Parsing (pure function, no network)
 # --------------------------------------------------------------------------- #
 
 def _b64url_decode(data: str, charset: str = "utf-8") -> str:
@@ -97,7 +97,7 @@ def parse_gmail_message(raw: dict) -> tuple[dict, list[dict]]:
 
 
 # --------------------------------------------------------------------------- #
-# Client Gmail (appels reseau isoles, injectable pour les tests)
+# Gmail client (isolated network calls, injectable for tests)
 # --------------------------------------------------------------------------- #
 
 class HistoryExpired(Exception):
@@ -115,9 +115,9 @@ class GmailClient:
                 return request.execute()
             except HttpError as e:
                 status = getattr(e, "status_code", None) or getattr(getattr(e, "resp", None), "status", None)
-                quota = _est_quota(e)
+                quota = _is_quota(e)
                 if (status in _RETRYABLE or quota) and attempt < max_attempts - 1:
-                    # Le quota Gmail se compte a la minute : l'attente doit pouvoir la couvrir.
+                    # The Gmail quota is counted per minute: the wait must be able to cover it.
                     if quota:
                         delay = max(delay, 2.0)
                     _sleep(delay)

@@ -10,7 +10,7 @@ _MIGRATION_RE = re.compile(r"^(\d{4})_.*\.sql$")
 
 
 def migrations_dir() -> pathlib.Path:
-    # En binaire figé (PyInstaller), les migrations sont embarquees a la racine.
+    # In a frozen binary (PyInstaller), the migrations are embedded at the root.
     if getattr(sys, "frozen", False):
         return pathlib.Path(getattr(sys, "_MEIPASS", ".")) / "migrations"
     return pathlib.Path(__file__).resolve().parent.parent / "migrations"

@@ -20,16 +20,16 @@ def test_parse_simple_multipart():
                 {"name": "Message-ID", "value": "<abc@mail>"},
             ],
             "parts": [
-                {"mimeType": "text/plain", "body": {"data": _b64("bonjour recruteur")}},
-                {"mimeType": "text/html", "body": {"data": _b64("<p>bonjour</p>")}},
+                {"mimeType": "text/plain", "body": {"data": _b64("hello recruiter")}},
+                {"mimeType": "text/html", "body": {"data": _b64("<p>hello</p>")}},
             ],
         },
     }
     fields, atts = parse_gmail_message(raw)
     assert fields["subject"] == "Candidature"
     assert fields["addr_from"] == "Rec <rh@example.org>"
-    assert fields["body_text"] == "bonjour recruteur"
-    assert fields["body_html"] == "<p>bonjour</p>"
+    assert fields["body_text"] == "hello recruiter"
+    assert fields["body_html"] == "<p>hello</p>"
     assert fields["direction"] == "in"
     assert fields["is_unread"] == 1
     assert fields["is_starred"] == 0
@@ -46,9 +46,9 @@ def test_parse_detects_attachment_and_sent():
         "labelIds": ["SENT"],
         "payload": {
             "mimeType": "multipart/mixed",
-            "headers": [{"name": "Subject", "value": "Envoi"}],
+            "headers": [{"name": "Subject", "value": "Sent"}],
             "parts": [
-                {"mimeType": "text/plain", "body": {"data": _b64("corps")}},
+                {"mimeType": "text/plain", "body": {"data": _b64("body")}},
                 {"mimeType": "application/pdf", "filename": "cv.pdf",
                  "headers": [{"name": "Content-ID", "value": "<cid123>"}],
                  "body": {"attachmentId": "att1", "size": 12345}},

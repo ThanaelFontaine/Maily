@@ -1,4 +1,4 @@
-"""Le mode demonstration (scripts/demo.py) ne touche jamais les vraies donnees."""
+"""The demo mode (scripts/demo.py) never touches the real data."""
 import importlib.util
 import pathlib
 import pytest

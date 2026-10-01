@@ -15,7 +15,7 @@ class FakeStore:
         self.state[(aid, key)] = value
 
 
-def test_sync_all_once_continue_apres_un_echec():
+def test_sync_all_once_goes_on_after_a_failure():
     store = FakeStore([1, 2, 3])
 
     def fn(aid):
@@ -32,55 +32,55 @@ def test_sync_all_once_continue_apres_un_echec():
     assert (2, "last_sync_at") not in store.state
 
 
-def test_serialized_empeche_deux_synchros_simultanees():
-    actives = []
-    maxi = []
+def test_serialized_prevents_two_simultaneous_syncs():
+    running = []
+    peaks = []
     gate = threading.Event()
 
-    def lent(aid):
-        actives.append(aid)
-        maxi.append(len(actives))
+    def slow(aid):
+        running.append(aid)
+        peaks.append(len(running))
         gate.wait(0.05)
-        actives.remove(aid)
+        running.remove(aid)
         return 0
 
-    fn = auto_sync.serialized(lent)
+    fn = auto_sync.serialized(slow)
     threads = [threading.Thread(target=fn, args=(i,)) for i in range(4)]
     for t in threads:
         t.start()
     for t in threads:
         t.join()
-    assert max(maxi) == 1
+    assert max(peaks) == 1
 
 
-def test_auto_sync_passe_au_demarrage_puis_s_arrete():
+def test_auto_sync_runs_at_startup_then_stops():
     store = FakeStore([7])
-    passages = []
+    passes = []
     done = threading.Event()
 
     def fn(aid):
-        passages.append(aid)
+        passes.append(aid)
         done.set()
         return 0
 
     a = auto_sync.AutoSync(store, fn, interval_seconds=3600, initial_delay_seconds=0).start()
     assert done.wait(2)
     a.stop(timeout=2)
-    assert passages == [7]
+    assert passes == [7]
     assert not a._thread.is_alive()
 
 
-def test_intervalle_plancher():
+def test_interval_floor():
     a = auto_sync.AutoSync(FakeStore([]), lambda aid: 0, interval_seconds=5)
     assert a.interval == auto_sync.MIN_INTERVAL_SECONDS
 
 
-def test_liste_des_comptes_en_panne_ne_tue_pas_le_fil():
-    class Cassee(FakeStore):
+def test_failing_account_listing_does_not_kill_the_thread():
+    class Broken(FakeStore):
         def list_accounts(self):
-            raise RuntimeError("base verrouillee")
+            raise RuntimeError("database locked")
 
-    a = auto_sync.AutoSync(Cassee([]), lambda aid: 0, interval_seconds=3600, initial_delay_seconds=0).start()
+    a = auto_sync.AutoSync(Broken([]), lambda aid: 0, interval_seconds=3600, initial_delay_seconds=0).start()
     a._stop.wait(0.2)
     assert a._thread.is_alive()
     a.stop(timeout=2)

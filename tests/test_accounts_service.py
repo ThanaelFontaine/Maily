@@ -37,7 +37,7 @@ def test_sync_account_calls_incremental(monkeypatch, tmp_path):
 
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
-    aid = store.upsert_account("me@example.com")   # provider gmail par défaut
+    aid = store.upsert_account("me@example.com")   # gmail provider by default
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: "CLIENT")
     monkeypatch.setattr(svc, "Syncer", FakeSyncer)
     n = svc.sync_account(store, "me@example.com", aid)
@@ -79,7 +79,7 @@ def test_add_google_account_propagates_reauth(monkeypatch, tmp_path):
     store = Store(db)
 
     def boom(open_browser=True, timeout_seconds=None):
-        raise auth.ReauthRequired("client absent")
+        raise auth.ReauthRequired("client missing")
 
     monkeypatch.setattr(auth, "run_local_auth", boom)
     with pytest.raises(auth.ReauthRequired):
@@ -92,7 +92,7 @@ def test_add_google_account_rejects_concurrent(monkeypatch, tmp_path):
     store = Store(db)
     monkeypatch.setattr(auth, "run_local_auth",
                         lambda open_browser=True, timeout_seconds=None: "y@example.com")
-    assert svc._add_account_lock.acquire(blocking=False)  # simule un flow deja en cours
+    assert svc._add_account_lock.acquire(blocking=False)  # simulates a flow already in progress
     try:
         with pytest.raises(svc.AddAccountInProgress):
             svc.add_google_account(store)
@@ -111,7 +111,7 @@ def test_add_google_account_releases_lock_after_error(monkeypatch, tmp_path):
     monkeypatch.setattr(auth, "run_local_auth", boom)
     with pytest.raises(auth.ReauthRequired):
         svc.add_google_account(store)
-    # le verrou doit etre libere meme apres erreur
+    # the lock must be released even after an error
     assert svc._add_account_lock.acquire(blocking=False)
     svc._add_account_lock.release()
     db.close()
@@ -136,7 +136,7 @@ def test_logout_account_unknown_is_noop(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
     monkeypatch.setattr(svc.secrets_store, "delete_account_token", lambda email: None)
-    # ne doit pas lever
+    # must not raise
     svc.logout_account(store, 9999)
     db.close()
 
@@ -146,8 +146,8 @@ def test_export_eml_gmail(monkeypatch, tmp_path):
     db = Database(tmp_path / "app.sqlite")
     store = Store(db)
     aid = store.upsert_account("me@example.com")
-    mid = store.upsert_message(aid, "gmABC", subject="Ma facture", label_ids='["INBOX"]')
-    raw_bytes = b"From: a@example.com\r\nSubject: Ma facture\r\n\r\nCorps du mail."
+    mid = store.upsert_message(aid, "gmABC", subject="My invoice", label_ids='["INBOX"]')
+    raw_bytes = b"From: a@example.com\r\nSubject: My invoice\r\n\r\nMail body."
     b64 = base64.urlsafe_b64encode(raw_bytes).decode().rstrip("=")  # style Gmail (sans padding)
 
     class FakeClient:
@@ -158,7 +158,7 @@ def test_export_eml_gmail(monkeypatch, tmp_path):
     monkeypatch.setattr(svc, "build_gmail_client", lambda e: FakeClient())
     data, filename = svc.export_eml(store, mid)
     assert data == raw_bytes
-    assert filename.endswith(".eml") and "facture" in filename.lower()
+    assert filename.endswith(".eml") and "invoice" in filename.lower()
     db.close()
 
 
@@ -212,7 +212,7 @@ def test_add_imap_account_bad_credentials(monkeypatch, tmp_path):
     monkeypatch.setattr(svc.secrets_store, "save_imap_credentials", lambda *a: None)
     with pytest.raises(ImapError):
         svc.add_imap_account(store, "me@example.net", "wrong")
-    # aucun compte créé
+    # no account created
     assert store.list_accounts() == []
     db.close()
 
@@ -245,7 +245,7 @@ def test_trash_message_imap(monkeypatch, tmp_path):
     fake = _FakeImapClient()
     monkeypatch.setattr(svc, "build_imap_client", lambda e: fake)
     svc.trash_message(store, "me@example.net", mid)
-    assert ("select", "INBOX.Sent") in fake.events   # sélectionne le bon dossier
+    assert ("select", "INBOX.Sent") in fake.events   # selects the right folder
     assert ("trash", 7) in fake.events
     assert dict(store.get_message(mid))["is_trashed"] == 1
     db.close()

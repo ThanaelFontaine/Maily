@@ -1,15 +1,15 @@
-"""Synchronisation IMAP vers le store local, en réutilisant le schéma Gmail.
+"""IMAP sync into the local store, reusing the Gmail schema.
 
-Orange = **tout** : tous les dossiers IMAP, sans limite de date. Chaque dossier
-devient un libellé ; l'INBOX garde le libellé "INBOX" (vue Boîte de réception).
+IMAP imports **everything**: every IMAP folder, without a date limit. Each
+folder becomes a label; INBOX keeps the "INBOX" label (Inbox view).
 
-Mapping :
-- gmail_id   = "{folder}\\x1f{uidvalidity}\\x1f{uid}" (unique par dossier ; le
-  dossier + l'UID sont récupérables via imap_client.parse_imap_key).
-- label_ids  = [nom du dossier] (+ "UNREAD" si le flag \\Seen est absent).
-- thread_id  = Message-ID (pas de fil IMAP).
+Mapping:
+- gmail_id   = "{folder}\\x1f{uidvalidity}\\x1f{uid}" (unique per folder; the
+  folder and the UID can be read back with imap_client.parse_imap_key).
+- label_ids  = [folder name] (+ "UNREAD" when the \\Seen flag is absent).
+- thread_id  = Message-ID (IMAP has no threads).
 
-Le client est injecté (testable sans réseau).
+The client is injected (testable without network).
 """
 from __future__ import annotations
 import json
@@ -31,7 +31,7 @@ class ImapSyncer:
         self.store = store
         self.client = client
         self.account_id = account_id
-        # backfill_months : gardé pour compat de signature (Orange charge tout).
+        # backfill_months: kept for signature compatibility (IMAP loads everything).
 
     def _val_key(self, folder):
         return f"imap:{folder}:uidvalidity"
@@ -89,7 +89,7 @@ class ImapSyncer:
                 try:
                     total += per_folder(f)
                 except ImapError:
-                    continue          # dossier illisible : on passe au suivant
+                    continue          # unreadable folder: move on to the next one
             return total
         finally:
             self.client.logout()

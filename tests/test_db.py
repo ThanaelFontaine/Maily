@@ -12,7 +12,7 @@ def test_apply_migrations_sets_user_version(tmp_path):
     conn = dbmod.connect(tmp_path / "m.sqlite")
     version = dbmod.apply_migrations(conn)
     assert version >= 1
-    # idempotent : re-appliquer ne change rien
+    # idempotent: applying again changes nothing
     assert dbmod.apply_migrations(conn) == version
     conn.close()
 

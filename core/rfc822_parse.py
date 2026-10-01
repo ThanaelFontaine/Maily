@@ -1,10 +1,11 @@
-"""Parse un message RFC822 brut (IMAP) vers les mêmes champs que Gmail.
+"""Parses a raw RFC 822 message (IMAP) into the same fields as Gmail.
 
-Produit un dict de champs compatible `store.upsert_message` (clés de
-`_MESSAGE_COLS`) + une liste de pièces jointes avec un locateur `imap:{i}`
-permettant de re-extraire la partie plus tard (`extract_part`).
+Produces a dict of fields accepted by `store.upsert_message` (keys of
+`_MESSAGE_COLS`) + a list of attachments with an `imap:{i}` locator that lets
+the part be extracted again later (`extract_part`).
 
-stdlib uniquement (`email` avec policy `default` : entêtes/charset décodés).
+Standard library only (`email` with the `default` policy: decoded headers and
+charsets).
 """
 from __future__ import annotations
 import email
@@ -18,8 +19,8 @@ def _msg(raw: bytes):
 
 
 def _iter_attachment_parts(msg):
-    """Parties considérées comme pièces jointes (fichiers + inline avec CID),
-    dans l'ordre - la même énumération sert au parse et à l'extraction."""
+    """Parts treated as attachments (files + inline parts with a CID), in
+    order: the same enumeration is used for parsing and for extraction."""
     for part in msg.walk():
         if part.is_multipart():
             continue
@@ -65,7 +66,7 @@ def _internal_date_ms(msg):
 def _snippet(text, html):
     base = (text or "").strip()
     if not base and html:
-        # repli très simple : on retire les balises pour un aperçu
+        # very simple fallback: strip the tags to get a preview
         import re
         base = re.sub(r"<[^>]+>", " ", html)
     base = " ".join(base.split())
@@ -80,7 +81,7 @@ def parse_rfc822(raw: bytes) -> tuple[dict, list[dict]]:
         payload = part.get_payload(decode=True) or b""
         cid = (part.get("Content-ID") or "").strip("<>") or None
         attachments.append({
-            "filename": part.get_filename() or "piece-jointe",
+            "filename": part.get_filename() or "attachment",
             "mime_type": part.get_content_type(),
             "size": len(payload),
             "gmail_attachment_id": f"imap:{i}",
@@ -88,7 +89,7 @@ def parse_rfc822(raw: bytes) -> tuple[dict, list[dict]]:
         })
     msg_id = msg.get("Message-ID")
     fields = {
-        "thread_id": msg_id,                 # pas de fil IMAP : chaque mail = son fil
+        "thread_id": msg_id,                 # no IMAP threads: each message is its own thread
         "rfc822_message_id": msg_id,
         "direction": "in",
         "addr_from": msg.get("From"),
@@ -102,7 +103,7 @@ def parse_rfc822(raw: bytes) -> tuple[dict, list[dict]]:
         "internal_date": _internal_date_ms(msg),
         "has_attachments": 1 if attachments else 0,
     }
-    # str() sur les entêtes (objets Header en policy.default) pour du texte pur.
+    # str() on the headers (Header objects with policy.default) to get plain text.
     for k in ("addr_from", "addr_to", "addr_cc", "addr_bcc", "subject",
               "thread_id", "rfc822_message_id"):
         if fields[k] is not None:
@@ -111,15 +112,15 @@ def parse_rfc822(raw: bytes) -> tuple[dict, list[dict]]:
 
 
 def extract_part(raw: bytes, locator: str) -> tuple[bytes, str, str]:
-    """Renvoie (octets, mime, filename) de la pièce jointe repérée par
-    `imap:{index}` (même énumération que parse_rfc822)."""
+    """Returns (bytes, mime, filename) of the attachment located by
+    `imap:{index}` (same enumeration as parse_rfc822)."""
     try:
         index = int(str(locator).split(":")[-1])
     except (TypeError, ValueError):
-        raise ValueError(f"locateur de pièce jointe invalide: {locator!r}")
+        raise ValueError(f"invalid attachment locator: {locator!r}")
     msg = _msg(raw)
     for i, part in enumerate(_iter_attachment_parts(msg)):
         if i == index:
             data = part.get_payload(decode=True) or b""
-            return data, part.get_content_type(), part.get_filename() or "piece-jointe"
-    raise ValueError(f"pièce jointe introuvable: {locator!r}")
+            return data, part.get_content_type(), part.get_filename() or "attachment"
+    raise ValueError(f"attachment not found: {locator!r}")

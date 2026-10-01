@@ -29,19 +29,19 @@ class _FakeWin:
 
 
 def test_apply_macos_transparency_missing_instance_is_safe():
-    # Aucune fenetre native pour cet uid -> ne doit rien lever (et ne rien faire).
+    # No native window for this uid: must not raise (and must do nothing).
     _apply_macos_transparency(_FakeWin("uid-inexistant"))
 
 
 def test_glass_alpha_persists_to_file(tmp_path, monkeypatch):
     import app.bootstrap as b
     monkeypatch.setattr(b, "_glass_alpha_path", lambda: tmp_path / "glass_alpha")
-    assert b.get_glass_alpha() == 0.6            # defaut si fichier absent
+    assert b.get_glass_alpha() == 0.6            # default when the file is missing
     b.set_glass_alpha(0.95)
     assert abs(b.get_glass_alpha() - 0.95) < 1e-6
     b.set_glass_alpha(5)                          # borne haute
     assert b.get_glass_alpha() == 1.0
-    b.set_glass_alpha("pas-un-nombre")           # invalide -> inchange
+    b.set_glass_alpha("not-a-number")           # invalid: unchanged
     assert b.get_glass_alpha() == 1.0
 
 
@@ -50,7 +50,7 @@ def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypa
     AppHelper = pytest.importorskip("PyObjCTools.AppHelper")
     import app.bootstrap as b
 
-    b._GLASS_DONE.discard("uid-x")  # garde-fou "une fois par fenetre" : repart propre
+    b._GLASS_DONE.discard("uid-x")  # "once per window" guard: start clean
 
     scheduled = []
     monkeypatch.setattr(AppHelper, "callAfter", lambda fn, *a: scheduled.append(fn))
@@ -62,8 +62,8 @@ def test_apply_macos_transparency_schedules_on_main_thread_when_present(monkeypa
     monkeypatch.setitem(cocoa.BrowserView.instances, "uid-x", _FakeBV())
     _apply_macos_transparency(_FakeWin("uid-x"))
 
-    # Le travail natif (re-parentage vibrancy + transparence) est poste sur le thread principal...
+    # The native work (vibrancy re-parenting + transparency) is posted to the main thread...
     assert len(scheduled) == 1
-    # ... et une 2e invocation ne re-planifie pas (re-parentage idempotent).
+    # ... and a second call does not schedule it again (idempotent re-parenting).
     _apply_macos_transparency(_FakeWin("uid-x"))
     assert len(scheduled) == 1

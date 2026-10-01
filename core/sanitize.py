@@ -3,9 +3,9 @@ import nh3
 
 _RESOURCE_ATTRS = {"src", "background", "poster", "srcset"}
 
-# Proprietes CSS inline autorisees (fidelite des mails) SANS reintroduire de
-# surface d'attaque : pas de position (breakout), pas de background/-image
-# (url() = contenu distant / tracking), pas de behavior/expression.
+# Inline CSS properties allowed (faithful rendering of mail) WITHOUT bringing
+# back an attack surface: no position (breakout), no background/-image
+# (url() = remote content / tracking), no behavior/expression.
 _STYLE_PROPS = {
     "color", "background-color",
     "font", "font-size", "font-weight", "font-style", "font-family", "font-variant",
@@ -18,7 +18,7 @@ _STYLE_PROPS = {
     "vertical-align", "white-space", "display",
 }
 
-# Attributs autorises = defauts nh3 + style + attributs de mise en page des mails.
+# Allowed attributes = nh3 defaults + style + mail layout attributes.
 _ATTRS = {tag: set(attrs) for tag, attrs in nh3.ALLOWED_ATTRIBUTES.items()}
 _ATTRS.setdefault("*", set()).add("style")
 _ATTRS.setdefault("img", set()).update({"src", "alt", "width", "height", "title"})
@@ -30,11 +30,10 @@ _ATTRS.setdefault("font", set()).update({"color", "face", "size"})
 
 
 def sanitize_html_report(html: str, allow_remote: bool = False) -> tuple[str, int]:
-    """Nettoie le HTML d'un mail et compte les ressources distantes bloquees.
+    """Cleans the HTML of a message and counts the blocked remote resources.
 
-    Rend (html_nettoye, nombre_de_ressources_distantes_retirees). Le compteur
-    permet a l'interface de proposer « Afficher les images » seulement quand
-    il y a vraiment quelque chose de bloque.
+    Returns (clean_html, number_of_remote_resources_removed). The counter lets
+    the interface offer "Show images" only when something was really blocked.
     """
     if not html:
         return "", 0
@@ -43,11 +42,11 @@ def sanitize_html_report(html: str, allow_remote: bool = False) -> tuple[str, in
     def attr_filter(tag: str, attr: str, value: str):
         nonlocal blocked
         low = value.strip().lower()
-        # Liens : jamais de data:/javascript:/vbscript: (phishing/XSS)
+        # Links: never data:/javascript:/vbscript: (phishing/XSS)
         if attr == "href" and low.startswith(("data:", "javascript:", "vbscript:")):
             return None
-        # Ressources (images...) : si contenu distant bloque, n'autoriser QUE le local
-        # (cid: images integrees, data: images inline). Bloque http(s), //host, et relatif.
+        # Resources (images...): when remote content is blocked, allow ONLY local ones
+        # (cid: embedded images, data: inline images). Blocks http(s), //host and relative URLs.
         if attr in _RESOURCE_ATTRS and not allow_remote:
             if not low.startswith(("cid:", "data:")):
                 if low:

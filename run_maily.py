@@ -1,14 +1,14 @@
-"""Point d'entree de l'application empaquetee (PyInstaller)."""
+"""Entry point of the packaged application (PyInstaller)."""
 from __future__ import annotations
 import multiprocessing
 import sys
 
 
 def _tls_selftest() -> int:
-    """Verifie que TLS marche dans le binaire fige (certifi + requests).
+    """Checks that TLS works in the frozen binary (certifi + requests).
 
-    Reproduit exactement le chemin qui echouait a l'ajout d'un compte Google
-    (echange de token OAuth via requests). Usage : `Maily --tls-selftest`.
+    Reproduces exactly the path that failed when adding a Google account
+    (OAuth token exchange through requests). Usage: `Maily --tls-selftest`.
     """
     import certifi
     import os
@@ -32,5 +32,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()  # necessaire sous Windows en binaire figé
+    multiprocessing.freeze_support()  # needed on Windows in a frozen binary
     main()

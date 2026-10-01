@@ -1,16 +1,16 @@
-"""Serveur MCP local « Maily » : expose les boites mail multi-profils de Maily
-comme outils pour un client MCP tournant sur la meme machine (Claude Code,
-Claude Desktop, ou tout autre client MCP en stdio).
+"""Local "Maily" MCP server: exposes Maily's multi-profile mailboxes as tools
+for an MCP client running on the same machine (Claude Code, Claude Desktop, or
+any other stdio MCP client).
 
-Il importe directement le moteur Maily (meme base SQLite locale, memes secrets
-chiffres dans le dossier de donnees, voir core/paths.py et MAILY_DATA_DIR).
-Aucun reseau, aucun port : transport stdio. La lecture des secrets ne demande
-PAS Touch ID (la porte biometrique ne protege que le lancement de l'app
-graphique) : c'est voulu, pour que les automatisations locales travaillent sans
-friction. Voir docs/MCP.md.
+It imports the Maily engine directly (same local SQLite database, same
+encrypted secrets in the data folder, see core/paths.py and MAILY_DATA_DIR).
+No network, no port: stdio transport. Reading the secrets does NOT ask for
+Touch ID (the biometric gate only protects the launch of the desktop app): this
+is on purpose, so that local automations work without friction. See
+docs/MCP.md.
 
-Lancement (commande a declarer dans la configuration MCP du client) :
-    uv --directory <chemin-du-depot> run python -m app.mcp_server
+Launch (command to declare in the MCP configuration of the client):
+    uv --directory <path-to-the-repository> run python -m app.mcp_server
 """
 from __future__ import annotations
 import datetime
@@ -42,12 +42,12 @@ def store() -> Store:
 
 
 def _resolve_account(profile) -> dict | None:
-    """Accepte un id (int), un email, ou un nom de profil (display_name),
-    insensible a la casse. Renvoie le compte (dict) ou None."""
+    """Accepts an id (int), an email address, or a profile name (display_name),
+    case-insensitive. Returns the account (dict) or None."""
     if profile is None:
         return None
     accounts = [dict(a) for a in store().list_accounts()]
-    # id numerique
+    # numeric id
     try:
         pid = int(profile)
         for a in accounts:
@@ -62,7 +62,7 @@ def _resolve_account(profile) -> dict | None:
     for a in accounts:
         if (a.get("display_name") or "").lower() == key:
             return a
-    # correspondance partielle sur l'email en dernier recours
+    # partial match on the address as a last resort
     for a in accounts:
         if key and key in (a.get("email") or "").lower():
             return a
@@ -91,7 +91,7 @@ class _TextExtractor(HTMLParser):
         if not self._skip and data.strip():
             self._parts.append(data)
 
-    # Caracteres invisibles frequents dans les preheaders marketing.
+    # Invisible characters often found in marketing preheaders.
     _INVISIBLE = re.compile(
         "[\u00ad\u200b-\u200f\u202a-\u202e\u2060-\u2063\ufeff]")
 
@@ -138,8 +138,8 @@ def _msg_brief(row) -> dict:
 
 @mcp.tool()
 def maily_list_accounts() -> list[dict]:
-    """Liste les profils email disponibles dans Maily (id, email, nom, couleur).
-    Utilise l'email ou le nom comme parametre `profile` des autres outils."""
+    """Lists the email profiles available in Maily (id, email, name, color).
+    Use the email or the name as the `profile` parameter of the other tools."""
     return [
         {"id": a["id"], "email": a["email"], "name": a["display_name"], "color": a["color"]}
         for a in (dict(x) for x in store().list_accounts())
@@ -149,16 +149,16 @@ def maily_list_accounts() -> list[dict]:
 @mcp.tool()
 def maily_list_messages(profile: str, category: str = "inbox",
                         limit: int = 20, unread_only: bool = False) -> dict:
-    """Liste les messages recents d'un profil.
+    """Lists the recent messages of a profile.
 
-    profile   : email ou nom du profil (ex: 'alex@example.com' ou 'Perso').
+    profile   : email or name of the profile (e.g. 'alex@example.com' or 'Personal').
     category  : 'inbox' | 'primary' | 'promotions' | 'social' | 'updates' | 'forums' | 'archived' | 'all'.
-    limit     : nombre max (defaut 20).
-    unread_only : ne garder que les non-lus.
+    limit     : maximum number (default 20).
+    unread_only : keep unread messages only.
     """
     acc = _resolve_account(profile)
     if not acc:
-        return {"error": f"profil introuvable: {profile!r}",
+        return {"error": f"profile not found: {profile!r}",
                 "known": [a["email"] for a in (dict(x) for x in store().list_accounts())]}
     require, exclude = [], []
     cat = (category or "inbox").lower()
@@ -183,12 +183,12 @@ def maily_list_messages(profile: str, category: str = "inbox",
 
 @mcp.tool()
 def maily_get_message(message_id: int, include_html: bool = False) -> dict:
-    """Renvoie le contenu complet d'un message (expediteur, destinataires, date,
-    sujet, corps texte, pieces jointes avec leur attachment_id). Met
-    `include_html=True` pour aussi recuperer le HTML brut."""
+    """Returns the full content of a message (sender, recipients, date,
+    subject, text body, attachments with their attachment_id). Set
+    `include_html=True` to also get the raw HTML."""
     m = store().get_message(message_id)
     if not m:
-        return {"error": f"message {message_id} introuvable"}
+        return {"error": f"message {message_id} not found"}
     m = dict(m)
     out = {
         "id": m["id"],
@@ -205,7 +205,7 @@ def maily_get_message(message_id: int, include_html: bool = False) -> dict:
     if not body and m.get("body_html"):
         body = _html_to_text(m["body_html"])
     out["body_text"] = body
-    # Pieces jointes (hors images integrees cid:) : ids a passer a
+    # Attachments (embedded cid: images excluded): ids to pass to
     # maily_download_attachment.
     try:
         atts = [dict(a) for a in store().list_attachments(message_id)]
@@ -223,21 +223,21 @@ def maily_get_message(message_id: int, include_html: bool = False) -> dict:
 
 @mcp.tool()
 def maily_search(query: str, profile: str | None = None, limit: int = 20) -> dict:
-    """Recherche plein texte locale (sujet, corps, expediteur). `profile` optionnel
-    pour restreindre a un compte ; sinon cherche dans tous les profils."""
+    """Local full-text search (subject, body, sender). Optional `profile` to
+    restrict it to one account; otherwise searches every profile."""
     acc = _resolve_account(profile) if profile else None
     if profile and not acc:
-        return {"error": f"profil introuvable: {profile!r}"}
+        return {"error": f"profile not found: {profile!r}"}
     rows = store().search_messages(query, account_id=acc["id"] if acc else None,
                                    limit=max(1, min(limit, 100)))
-    return {"query": query, "profile": acc["email"] if acc else "tous",
+    return {"query": query, "profile": acc["email"] if acc else "all",
             "count": len(rows), "messages": [_msg_brief(r) for r in rows]}
 
 
 @mcp.tool()
 def maily_sync(profile: str | None = None) -> dict:
-    """Synchronise depuis Gmail (recupere les nouveaux mails). Sans `profile`,
-    synchronise tous les comptes. Renvoie le nombre de changements par profil."""
+    """Syncs from the mail server (fetches new messages). Without `profile`,
+    syncs every account. Returns the number of changes per profile."""
     from core.accounts_service import sync_account
     from core.config import load_settings
     months = load_settings().backfill_months
@@ -251,7 +251,7 @@ def maily_sync(profile: str | None = None) -> dict:
     if profile:
         acc = _resolve_account(profile)
         if not acc:
-            return {"error": f"profil introuvable: {profile!r}"}
+            return {"error": f"profile not found: {profile!r}"}
         targets = [acc]
     else:
         targets = [dict(a) for a in store().list_accounts()]
@@ -261,29 +261,29 @@ def maily_sync(profile: str | None = None) -> dict:
         try:
             results[acc["email"]] = _one(acc)
         except Exception as e:
-            results[acc["email"]] = f"erreur: {e}"
+            results[acc["email"]] = f"error: {e}"
     return {"synced": results}
 
 
 @mcp.tool()
 def maily_send(profile: str, to: str, subject: str, body_text: str,
                cc: str | None = None) -> dict:
-    """Envoie un email DEPUIS un profil. Action irreversible : demande confirmation
-    a l'utilisateur avant d'appeler cet outil.
+    """Sends an email FROM a profile (Gmail accounts only). Irreversible
+    action: ask the user for confirmation before calling this tool.
 
-    profile : email ou nom du profil expediteur.
-    to      : destinataire(s), separes par des virgules.
+    profile : email or name of the sender profile.
+    to      : recipient(s), separated by commas.
     """
     acc = _resolve_account(profile)
     if not acc:
-        return {"error": f"profil introuvable: {profile!r}"}
+        return {"error": f"profile not found: {profile!r}"}
     from core.accounts_service import send_from_account
     payload = {"account_id": acc["id"], "to": to, "subject": subject,
                "body_text": body_text, "cc": cc, "attachments": []}
     try:
         res = send_from_account(store(), acc["email"], acc["id"], payload)
     except Exception as e:
-        return {"error": f"envoi echoue: {e}"}
+        return {"error": f"sending failed: {e}"}
     return {"sent_from": acc["email"], "to": to, "result": res}
 
 
@@ -310,14 +310,14 @@ def _account_of(message_id):
 
 @mcp.tool()
 def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
-    """Enregistre un message au format .eml (RFC822 brut) sur le disque.
-    dest_path : dossier ou chemin complet (defaut : ~/Downloads). Marche pour
-    Gmail et Orange. Renvoie le chemin du fichier ecrit."""
+    """Saves a message as an .eml file (raw RFC 822) on disk.
+    dest_path : folder or full path (default: ~/Downloads). Works for Gmail
+    and IMAP accounts. Returns the path of the written file."""
     from core.accounts_service import export_eml
     try:
         data, filename = export_eml(store(), message_id)
     except Exception as e:
-        return {"error": f"export .eml echoue: {e}"}
+        return {"error": f".eml export failed: {e}"}
     p = _save_path(dest_path, filename)
     p.write_bytes(data)
     return {"saved": str(p), "bytes": len(data)}
@@ -326,35 +326,35 @@ def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
 @mcp.tool()
 def maily_download_attachment(message_id: int, attachment_id: int,
                              dest_path: str | None = None) -> dict:
-    """Telecharge une piece jointe d'un message sur le disque.
-    dest_path : dossier ou chemin complet (defaut : ~/Downloads)."""
+    """Downloads an attachment of a message to disk.
+    dest_path : folder or full path (default: ~/Downloads)."""
     from core.accounts_service import fetch_attachment
     m, acc = _account_of(message_id)
     if not acc:
-        return {"error": f"message {message_id} introuvable"}
+        return {"error": f"message {message_id} not found"}
     attdir = paths.ensure_runtime_dirs(paths.runtime_dir())["attachments"]
     try:
         data, mime, filename = fetch_attachment(store(), acc["email"], message_id,
                                                 attachment_id, attdir)
     except Exception as e:
-        return {"error": f"telechargement echoue: {e}"}
-    p = _save_path(dest_path, filename or "piece-jointe")
+        return {"error": f"download failed: {e}"}
+    p = _save_path(dest_path, filename or "attachment")
     p.write_bytes(data)
     return {"saved": str(p), "mime": mime, "bytes": len(data)}
 
 
 @mcp.tool()
 def maily_trash(message_id: int) -> dict:
-    """Met un message a la corbeille (reversible). Action de gestion : confirme
-    avec l'utilisateur avant d'appeler cet outil."""
+    """Moves a message to the trash (reversible). Management action: confirm
+    with the user before calling this tool."""
     from core.accounts_service import trash_message
     m, acc = _account_of(message_id)
     if not acc:
-        return {"error": f"message {message_id} introuvable"}
+        return {"error": f"message {message_id} not found"}
     try:
         trash_message(store(), acc["email"], message_id)
     except Exception as e:
-        return {"error": f"corbeille echouee: {e}"}
+        return {"error": f"moving to trash failed: {e}"}
     return {"trashed": message_id, "profile": acc["email"]}
 
 
