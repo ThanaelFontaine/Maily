@@ -103,6 +103,7 @@ jobs:
           path: release-assets
 
       - name: Tag, draft release with all the files, then publish
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -160,4 +161,56 @@ jobs:
             gh release create "$TAG" "${FILES[@]/#/release-assets/}" \
               --draft --verify-tag --title "Maily $TAG" --notes-file release-notes.md
             gh release edit "$TAG" --draft=false
+            echo "announce=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Announces the release in the "prod maily" channel of Discord, through the
+      # webhook kept in the DISCORD_RELEASES_WEBHOOK_URL secret. Runs only when
+      # this run has just published the release (not when it only added missing
+      # files to an older one), does nothing if the secret is not set, and never
+      # fails the release: Discord being down only leaves a warning.
+      # Payload: https://docs.discord.com/developers/resources/webhook#execute-webhook
+      # (content up to 2000 characters, allowed_mentions with an empty parse
+      # list so that nothing pings, flags 4 = SUPPRESS_EMBEDS so that links show
+      # no preview, wait=true to get 200 and the message back).
+      - name: Announce the release on Discord
+        if: ${{ steps.publish.outputs.announce == 'true' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASES_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_RELEASES_WEBHOOK_URL is not set: no announcement."
+            exit 0
+          fi
+          TAG="v$(python3 scripts/release_notes.py version)"
+          # Announce only what GitHub shows as published.
+          gh release view "$TAG" --json isDraft,name,url > release.json
+          python3 - > discord.json <<'PY'
+          import json
+
+          release = json.load(open("release.json"))
+          if release["isDraft"]:
+              raise SystemExit("The release is still a draft: no announcement.")
+          head = f"**{release['name']}** is out: <{release['url']}>"
+          lines, size = [], 0
+          for line in open("release-notes.md", encoding="utf-8").read().splitlines():
+              if not line.strip():
+                  continue
+              if len(lines) == 6 or size + len(line) > 1500:
+                  break
+              lines.append(line)
+              size += len(line) + 1
+          content = "\n\n".join([head, "\n".join(lines)]) if lines else head
+          print(json.dumps({"content": content[:2000], "allowed_mentions": {"parse": []}, "flags": 4}))
+          PY
+          # The address reaches curl through its config on stdin, not its arguments.
+          CODE="$(printf 'url = "%s?wait=true"\n' "$DISCORD_WEBHOOK_URL" \
+                  | curl -sS -K - -X POST -H 'Content-Type: application/json' \
+                      --data-binary @discord.json -o /dev/null -w '%{http_code}' --max-time 20)" || CODE=""
+          if [ "$CODE" = "200" ]; then
+            echo "Announced $TAG on Discord."
+          else
+            echo "::warning::The Discord announcement of $TAG failed (HTTP ${CODE:-none}); the release itself is published."
           fi
