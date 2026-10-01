@@ -322,6 +322,39 @@ def _apply_macos_transparency(win):
     AppHelper.callAfter(_set)
 
 
+def fatal_page(message: str) -> str:
+    """Page HTML autonome qui explique pourquoi Maily ne peut pas demarrer."""
+    import html as _html
+    return (
+        "<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Maily</title>"
+        "<style>body{font:14px/1.5 -apple-system,'Segoe UI',system-ui,sans-serif;color:#1f1f1f;"
+        "background:#fff;margin:0;padding:28px 32px}h1{font-size:18px;margin:0 0 12px}"
+        "p{margin:0 0 10px}code{background:#f1f3f4;padding:1px 4px;border-radius:4px}</style></head><body>"
+        "<h1>Maily ne peut pas démarrer</h1>"
+        f"<p>{_html.escape(message)}</p>"
+        "<p>Rien n'a été modifié. Le dépannage est expliqué dans le README, section "
+        "<code>Troubleshooting</code> / <code>Dépannage</code>.</p></body></html>"
+    )
+
+
+def _show_fatal(message: str) -> None:
+    """Affiche l'erreur dans une fenetre (l'app empaquetee n'a pas de terminal)."""
+    try:
+        import webview
+        webview.create_window("Maily", html=fatal_page(message), width=640, height=340)
+        webview.start()
+    except Exception:
+        pass
+
+
+def fail_unreadable_secrets(error) -> None:
+    """Magasin de secrets illisible : message sur stderr ET a l'ecran, puis sortie."""
+    message = str(error)
+    print(f"Maily ne peut pas demarrer : {message}", file=sys.stderr)
+    _show_fatal(message)
+    raise SystemExit(2)
+
+
 def window_kwargs(platform: str, width: int = 1240, height: int = 820) -> dict:
     # Transparence de la fenetre native selon la plateforme :
     # macOS -> vibrancy (flou depoli natif du bureau) ; Linux -> transparent
@@ -366,8 +399,7 @@ def run():
         token = runtime.get_or_create_api_token()
     except SecretStoreError as e:
         # Magasin de secrets illisible : on s'arrete sans rien ecrire dessus.
-        print(f"Maily ne peut pas demarrer : {e}", file=sys.stderr)
-        raise SystemExit(2)
+        fail_unreadable_secrets(e)
     months = settings.backfill_months
     # Une seule synchro a la fois : le bouton de l'interface et le fil
     # automatique partagent ce verrou.

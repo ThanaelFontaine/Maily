@@ -58,6 +58,21 @@ def _lock_path():
     return paths.runtime_dir() / "secrets.lock"
 
 
+def _ensure_dir(directory) -> None:
+    """Cree le dossier de donnees en 0700 s'il n'existe pas encore.
+
+    Le serveur MCP ou un script peut passer avant l'app : sans cela, le dossier
+    serait cree avec l'umask (souvent 0755, lisible par les autres comptes).
+    Un dossier deja present n'est pas modifie.
+    """
+    directory = pathlib.Path(directory)
+    if directory.exists():
+        return
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if os.name == "posix":
+        os.chmod(directory, 0o700)
+
+
 # ---------------------------------------------------------------------------
 # Verrou inter-processus
 # ---------------------------------------------------------------------------
@@ -119,7 +134,7 @@ def _locked():
                 _HELD.depth -= 1
             return
         lp = _lock_path()
-        lp.parent.mkdir(parents=True, exist_ok=True)
+        _ensure_dir(lp.parent)
         fd = os.open(str(lp), os.O_RDWR | os.O_CREAT, 0o600)
         try:
             _os_lock(fd)
@@ -155,7 +170,7 @@ def _fsync_dir(directory) -> None:
 
 def _atomic_write(path, blob: bytes) -> None:
     path = pathlib.Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_dir(path.parent)
     # mkstemp cree le fichier en 0600, dans le meme dossier (meme systeme de
     # fichiers : os.replace reste atomique).
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix="." + path.name + ".", suffix=".tmp")
@@ -225,7 +240,7 @@ def _load_key(create: bool = True) -> bytes:
         )
     if not create:
         raise SecretStoreError(f"{p.name} introuvable dans {p.parent}.")
-    p.parent.mkdir(parents=True, exist_ok=True)
+    _ensure_dir(p.parent)
     return _create_key(p)
 
 

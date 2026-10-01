@@ -40,3 +40,19 @@ def test_make_sync_fn(monkeypatch):
 
     fn = bootstrap.make_sync_fn(FakeStore())
     assert fn(1) == 42
+
+
+def test_unreadable_secrets_are_shown_on_screen(monkeypatch, capsys):
+    import pytest
+    shown = []
+    monkeypatch.setattr(bootstrap, "_show_fatal", lambda msg: shown.append(msg))
+    with pytest.raises(SystemExit) as exc:
+        bootstrap.fail_unreadable_secrets(RuntimeError("cle differente"))
+    assert exc.value.code == 2
+    assert shown == ["cle differente"]
+    assert "cle differente" in capsys.readouterr().err
+
+
+def test_fatal_page_escapes_message():
+    page = bootstrap.fatal_page("<script>x</script> secrets.enc")
+    assert "<script>x" not in page and "&lt;script&gt;" in page and "secrets.enc" in page

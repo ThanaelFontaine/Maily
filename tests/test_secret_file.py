@@ -196,3 +196,12 @@ def test_migrate_from_keyring_refuses_unreadable_store(tmp_store, monkeypatch):
     monkeypatch.setitem(__import__("sys").modules, "keyring", FakeKeyring)
     with pytest.raises(SecretStoreError):
         secret_file.migrate_from_keyring(["api_token"])
+
+
+@pytest.mark.skipif(os.name != "posix", reason="permissions POSIX")
+def test_data_dir_created_owner_only(monkeypatch, tmp_path):
+    # Le serveur MCP ou un script peut creer le dossier avant l'app : 0700, pas l'umask.
+    fresh = tmp_path / "neuf" / "Maily"
+    monkeypatch.setattr(secret_file.paths, "runtime_dir", lambda override=None: fresh)
+    secret_file.set("k", "v")
+    assert stat.S_IMODE(fresh.stat().st_mode) == 0o700
