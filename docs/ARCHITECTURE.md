@@ -39,7 +39,7 @@ app/mcp_server.py     MCP server over stdio (FastMCP)
 app/selfcheck.py      `Maily --self-check [--window]`: checks a built binary (run by the CI)
 frontend/             index.html, app.js, styles.css, i18n.js + i18n/<lang>.json: plain HTML/CSS/JS, no build step
 migrations/           numbered SQL migrations (PRAGMA user_version)
-scripts/              command-line helpers (OAuth client import, connect account, API client, demo mode, contrast audit, macOS build and disk image)
+scripts/              command-line helpers (OAuth client import, connect account, API client, demo mode, contrast audit, macOS build and disk image, product page assets)
 packaging/            PyInstaller spec, icons, disk image layout and background, Linux desktop entry
 tests/                pytest suite (network and real data never used)
 ```

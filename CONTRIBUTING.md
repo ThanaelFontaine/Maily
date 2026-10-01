@@ -35,6 +35,8 @@ uv run maily --data-dir /tmp/maily-dev
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). In short: `core/` is the engine (no UI code), `api/` the local HTTP API, `app/` the desktop launcher and the MCP server, `frontend/` the interface, `migrations/` the SQL schema, `tests/` the test suite.
 
+The product page at <https://maily.thanaelfontaine.eu> is not in this repository: it lives in its own repository, `ThanaelFontaine/maily.thanaelfontaine.eu`, which also holds its deployment. `scripts/site_assets.py` stays here because it captures this app: it writes the page's screenshots, icons and Open Graph image into a checkout of that repository (by default `../maily.thanaelfontaine.eu/site`, or `--site PATH`).
+
 ## Rules for changes
 
 - **Tests.** Every change comes with tests, and `uv run pytest` must pass. Tests never use the network, a real mailbox, the real data folder or the system keychain: `tests/conftest.py` provides a temporary `MAILY_DATA_DIR` and a null keyring automatically; use fakes for Gmail and IMAP (see existing tests).

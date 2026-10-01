@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- **The product page has its own repository.** The source of <https://maily.thanaelfontaine.eu> (the `site/` folder and `wrangler.jsonc`) moved to `ThanaelFontaine/maily.thanaelfontaine.eu`, which deploys it to the same Cloudflare Worker; this repository keeps only the app. `scripts/site_assets.py` still captures the app here and writes the page assets into a checkout of that repository (`../maily.thanaelfontaine.eu/site` by default, or `--site PATH`). The `maily-site` preview configuration of `.claude/launch.json` moved with the page.
+
+### Added
+
+- **Release announcements on Discord.** Once a release is published, the `Release` workflow posts its title, link and the first lines of its notes to Discord through the `DISCORD_RELEASES_WEBHOOK_URL` secret, with no mention. It is skipped when the secret is not set and never fails the release.
+
 ## [0.8.0] - 2026-10-01
 
 Maily now installs like a real app on every system: a disk image on macOS that asks you to drag Maily into Applications, a ready-to-run folder on Windows and an archive with a desktop entry on Linux. Each one is built and opened by the CI before a release is published. The product page and the documentation now describe Maily as what it is: a bridge from your mailboxes to your assistants.
