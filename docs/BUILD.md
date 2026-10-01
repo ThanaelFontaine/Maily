@@ -105,9 +105,13 @@ It should print `TLS OK`.
 
 ## Releases
 
-Releases are created by the CI, not by hand: after the tests pass on a push to `main`, `.github/workflows/release.yml` reads the version in `pyproject.toml`, and if the tag `vX.Y.Z` does not exist yet, creates it with a GitHub release whose notes are the matching section of `CHANGELOG.md`. See [CONTRIBUTING.md](../CONTRIBUTING.md#releasing-a-version).
+Releases are created by the CI, not by hand (see [CONTRIBUTING.md](../CONTRIBUTING.md#releasing-a-version)). After the tests pass on a push to `main`, `.github/workflows/release.yml` runs three jobs, and a release is never visible without its macOS app:
 
-The same workflow then runs a `macos-app` job on a GitHub-hosted macOS runner (`macos-latest`, Apple Silicon): `uv sync --locked --group build`, `pyinstaller packaging/maily.spec`, a check that the bundle version matches the tag, the `ditto` zip and its checksum above, and `gh release upload vX.Y.Z Maily-X.Y.Z-macos-arm64.zip Maily-X.Y.Z-macos-arm64.zip.sha256 --clobber`. It lives in the release workflow because a tag or a release created with the workflow's `GITHUB_TOKEN` does not start other workflows. `--clobber` replaces assets that already have the same name, so a new upload never leaves two copies.
+1. **plan** reads the version in `pyproject.toml` (`scripts/release_notes.py version`) and its section of `CHANGELOG.md` (`scripts/release_notes.py notes X.Y.Z`, which fails if the section is missing or empty). If release `vX.Y.Z` is already published with its two macOS files, the other jobs are skipped.
+2. **build** runs on a GitHub-hosted macOS runner (`macos-latest`, Apple Silicon): `uv sync --locked --group build`, `pyinstaller packaging/maily.spec`, then checks that the bundle version is `X.Y.Z`, that the `Maily` executable is `arm64` (`lipo -archs`) and that every embedded binary has an `arm64` slice, and finally makes the `ditto` zip and its checksum above. The files are kept as a workflow artifact; nothing is published.
+3. **publish** runs only after a successful build: it checks the checksum, creates the tag `vX.Y.Z` on the tested commit, creates a **draft** release with the notes and both files, then publishes it (`gh release edit vX.Y.Z --draft=false`).
+
+Running the workflow again after a failure resumes: a tag already on the same commit is reused, an unpublished draft left by an interrupted run is replaced, and a release published earlier without its files only gets the missing ones. The chain lives in one workflow because a tag or a release created with the workflow's `GITHUB_TOKEN` does not start other workflows.
 
 Linux and Windows binaries are not built by the CI yet; built on their platform as above, they can be attached to the release by a maintainer:
 

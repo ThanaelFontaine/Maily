@@ -1,17 +1,28 @@
 # Every version has its GitHub release, created by the CI together with the
-# tag, with notes that say what changes.
+# tag, with notes that say what changes, and with the macOS app attached.
 #
-# Trigger: after a GREEN run of the "Tests" workflow on a push to main. If the
-# version in pyproject.toml has no vX.Y.Z tag yet, the tag and the release are
-# created; the notes are the "## [X.Y.Z]" section of CHANGELOG.md (the release
-# fails if that section is missing or empty). An already tagged version does
-# nothing. Never create a tag or a release by hand.
+# Trigger: after a GREEN run of the "Tests" workflow on a push to main.
 #
-# Once the release exists, the "macos-app" job builds Maily.app with
-# PyInstaller on a macOS (Apple Silicon) runner and attaches
-# Maily-X.Y.Z-macos-arm64.zip and its .sha256 file to the release. It runs in
-# this same workflow because events created with GITHUB_TOKEN (the tag, the
-# release) do not start other workflows.
+# 1. plan:    reads the version in pyproject.toml and its "## [X.Y.Z]" section
+#             of CHANGELOG.md (fails if it is missing or empty). If release
+#             vX.Y.Z is already published with its two macOS files, there is
+#             nothing to do and the next jobs are skipped.
+# 2. build:   builds Maily.app with PyInstaller on a macOS Apple Silicon
+#             runner, checks that it is arm64 and carries the right version,
+#             zips it and computes its SHA-256. Nothing is published here.
+# 3. publish: only once the build succeeded: creates the vX.Y.Z tag, then a
+#             DRAFT release with both files, then publishes it. A release is
+#             therefore never visible without its macOS zip.
+#
+# Re-running the workflow resumes safely: an existing tag on the same commit is
+# reused, an unpublished draft left by an interrupted run is replaced, and a
+# published release that lacks a file only gets the missing one. The build and
+# publish jobs recompute the version themselves; they are only skipped when
+# plan says explicitly that everything is already published.
+#
+# The whole chain lives in this workflow because events created with
+# GITHUB_TOKEN (the tag, the release) do not start other workflows.
+# Never create a tag or a release by hand.
 
 name: Release
 
@@ -29,71 +40,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  plan:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      version: ${{ steps.ver.outputs.version }}
-      tag: ${{ steps.ver.outputs.tag }}
-      created: ${{ steps.publish.outputs.created }}
+      needed: ${{ steps.plan.outputs.needed }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
 
-      - name: Version and tag
-        id: ver
-        run: |
-          VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version in pyproject.toml: $VERSION (expected X.Y.Z)." >&2
-            exit 1
-          fi
-          TAG="v$VERSION"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists: nothing to publish."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Notes from CHANGELOG.md
-        if: steps.ver.outputs.skip != 'true'
-        run: |
-          VERSION="${{ steps.ver.outputs.version }}"
-          awk -v v="$VERSION" '
-            index($0, "## [" v "]") == 1 { on = 1; next }
-            on && /^## \[/ { exit }
-            on && /^\[[^]]+\]: / { exit }
-            on { print }
-          ' CHANGELOG.md > release-notes.md
-          if ! grep -q '[^[:space:]]' release-notes.md; then
-            echo "CHANGELOG.md has no non-empty section for $VERSION." >&2
-            exit 1
-          fi
-          cat release-notes.md
-
-      - name: Tag and release
-        id: publish
-        if: steps.ver.outputs.skip != 'true'
+      - name: Version, notes and release state
+        id: plan
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${{ steps.ver.outputs.tag }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Maily $TAG"
-          git push origin "$TAG"
-          gh release create "$TAG" --title "Maily $TAG" --notes-file release-notes.md --verify-tag
-          echo "created=true" >> "$GITHUB_OUTPUT"
+          VERSION="$(python3 scripts/release_notes.py version)"
+          TAG="v$VERSION"
+          ZIP="Maily-$VERSION-macos-arm64.zip"
+          python3 scripts/release_notes.py notes "$VERSION"
+          # Asset names of the PUBLISHED release, if there is one.
+          HAVE="$(gh release view "$TAG" --json isDraft,assets --jq 'select(.isDraft | not) | .assets[].name' 2>/dev/null || true)"
+          if grep -qxF "$ZIP" <<< "$HAVE" && grep -qxF "$ZIP.sha256" <<< "$HAVE"; then
+            echo "Release $TAG is already published with its macOS files: nothing to do."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
 
-  macos-app:
-    needs: release
-    if: ${{ needs.release.outputs.created == 'true' }}
+  build:
+    needs: plan
+    if: ${{ needs.plan.outputs.needed != 'false' }}
     runs-on: macos-latest          # Apple Silicon (arm64) runner
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -112,29 +94,113 @@ jobs:
       - name: Build Maily.app
         run: uv run pyinstaller packaging/maily.spec --noconfirm
 
-      - name: Check the bundle
+      - name: Check the bundle (version and arm64)
         run: |
-          VERSION="${{ needs.release.outputs.version }}"
-          PLIST_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Maily.app/Contents/Info.plist)"
+          VERSION="$(uv run python scripts/release_notes.py version)"
+          APP=dist/Maily.app
+          PLIST_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
           if [ "$PLIST_VERSION" != "$VERSION" ]; then
             echo "Bundle version $PLIST_VERSION does not match $VERSION." >&2
             exit 1
           fi
-          file dist/Maily.app/Contents/MacOS/Maily
+          # The main executable must be arm64 only, and every embedded binary
+          # (Python, extensions, libraries) must contain an arm64 slice.
+          ARCHS="$(lipo -archs "$APP/Contents/MacOS/Maily")"
+          echo "Maily executable: $ARCHS"
+          if [ "$ARCHS" != "arm64" ]; then
+            echo "The Maily executable is '$ARCHS', not arm64." >&2
+            exit 1
+          fi
+          BAD=0
+          while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q '^Mach-O'; then
+              if ! lipo -archs "$f" | tr ' ' '\n' | grep -qx arm64; then
+                echo "No arm64 slice in ${f#"$APP"/}: $(lipo -archs "$f")" >&2
+                BAD=1
+              fi
+            fi
+          done < <(find "$APP" -type f \( -name '*.so' -o -name '*.dylib' -o -perm -u+x \) -print0)
+          exit "$BAD"
 
       - name: Zip and checksum
-        id: zip
         run: |
-          ZIP="Maily-${{ needs.release.outputs.version }}-macos-arm64.zip"
+          ZIP="Maily-$(uv run python scripts/release_notes.py version)-macos-arm64.zip"
+          mkdir -p release-assets
           # ditto keeps the bundle's symbolic links and metadata, unlike a plain zip.
-          ditto -c -k --sequesterRsrc --keepParent dist/Maily.app "$ZIP"
-          shasum -a 256 "$ZIP" > "$ZIP.sha256"
-          cat "$ZIP.sha256"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          ditto -c -k --sequesterRsrc --keepParent dist/Maily.app "release-assets/$ZIP"
+          (cd release-assets && shasum -a 256 "$ZIP" > "$ZIP.sha256" && cat "$ZIP.sha256")
 
-      - name: Attach to the release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maily-macos-arm64
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: [plan, build]
+    if: ${{ needs.plan.outputs.needed != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: maily-macos-arm64
+          path: release-assets
+
+      - name: Tag, draft release with the macOS files, then publish
         env:
           GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          ZIP="${{ steps.zip.outputs.zip }}"
-          gh release upload "${{ needs.release.outputs.tag }}" "$ZIP" "$ZIP.sha256" --clobber
+          VERSION="$(python3 scripts/release_notes.py version)"
+          TAG="v$VERSION"
+          ZIP="Maily-$VERSION-macos-arm64.zip"
+          (cd release-assets && shasum -a 256 -c "$ZIP.sha256")
+          python3 scripts/release_notes.py notes "$VERSION" > release-notes.md
+
+          # Releases already attached to this tag (drafts are listed too: the
+          # token has push access).
+          RELEASES="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+                        --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.id) \(.draft)\"")"
+          PUBLISHED=""
+          while read -r ID DRAFT; do
+            [ -n "$ID" ] || continue
+            if [ "$DRAFT" = "true" ]; then
+              echo "Replacing the unpublished draft $ID left by an interrupted run."
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$ID"
+            else
+              PUBLISHED="$ID"
+            fi
+          done <<< "$RELEASES"
+
+          # The tag: created on the tested commit, or reused if a previous
+          # attempt already pushed it there.
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            if [ "$(git rev-list -n 1 "$TAG")" != "$HEAD_SHA" ]; then
+              echo "Tag $TAG already exists on another commit." >&2
+              exit 1
+            fi
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "Maily $TAG" "$HEAD_SHA"
+            git push origin "$TAG"
+          fi
+
+          if [ -n "$PUBLISHED" ]; then
+            # Published earlier without its files: add the missing ones only.
+            HAVE="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+            for f in "$ZIP" "$ZIP.sha256"; do
+              grep -qxF "$f" <<< "$HAVE" || gh release upload "$TAG" "release-assets/$f"
+            done
+          else
+            gh release create "$TAG" "release-assets/$ZIP" "release-assets/$ZIP.sha256" \
+              --draft --verify-tag --title "Maily $TAG" --notes-file release-notes.md
+            gh release edit "$TAG" --draft=false
+          fi
