@@ -13,6 +13,7 @@ if [ ! -f packaging/Maily.icns ]; then
   ISET=packaging/Maily.iconset; rm -rf "$ISET"; mkdir -p "$ISET"
   for s in "16 16x16" "32 16x16@2x" "32 32x32" "64 32x32@2x" "128 128x128" \
            "256 128x128@2x" "256 256x256" "512 256x256@2x" "512 512x512" "1024 512x512@2x"; do
+    # shellcheck disable=SC2086  # $s is split on purpose: "<pixels> <name>"
     set -- $s; sips -z "$1" "$1" packaging/maily.png --out "$ISET/icon_$2.png" >/dev/null
   done
   iconutil -c icns "$ISET" -o packaging/Maily.icns && rm -rf "$ISET"
