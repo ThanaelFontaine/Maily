@@ -46,6 +46,7 @@
   "error.invalid_display_name": "Invalid display name.",
   "error.invalid_request": "The request was invalid.",
   "error.message_not_found": "This message no longer exists.",
+  "error.no_trash_folder": "This IMAP account has no trash folder: the message was left where it is.",
   "error.not_available": "This feature is not available here.",
   "error.provider_error": "The mail server returned an error.",
   "error.reauth_required": "Google needs you to sign in again (or the OAuth client is missing).",

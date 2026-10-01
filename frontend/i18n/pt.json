@@ -46,6 +46,7 @@
   "error.invalid_display_name": "Nome de exibição inválido.",
   "error.invalid_request": "A solicitação era inválida.",
   "error.message_not_found": "Esta mensagem não existe mais.",
+  "error.no_trash_folder": "Esta conta IMAP não tem pasta de lixeira: a mensagem ficou onde estava.",
   "error.not_available": "Este recurso não está disponível aqui.",
   "error.provider_error": "O servidor de e-mail retornou um erro.",
   "error.reauth_required": "O Google pede que você entre novamente (ou o cliente OAuth está ausente).",

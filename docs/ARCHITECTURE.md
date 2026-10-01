@@ -8,7 +8,7 @@ This document explains how Maily is organized, how data flows, and which interfa
 2. **Local only.** No Maily server. Network traffic goes to Google's APIs (Gmail accounts) and to your IMAP server, nowhere else. The local API binds to `127.0.0.1`.
 3. **Bring your own credentials.** Each user creates their own Google OAuth client; Maily ships none.
 4. **Scriptable by design.** A stable SQL schema (`v1_*` views), a token-protected HTTP API and an MCP server.
-5. **Safe by default.** Sanitized HTML, remote images blocked, encrypted secrets, reversible actions only.
+5. **Safe by default.** Sanitized HTML, remote images blocked, encrypted secrets, no permanent deletion on Gmail (trash is reversible there; an IMAP message moved to the server's trash cannot be restored from Maily).
 
 ## Repository layout
 
@@ -32,7 +32,7 @@ core/                 the engine (no UI code)
   runtime.py          local API token and runtime.json
   biometric.py        Touch ID gate at launch (macOS, LocalAuthentication)
   logging_setup.py    rotating log file with secret redaction
-  config.py           settings from MAILY_* environment variables or .env
+  config.py           settings (poll interval, backfill, cache, log level) from MAILY_* variables or .env
 api/app.py            FastAPI app: the local HTTP API + static frontend
 app/bootstrap.py      desktop launcher: data folder, secrets, Touch ID, API server, auto sync, pywebview window
 app/mcp_server.py     MCP server over stdio (FastMCP)
@@ -89,7 +89,7 @@ IMAP messages reuse the Gmail-shaped schema:
 - `label_ids` = the folder name, plus `UNREAD` when `\Seen` is absent; `INBOX` keeps the `INBOX` label
 - `thread_id` = the `Message-ID` header (IMAP has no threads)
 
-Marking as read or archiving an IMAP message is applied locally only; trash moves the message on the server.
+Marking as read or archiving an IMAP message is applied locally only; trash moves the message to the server's trash folder (the folder flagged `\Trash` by IMAP special-use, else a usual name). With no trash folder, `ImapClient.move_to_trash` raises `NoTrashFolder` (API error code `no_trash_folder`) and touches nothing; it only flags and expunges after a successful `COPY`, and with `UIDPLUS` it expunges that message alone.
 
 ## Synchronization
 

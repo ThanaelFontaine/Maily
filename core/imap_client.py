@@ -24,6 +24,34 @@ class ImapError(Exception):
     pass
 
 
+class NoTrashFolder(ImapError):
+    """The account has no trash folder: trashing is refused, the message is left untouched."""
+
+    code = "no_trash_folder"
+
+    def __init__(self, message: str = "no trash folder on this IMAP account"):
+        super().__init__(message)
+
+
+# One line of a LIST response: (flags) "delimiter" name, the name being quoted
+# or not (RFC 3501). Names sent as literals arrive as tuples and are skipped.
+_LIST_LINE = re.compile(r'^\((?P<flags>[^)]*)\)\s+(?:"(?:[^"\\]|\\.)*"|NIL)\s+(?P<name>.+?)\s*$', re.I)
+
+
+def parse_list_line(line) -> tuple[set[str], str] | None:
+    """(lowercase flags, folder name) of a LIST response line, or None."""
+    if not isinstance(line, (bytes, bytearray)):
+        return None
+    m = _LIST_LINE.match(line.decode(errors="replace"))
+    if not m:
+        return None
+    name = m.group("name")
+    if len(name) >= 2 and name[0] == name[-1] == '"':
+        name = re.sub(r'\\(.)', r"\1", name[1:-1])
+    flags = {f.lower() for f in m.group("flags").split()}
+    return flags, name
+
+
 def imap_msg_key(folder: str, uidvalidity, uid) -> str:
     return f"{folder}{_KEY_SEP}{uidvalidity}{_KEY_SEP}{uid}"
 
@@ -66,13 +94,12 @@ class ImapClient:
             return ["INBOX"]
         names = []
         for line in data:
-            if not isinstance(line, (bytes, bytearray)):
+            parsed = parse_list_line(line)
+            if not parsed:
                 continue
-            s = line.decode(errors="replace")
-            if "\\Noselect" in s:          # containers that cannot be selected
+            flags, name = parsed
+            if "\\noselect" in flags:          # containers that cannot be selected
                 continue
-            quoted = re.findall(r'"((?:[^"\\]|\\.)*)"', s)
-            name = quoted[-1].replace('\\"', '"') if quoted else s.split()[-1]
             if name:
                 names.append(name)
         names = sorted(set(names), key=lambda n: (n != "INBOX", n.lower()))
@@ -121,29 +148,54 @@ class ImapClient:
         return raw, seen
 
     def move_to_trash(self, uid: int):
-        trash = self._find_trash()
-        if trash:
-            # UID MOVE when available, otherwise COPY + \Deleted + EXPUNGE.
-            try:
-                typ, _ = self.conn.uid("MOVE", str(uid), trash)
-                if typ == "OK":
-                    return
-            except imaplib.IMAP4.error:
-                pass
-            self.conn.uid("COPY", str(uid), trash)
-        self.conn.uid("STORE", str(uid), "+FLAGS", "(\\Deleted)")
-        self.conn.expunge()
+        """Moves a message of the selected folder to the account's trash folder.
 
-    def _find_trash(self):
+        Never deletes anything unless the message is safely in the trash: with
+        no trash folder, NoTrashFolder is raised; if the server refuses both
+        MOVE and COPY, ImapError is raised. In both cases the message stays
+        where it is.
+        """
+        trash = self._find_trash()
+        if not trash:
+            raise NoTrashFolder()
+        # UID MOVE (RFC 6851) when the server accepts it.
+        try:
+            typ, _ = self.conn.uid("MOVE", str(uid), _quote(trash))
+            if typ == "OK":
+                return
+        except imaplib.IMAP4.error:
+            pass
+        # Otherwise COPY, and only once the copy succeeded: \Deleted + expunge.
+        try:
+            typ, _ = self.conn.uid("COPY", str(uid), _quote(trash))
+        except imaplib.IMAP4.error as e:
+            raise ImapError(f"could not copy the message to {trash!r}: {e}") from e
+        if typ != "OK":
+            raise ImapError(f"could not copy the message to {trash!r}")
+        self.conn.uid("STORE", str(uid), "+FLAGS", "(\\Deleted)")
+        if "UIDPLUS" in (getattr(self.conn, "capabilities", None) or ()):
+            self.conn.uid("EXPUNGE", str(uid))   # this message only (RFC 4315)
+        else:
+            self.conn.expunge()
+
+    def _find_trash(self) -> str | None:
+        """Name of the trash folder: the one flagged \\Trash (SPECIAL-USE,
+        RFC 6154), else the first usual name that exists, else None."""
         try:
             typ, boxes = self.conn.list()
-        except imaplib.IMAP4.error:
-            return _TRASH_CANDIDATES[0]
-        names = b" ".join(b for b in (boxes or []) if isinstance(b, (bytes, bytearray)))
+        except imaplib.IMAP4.error as e:
+            raise ImapError(f"could not list the folders of this IMAP account: {e}") from e
+        if typ != "OK":
+            raise ImapError("could not list the folders of this IMAP account")
+        folders = [p for p in (parse_list_line(b) for b in (boxes or [])) if p]
+        for flags, name in folders:
+            if "\\trash" in flags and "\\noselect" not in flags:
+                return name
+        existing = {name for flags, name in folders if "\\noselect" not in flags}
         for cand in _TRASH_CANDIDATES:
-            if cand.encode() in names:
+            if cand in existing:
                 return cand
-        return _TRASH_CANDIDATES[0]
+        return None
 
     def logout(self):
         try:
