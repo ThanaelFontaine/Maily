@@ -346,15 +346,20 @@ def maily_download_attachment(message_id: int, attachment_id: int,
 @mcp.tool()
 def maily_trash(message_id: int) -> dict:
     """Moves a message to the trash. Reversible for a Gmail profile; for an
-    IMAP profile the message goes to the server's trash folder (it is deleted
-    if the server has none that Maily recognises) and Maily cannot restore it. Management action: confirm with the user before
+    IMAP profile the message goes to the server's trash folder and Maily
+    cannot restore it. If the IMAP account has no trash folder, the tool
+    refuses (code "no_trash_folder") and leaves the message untouched. Management action: confirm with the user before
     calling this tool."""
     from core.accounts_service import trash_message
+    from core.imap_client import NoTrashFolder
     m, acc = _account_of(message_id)
     if not acc:
         return {"error": f"message {message_id} not found"}
     try:
         trash_message(store(), acc["email"], message_id)
+    except NoTrashFolder as e:
+        return {"error": str(e), "code": e.code, "message_id": message_id,
+                "detail": "Nothing was changed: the message is still in its folder."}
     except Exception as e:
         return {"error": f"moving to trash failed: {e}"}
     return {"trashed": message_id, "profile": acc["email"]}

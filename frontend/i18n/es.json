@@ -46,6 +46,7 @@
   "error.invalid_display_name": "Nombre visible no válido.",
   "error.invalid_request": "La solicitud no era válida.",
   "error.message_not_found": "Este mensaje ya no existe.",
+  "error.no_trash_folder": "Esta cuenta IMAP no tiene carpeta de papelera: el mensaje se queda donde está.",
   "error.not_available": "Esta función no está disponible aquí.",
   "error.provider_error": "El servidor de correo devolvió un error.",
   "error.reauth_required": "Google pide que vuelvas a iniciar sesión (o falta el cliente OAuth).",

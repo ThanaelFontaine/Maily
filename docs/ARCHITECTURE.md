@@ -89,7 +89,7 @@ IMAP messages reuse the Gmail-shaped schema:
 - `label_ids` = the folder name, plus `UNREAD` when `\Seen` is absent; `INBOX` keeps the `INBOX` label
 - `thread_id` = the `Message-ID` header (IMAP has no threads)
 
-Marking as read or archiving an IMAP message is applied locally only; trash moves the message on the server.
+Marking as read or archiving an IMAP message is applied locally only; trash moves the message to the server's trash folder (the folder flagged `\Trash` by IMAP special-use, else a usual name). With no trash folder, `ImapClient.move_to_trash` raises `NoTrashFolder` (API error code `no_trash_folder`) and touches nothing; it only flags and expunges after a successful `COPY`, and with `UIDPLUS` it expunges that message alone.
 
 ## Synchronization
 

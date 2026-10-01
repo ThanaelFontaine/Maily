@@ -37,6 +37,7 @@ Maily now speaks five languages, its hacker-style theme has an original name, ev
 
 ### Fixed
 
+- **IMAP trash could delete a message for good.** When the server had no trash folder that Maily recognised, the message was still flagged `\Deleted` and expunged. Maily now finds the trash folder by its IMAP special-use flag (`\Trash`) or a usual name that really exists (no more substring match), moves or copies the message there, and only flags and expunges after a successful copy (with `UIDPLUS`, that message alone). Without a trash folder it refuses with "no trash folder on this IMAP account" (API code `no_trash_folder`, translated in the interface, also returned by the `maily_trash` MCP tool) and leaves the message untouched. Folder names that are not quoted in `LIST` responses are now read correctly.
 - The reading pane no longer offers *Restore* for a trashed IMAP message: the engine refuses to restore IMAP messages, so the button only led to an error. The documentation now says that trash is reversible for Gmail accounts only, that `.env` only sets the `core/config.py` settings (`MAILY_DATA_DIR` and `MAILY_NO_BIOMETRIC` are environment variables only), and which `category` values `maily_list_messages` accepts.
 - The blinking caret of the Zero Day terminal line referenced an animation that did not exist; it now blinks (and stays still when the system asks for reduced motion).
 

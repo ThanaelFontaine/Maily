@@ -46,6 +46,7 @@
   "error.invalid_display_name": "Nom affiché invalide.",
   "error.invalid_request": "La requête est invalide.",
   "error.message_not_found": "Ce message n'existe plus.",
+  "error.no_trash_folder": "Ce compte IMAP n'a pas de dossier Corbeille : le message est resté à sa place.",
   "error.not_available": "Cette fonction n'est pas disponible ici.",
   "error.provider_error": "Le serveur de messagerie a renvoyé une erreur.",
   "error.reauth_required": "Google demande de vous reconnecter (ou le client OAuth est absent).",

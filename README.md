@@ -347,7 +347,7 @@ Source: [Gmail API scopes](https://developers.google.com/workspace/gmail/api/aut
 
 **Which password?** Some providers do not accept your usual password from a mail app and ask for a dedicated one. Orange, for example, requires a password dedicated to POP, IMAP and SMTP access, created in your Orange customer account under *Connexion et Sécurité*, its connection and security section ([Orange help](https://assistance.orange.fr/ordinateurs-peripheriques/installer-et-utiliser/l-utilisation-du-mail-et-du-cloud/mail-orange/le-mail-orange-nouvelle-version/parametrer-la-boite-mail/mail-orange-comment-acceder-a-sa-boite-mail-orange-depuis-une-application-ou-un-logiciel-de-messagerie-non-fourni-par-orange_434630-964290), in French). For other providers, check their help pages for "app password" or "IMAP settings".
 
-IMAP accounts are read-only: Maily reads, searches, exports and trashes, but cannot send from them. Trashing moves the message to the server's trash folder, and **Maily cannot restore it**: there is no *Restore* button for IMAP messages, so recover it from your provider's webmail if its trash still holds it. If the server has no trash folder that Maily recognises (`Trash`, `INBOX.Trash`, `Corbeille`, `INBOX.Corbeille`, `Deleted Messages`), the message is deleted from the server. Marking as read and archiving apply to Maily's local copy only.
+IMAP accounts are read-only: Maily reads, searches, exports and trashes, but cannot send from them. Trashing moves the message to the server's trash folder, and **Maily cannot restore it**: there is no *Restore* button for IMAP messages, so recover it from your provider's webmail if its trash still holds it. Maily looks for the folder the server flags as trash (IMAP special-use `\Trash`), then for a usual name (`Trash`, `INBOX.Trash`, `Corbeille`, `INBOX.Corbeille`, `Deleted Messages`). If the account has none, Maily **refuses** to trash the message ("no trash folder on this IMAP account") and leaves it where it is: it never deletes an IMAP message. Marking as read and archiving apply to Maily's local copy only.
 
 ## Use Maily with Claude (MCP)
 
@@ -568,7 +568,7 @@ Claude Desktop, Claude Code, and any MCP client that can start a local stdio ser
 IMAP reads mail; sending would need SMTP, which Maily does not implement yet. Contributions are welcome.
 
 **Can Maily or my assistant delete my mail for good?**
-Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on a server without a trash folder Maily recognises, the message is deleted. *Disconnect* only removes Maily's local copy and secrets; your mailbox is untouched.
+Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. *Disconnect* only removes Maily's local copy and secrets; your mailbox is untouched.
 
 **Does it work offline?**
 Reading and searching what is already synced works offline. Syncing and sending need a connection.

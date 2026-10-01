@@ -324,8 +324,12 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     def _act(message_id, action, add=None, remove=None):
         if act_fn is None:
             raise _fail(501, "not_available", "actions not wired")
+        from core.imap_client import NoTrashFolder
         try:
             return act_fn(message_id, action, add, remove)
+        except NoTrashFolder as e:
+            # Nothing was changed: the account has nowhere to put the message.
+            raise _fail(409, "no_trash_folder", str(e))
         except Exception as e:
             raise _fail(502, "provider_error", f"action failed: {e}")
 

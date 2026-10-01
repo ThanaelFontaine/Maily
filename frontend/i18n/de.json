@@ -46,6 +46,7 @@
   "error.invalid_display_name": "Ungültiger Anzeigename.",
   "error.invalid_request": "Die Anfrage war ungültig.",
   "error.message_not_found": "Diese Nachricht existiert nicht mehr.",
+  "error.no_trash_folder": "Dieses IMAP-Konto hat keinen Papierkorb-Ordner: Die Nachricht bleibt, wo sie ist.",
   "error.not_available": "Diese Funktion ist hier nicht verfügbar.",
   "error.provider_error": "Der Mailserver hat einen Fehler gemeldet.",
   "error.reauth_required": "Google verlangt eine erneute Anmeldung (oder der OAuth-Client fehlt).",
