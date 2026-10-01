@@ -1,4 +1,4 @@
-/* ---------- Tokens (thème Frutiger Aero) ---------- */
+/* ---------- Tokens (Frutiger Aero theme) ---------- */
 :root {
   --sky-top: #3fb0ef;
   --sky-mid: #74cef2;
@@ -24,7 +24,7 @@ body {
   background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 38%, var(--sky-low) 66%, var(--grass) 100%);
 }
 
-/* ---------- Fond atmosphérique ---------- */
+/* ---------- Atmospheric background ---------- */
 .bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .sun { position: absolute; top: -120px; right: -60px; width: 380px; height: 380px; border-radius: 50%;
   background: radial-gradient(circle, rgba(255,247,214,.9), rgba(255,233,168,.25) 45%, transparent 70%); }
@@ -36,7 +36,7 @@ body {
 .b2 { width: 60px; height: 60px; top: 240px; left: 200px; opacity: .5; }
 .b3 { width: 80px; height: 80px; bottom: 120px; right: 220px; opacity: .45; }
 
-/* ---------- Fenêtre en verre ---------- */
+/* ---------- Glass window ---------- */
 .win {
   position: relative; z-index: 1;
   height: 100vh; margin: 0; display: flex; flex-direction: column;
@@ -50,7 +50,7 @@ body {
   .win { background: rgba(226, 242, 252, .92); }
 }
 
-/* ---------- Barre du haut ---------- */
+/* ---------- Top bar ---------- */
 .top {
   display: flex; align-items: center; gap: 12px; padding: 10px 16px;
   background: rgba(255,255,255,.28); border-bottom: 1px solid rgba(255,255,255,.5);
@@ -87,7 +87,7 @@ body {
 .ghost:active { transform: translateY(1px); }
 .ghost.spinning { opacity: .6; pointer-events: none; }
 
-/* ---------- Icônes SVG (trait, héritent de la couleur du texte) ---------- */
+/* ---------- SVG icons (stroke, inherit the text color) ---------- */
 .ico { width: 15px; height: 15px; flex: none; vertical-align: -3px;
   stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; fill: none; }
 .nav-ico { display: inline-flex; align-items: center; }
@@ -95,7 +95,7 @@ body {
 .icon-btn .ico { width: 16px; height: 16px; vertical-align: -3px; }
 .cat .ico { vertical-align: -3px; }
 
-/* Boutons en icone seule (compacts, responsive) */
+/* Icon-only buttons (compact, responsive) */
 .io { display: inline-flex; align-items: center; justify-content: center; }
 .listbar .io, .read-actions .io { padding: 7px 9px; }
 .io .ico { vertical-align: 0; }
@@ -103,7 +103,7 @@ body {
 .spinning .ico { animation: maily-spin 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .spinning .ico { animation: none; } }
 
-/* Tooltip au survol (reprend le libelle du bouton) */
+/* Tooltip on hover (repeats the button label) */
 [data-tip] { position: relative; }
 [data-tip]:hover::after {
   content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 7px); transform: translateX(-50%);
@@ -111,14 +111,14 @@ body {
   background: rgba(20,22,30,.96); color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.45); z-index: 40; pointer-events: none;
 }
 
-/* ---------- Corps (3 panneaux) ---------- */
+/* ---------- Body (3 panes) ---------- */
 .body { flex: 1; display: flex; min-height: 0; }
 
 .rail-wrap { width: 210px; display: flex; flex-direction: column; min-height: 0;
   background: rgba(255,255,255,.20); border-right: 1px solid rgba(255,255,255,.45); }
 .rail { flex: 1 1 auto; min-height: 0; padding: 12px 10px; overflow-y: auto; }
 
-/* Bouton "+ Ajouter un compte" : épinglé en bas de la colonne des comptes. */
+/* "+ Add account" button: pinned at the bottom of the accounts column. */
 .rail-add { flex: none; margin: 8px 10px 12px; padding: 9px 11px; border-radius: 13px;
   display: flex; align-items: center; justify-content: center; gap: 8px;
   font-size: 13px; font-weight: 600; cursor: pointer; color: var(--ink);
@@ -142,13 +142,13 @@ body {
 .body.no-read .listcol { width: auto; flex: 1; }
 .body.no-read .read { display: none; }
 
-/* Séparateur redimensionnable liste / mail */
+/* Resizable splitter between the list and the message */
 .splitter { flex: none; width: 7px; cursor: col-resize; position: relative; background: transparent; }
 .splitter::before { content: ""; position: absolute; inset: 0 2px; border-radius: 3px; background: transparent; transition: background .15s; }
 .splitter:hover::before, .splitter.dragging::before { background: rgba(0,0,0,.18); }
 .body.no-read .splitter { display: none; }
 :root[data-theme="glass"] .splitter:hover::before, :root[data-theme="glass"] .splitter.dragging::before,
-:root[data-theme="dedsec"] .splitter:hover::before, :root[data-theme="dedsec"] .splitter.dragging::before { background: rgba(255,255,255,.24); }
+:root[data-theme="zeroday"] .splitter:hover::before, :root[data-theme="zeroday"] .splitter.dragging::before { background: rgba(255,255,255,.24); }
 
 .listbar { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
   background: rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.4); }
@@ -175,8 +175,8 @@ body {
 .li.on { background: rgba(255,255,255,.62); }
 .li-top { display: flex; align-items: center; gap: 8px; }
 .li-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--unread)); box-shadow: 0 0 6px var(--dot, var(--unread)); flex: none; }
-/* Mail lu : la pastille disparait ET libere sa place (le titre se realigne).
-   display:none l'emporte aussi sur la couleur DedSec (specificite). */
+/* Read message: the dot disappears AND frees its space (the title realigns).
+   display:none also wins over the Zero Day color (specificity). */
 .li-dot.seen { display: none; }
 .li-from { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .li-time { margin-left: auto; font-size: 11px; color: var(--ink-soft); flex: none; }
@@ -204,7 +204,7 @@ body {
   border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; opacity: .7; }
 .banner-x:hover { opacity: 1; background: rgba(0,0,0,.08); }
 
-/* ---------- Composer (modale) ---------- */
+/* ---------- Composer (dialog) ---------- */
 .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
   background: rgba(10, 40, 70, .35); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 .modal-backdrop[hidden] { display: none; }
@@ -227,88 +227,88 @@ body {
   border-top: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.3); }
 .c-status { font-size: 12.5px; color: var(--ink-soft); }
 
-/* scrollbars discrètes */
+/* discreet scrollbars */
 .rail::-webkit-scrollbar, .list::-webkit-scrollbar { width: 9px; }
 .rail::-webkit-scrollbar-thumb, .list::-webkit-scrollbar-thumb { background: rgba(10,40,70,.18); border-radius: 9px; }
 
 /* ============================================================= */
-/* ============  THÈME DEDSEC (via [data-theme])  ============== */
+/* ============  ZERO DAY THEME (via [data-theme])  ============ */
 /* ============================================================= */
-:root[data-theme="dedsec"] {
+:root[data-theme="zeroday"] {
   --ink: #ECECE8;
   --ink-soft: #8A8F98;
   --accent: #FF2D78;
   --unread: #22E6DC;
   --font: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
 }
-:root[data-theme="dedsec"] body {
+:root[data-theme="zeroday"] body {
   background: #0A0B0E;
   color: var(--ink);
   font-family: var(--font);
 }
-:root[data-theme="dedsec"] .sun,
-:root[data-theme="dedsec"] .hill,
-:root[data-theme="dedsec"] .bokeh { display: none; }
-:root[data-theme="dedsec"] .bg::after {
+:root[data-theme="zeroday"] .sun,
+:root[data-theme="zeroday"] .hill,
+:root[data-theme="zeroday"] .bokeh { display: none; }
+:root[data-theme="zeroday"] .bg::after {
   content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .5;
   background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px);
 }
-:root[data-theme="dedsec"] .win {
+:root[data-theme="zeroday"] .win {
   background: #0c0e11; -webkit-backdrop-filter: none; backdrop-filter: none;
   border: 1px solid #202b2c; box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,45,120,.08);
 }
-:root[data-theme="dedsec"] .top { background: #0f1315; border-bottom: 1px solid #202b2c; text-transform: uppercase; letter-spacing: .05em; }
-:root[data-theme="dedsec"] .search { background: #08090c; border: 1px solid #2A2D33; color: #cdd3d0; border-radius: 6px; box-shadow: none; }
-:root[data-theme="dedsec"] .search::placeholder { color: #5b616a; }
-:root[data-theme="dedsec"] .gel {
+:root[data-theme="zeroday"] .top { background: #0f1315; border-bottom: 1px solid #202b2c; text-transform: uppercase; letter-spacing: .05em; }
+:root[data-theme="zeroday"] .search { background: #08090c; border: 1px solid #2A2D33; color: #cdd3d0; border-radius: 6px; box-shadow: none; }
+:root[data-theme="zeroday"] .search::placeholder { color: #5b616a; }
+:root[data-theme="zeroday"] .gel {
   background: #FF2D78; color: #0a0c0f; border: 1px solid #FF2D78; border-radius: 0; text-shadow: none;
   clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
   box-shadow: 0 0 12px rgba(255,45,120,.35); font-weight: 800; letter-spacing: .04em;
 }
-:root[data-theme="dedsec"] .gel::after { display: none; }
-:root[data-theme="dedsec"] .gel:hover { filter: brightness(1.08); }
-:root[data-theme="dedsec"] .ghost { background: transparent; color: #cdd3d0; border: 1px solid #2c3a3b; border-radius: 0; box-shadow: none; }
-:root[data-theme="dedsec"] .ghost:hover { border-color: #22E6DC; color: #22E6DC; }
-:root[data-theme="dedsec"] .rail-wrap { background: #0a0c0d; border-right: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .rail-add { border-radius: 0; text-transform: uppercase; letter-spacing: .03em;
+:root[data-theme="zeroday"] .gel::after { display: none; }
+:root[data-theme="zeroday"] .gel:hover { filter: brightness(1.08); }
+:root[data-theme="zeroday"] .ghost { background: transparent; color: #cdd3d0; border: 1px solid #2c3a3b; border-radius: 0; box-shadow: none; }
+:root[data-theme="zeroday"] .ghost:hover { border-color: #22E6DC; color: #22E6DC; }
+:root[data-theme="zeroday"] .rail-wrap { background: #0a0c0d; border-right: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .rail-add { border-radius: 0; text-transform: uppercase; letter-spacing: .03em;
   font-size: 11.5px; color: #c7ccd4; background: #12161a; border: 1px solid #202b2c; box-shadow: none; }
-:root[data-theme="dedsec"] .rail-add:hover { background: #161d20; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
-:root[data-theme="dedsec"] .nav { border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11.5px; color: #8A8F98; }
-:root[data-theme="dedsec"] .nav:hover { background: #12161a; }
-:root[data-theme="dedsec"] .nav.on { background: #12191b; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
-:root[data-theme="dedsec"] .orb { border-radius: 2px; box-shadow: none; }
-:root[data-theme="dedsec"] .orb::after { display: none; }
-:root[data-theme="dedsec"] .rail-sep { color: #5b616a; }
-:root[data-theme="dedsec"] .list { background: #0b0d10; border-right: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .li { border-bottom: 1px solid #16191d; }
-:root[data-theme="dedsec"] .li:hover { background: #12161a; }
-:root[data-theme="dedsec"] .li.on { background: #14161A; box-shadow: inset 3px 0 0 #FF2D78; }
-:root[data-theme="dedsec"] .li-from, :root[data-theme="dedsec"] .li-subj { font-family: system-ui, sans-serif; }
-:root[data-theme="dedsec"] .li-dot { background: var(--dot, #22E6DC); box-shadow: 0 0 6px var(--dot, #22E6DC); }
-:root[data-theme="dedsec"] .read { background: #14161A; }
-:root[data-theme="dedsec"] .read-empty { color: #5b616a; }
-:root[data-theme="dedsec"] .read-head { border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .read-subj { color: #fff; text-transform: uppercase; letter-spacing: .02em; text-shadow: 1.2px 0 #FF2D78, -1.2px 0 #22E6DC; }
-:root[data-theme="dedsec"] .read-meta { color: #8A8F98; }
-:root[data-theme="dedsec"] .att-chip { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; box-shadow: none; }
-:root[data-theme="dedsec"] .att-size { color: #5b616a; }
-:root[data-theme="dedsec"] .banner { background: #12191b; color: #22E6DC; border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .modal-backdrop { background: rgba(0,0,0,.6); }
-:root[data-theme="dedsec"] .composer { background: #0d0f12; border: 1px solid #202b2c; -webkit-backdrop-filter: none; backdrop-filter: none; }
-:root[data-theme="dedsec"] .composer-head { background: #0f1315; color: #fff; border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .composer-foot { background: #0f1315; border-top: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .composer input,
-:root[data-theme="dedsec"] .composer select,
-:root[data-theme="dedsec"] .composer textarea { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; border-radius: 4px; box-shadow: none; }
+:root[data-theme="zeroday"] .rail-add:hover { background: #161d20; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="zeroday"] .nav { border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11.5px; color: #8A8F98; }
+:root[data-theme="zeroday"] .nav:hover { background: #12161a; }
+:root[data-theme="zeroday"] .nav.on { background: #12191b; color: #fff; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="zeroday"] .orb { border-radius: 2px; box-shadow: none; }
+:root[data-theme="zeroday"] .orb::after { display: none; }
+:root[data-theme="zeroday"] .rail-sep { color: #5b616a; }
+:root[data-theme="zeroday"] .list { background: #0b0d10; border-right: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .li { border-bottom: 1px solid #16191d; }
+:root[data-theme="zeroday"] .li:hover { background: #12161a; }
+:root[data-theme="zeroday"] .li.on { background: #14161A; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="zeroday"] .li-from, :root[data-theme="zeroday"] .li-subj { font-family: system-ui, sans-serif; }
+:root[data-theme="zeroday"] .li-dot { background: var(--dot, #22E6DC); box-shadow: 0 0 6px var(--dot, #22E6DC); }
+:root[data-theme="zeroday"] .read { background: #14161A; }
+:root[data-theme="zeroday"] .read-empty { color: #5b616a; }
+:root[data-theme="zeroday"] .read-head { border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .read-subj { color: #fff; text-transform: uppercase; letter-spacing: .02em; text-shadow: 1.2px 0 #FF2D78, -1.2px 0 #22E6DC; }
+:root[data-theme="zeroday"] .read-meta { color: #8A8F98; }
+:root[data-theme="zeroday"] .att-chip { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; box-shadow: none; }
+:root[data-theme="zeroday"] .att-size { color: #5b616a; }
+:root[data-theme="zeroday"] .banner { background: #12191b; color: #22E6DC; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .modal-backdrop { background: rgba(0,0,0,.6); }
+:root[data-theme="zeroday"] .composer { background: #0d0f12; border: 1px solid #202b2c; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="zeroday"] .composer-head { background: #0f1315; color: #fff; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .composer-foot { background: #0f1315; border-top: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .composer input,
+:root[data-theme="zeroday"] .composer select,
+:root[data-theme="zeroday"] .composer textarea { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; border-radius: 4px; box-shadow: none; }
 
-@keyframes ds-glitch { 0%{transform:translate(0)} 25%{transform:translate(-1.5px,1px)} 50%{transform:translate(1.5px,-1px)} 75%{transform:translate(-1px,0)} 100%{transform:translate(0)} }
-:root[data-theme="dedsec"] .read-subj:hover { animation: ds-glitch .25s steps(2) 1; }
+@keyframes zd-glitch { 0%{transform:translate(0)} 25%{transform:translate(-1.5px,1px)} 50%{transform:translate(1.5px,-1px)} 75%{transform:translate(-1px,0)} 100%{transform:translate(0)} }
+:root[data-theme="zeroday"] .read-subj:hover { animation: zd-glitch .25s steps(2) 1; }
 @media (prefers-reduced-motion: reduce) {
-  :root[data-theme="dedsec"] .read-subj:hover { animation: none; }
-  :root[data-theme="dedsec"] .bg::after { background: none; }
+  :root[data-theme="zeroday"] .read-subj:hover { animation: none; }
+  :root[data-theme="zeroday"] .bg::after { background: none; }
 }
 
-/* ---------- Onglets de mails ---------- */
+/* ---------- Message tabs ---------- */
 .mailtabs { display: flex; gap: 4px; padding: 8px 12px 0; overflow-x: auto; }
 .mailtab { display: flex; align-items: center; gap: 8px; max-width: 200px; padding: 6px 10px; cursor: pointer;
   font-size: 12px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.5);
@@ -317,33 +317,33 @@ body {
 .mailtab-lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mailtab-x { opacity: .55; }
 .mailtab-x:hover { opacity: 1; }
-:root[data-theme="dedsec"] .mailtab { background: #0f1315; border: 1px solid #202b2c; border-bottom: none;
+:root[data-theme="zeroday"] .mailtab { background: #0f1315; border: 1px solid #202b2c; border-bottom: none;
   border-radius: 6px 6px 0 0; color: #8A8F98; }
-:root[data-theme="dedsec"] .mailtab.on { background: #FF2D78; color: #0a0c0f; font-weight: 800; }
+:root[data-theme="zeroday"] .mailtab.on { background: #FF2D78; color: #0a0c0f; font-weight: 800; }
 
-/* ---------- Pieces jointes du composer ---------- */
+/* ---------- Composer attachments ---------- */
 .c-atts { display: flex; flex-wrap: wrap; gap: 6px; }
 .c-att { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-size: 12px;
   border-radius: 8px; background: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.85); }
 .c-att-x { cursor: pointer; opacity: .55; font-weight: 700; }
 .c-att-x:hover { opacity: 1; }
-:root[data-theme="dedsec"] .c-att { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; }
+:root[data-theme="zeroday"] .c-att { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; }
 
-/* ---------- DedSec : barre liste + categories ---------- */
-:root[data-theme="dedsec"] .listcol { border-right: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .listbar { background: #0f1315; border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .listbar-title { color: #8A8F98; text-transform: uppercase; letter-spacing: .04em; }
-:root[data-theme="dedsec"] .cats { background: #0a0c0d; border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .cat { color: #8A8F98; border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11px; }
-:root[data-theme="dedsec"] .cat:hover { background: #12161a; }
-:root[data-theme="dedsec"] .cat.on { background: #12191b; color: #22E6DC; box-shadow: inset 0 -2px 0 #FF2D78; }
-:root[data-theme="dedsec"] .list-empty { color: #5b616a; }
+/* ---------- Zero Day: list bar + categories ---------- */
+:root[data-theme="zeroday"] .listcol { border-right: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .listbar { background: #0f1315; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .listbar-title { color: #8A8F98; text-transform: uppercase; letter-spacing: .04em; }
+:root[data-theme="zeroday"] .cats { background: #0a0c0d; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .cat { color: #8A8F98; border-radius: 0; text-transform: uppercase; letter-spacing: .03em; font-size: 11px; }
+:root[data-theme="zeroday"] .cat:hover { background: #12161a; }
+:root[data-theme="zeroday"] .cat.on { background: #12191b; color: #22E6DC; box-shadow: inset 0 -2px 0 #FF2D78; }
+:root[data-theme="zeroday"] .list-empty { color: #5b616a; }
 
 /* ============================================================= */
-/* ============  DA renforcée : Aero + DedSec  ================= */
+/* ============  Stronger look: Aero + Zero Day  =============== */
 /* ============================================================= */
 
-/* --- Frutiger Aero : aurore + grain + ciel plus vif --- */
+/* --- Frutiger Aero: aurora + grain + brighter sky --- */
 :root[data-theme="aero"] body {
   background: linear-gradient(180deg, #2fa8ee 0%, #6fcbf3 34%, #bfe9ff 62%, #86cf62 100%);
 }
@@ -361,52 +361,54 @@ body {
 :root[data-theme="aero"] .win { box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 0 60px rgba(120,200,255,.25); }
 :root[data-theme="aero"] .cat.on { background: linear-gradient(180deg, rgba(255,255,255,.9), rgba(210,240,255,.75)); }
 
-/* --- Ligne terminal DedSec (cachée en Aero) --- */
-.dedsec-term { display: none; }
-:root[data-theme="dedsec"] .dedsec-term {
+/* --- Zero Day terminal line (hidden in the other themes) --- */
+.zeroday-term { display: none; }
+:root[data-theme="zeroday"] .zeroday-term {
   display: flex; align-items: center; gap: 8px; padding: 3px 14px; z-index: 2;
   font-family: ui-monospace, "JetBrains Mono", monospace; font-size: 11px; letter-spacing: .05em;
   color: #4AF626; background: #08090c; border-bottom: 1px solid #202b2c;
 }
-.dedsec-term .ok { color: #22E6DC; }
-.dedsec-term .caret { width: .55ch; height: 1.05em; background: #4AF626; display: inline-block; animation: dsblink 1s steps(1) infinite; }
+.zeroday-term .ok { color: #22E6DC; }
+.zeroday-term .caret { width: .55ch; height: 1.05em; background: #4AF626; display: inline-block; animation: zd-blink 1s steps(1) infinite; }
+@keyframes zd-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .zeroday-term .caret { animation: none; } }
 
-/* --- DedSec : scanlines + vignette renforcées, glow accents --- */
-:root[data-theme="dedsec"] .bg::after { opacity: .6; }
-:root[data-theme="dedsec"] .bg::before {
+/* --- Zero Day: stronger scanlines + vignette, glowing accents --- */
+:root[data-theme="zeroday"] .bg::after { opacity: .6; }
+:root[data-theme="zeroday"] .bg::before {
   content: ""; position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(120% 90% at 50% 40%, transparent 60%, rgba(0,0,0,.5) 100%);
 }
-:root[data-theme="dedsec"] .li.on { box-shadow: inset 3px 0 0 #FF2D78, 0 0 18px rgba(255,45,120,.10); }
-:root[data-theme="dedsec"] .li-dot:not(.seen) { box-shadow: 0 0 8px var(--dot, #22E6DC), 0 0 2px var(--dot, #22E6DC); }
+:root[data-theme="zeroday"] .li.on { box-shadow: inset 3px 0 0 #FF2D78, 0 0 18px rgba(255,45,120,.10); }
+:root[data-theme="zeroday"] .li-dot:not(.seen) { box-shadow: 0 0 8px var(--dot, #22E6DC), 0 0 2px var(--dot, #22E6DC); }
 
-/* ---------- Croix de fermeture du mail ---------- */
+/* ---------- Message close button ---------- */
 .read-head { position: relative; }
 .read-subj { padding-right: 28px; }
 .read-close { position: absolute; top: 12px; right: 14px; border: 0; background: transparent; cursor: pointer;
   font-size: 15px; line-height: 1; padding: 4px 7px; border-radius: 8px; color: var(--ink-soft); }
 .read-close:hover { background: rgba(0,0,0,.07); color: var(--ink); }
-:root[data-theme="dedsec"] .read-close { color: #8A8F98; }
-:root[data-theme="dedsec"] .read-close:hover { color: #22E6DC; background: #12191b; }
+:root[data-theme="zeroday"] .read-close { color: #8A8F98; }
+:root[data-theme="zeroday"] .read-close:hover { color: #22E6DC; background: #12191b; }
 
-/* ---------- Scrollbars thématisées ---------- */
+/* ---------- Themed scrollbars ---------- */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(31,167,199,.5), rgba(14,134,168,.55));
   border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(14,134,168,.85); background-clip: padding-box; border: 2px solid transparent; }
 
-:root[data-theme="dedsec"] ::-webkit-scrollbar { width: 10px; height: 10px; }
-:root[data-theme="dedsec"] ::-webkit-scrollbar-track { background: #0a0c0d; }
-:root[data-theme="dedsec"] ::-webkit-scrollbar-thumb { background: #2c3a3b; border-radius: 0; border: 0; }
-:root[data-theme="dedsec"] ::-webkit-scrollbar-thumb:hover { background: #FF2D78; }
+:root[data-theme="zeroday"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme="zeroday"] ::-webkit-scrollbar-track { background: #0a0c0d; }
+:root[data-theme="zeroday"] ::-webkit-scrollbar-thumb { background: #2c3a3b; border-radius: 0; border: 0; }
+:root[data-theme="zeroday"] ::-webkit-scrollbar-thumb:hover { background: #FF2D78; }
 
 /* ============================================================= */
-/* ==============  THÈME GLASSMORPHISME PUR  =================== */
+/* ==============  PURE GLASSMORPHISM THEME  ================== */
 /* ============================================================= */
-/* Verre SOMBRE facon "rice" : le depoli natif (vibrancy) floute le bureau ; le
-   chrome est un verre sombre translucide a texte clair, comme des terminaux
-   ricing. Pas de backdrop-filter CSS (le flou vient du natif). */
+/* DARK "rice" style glass: the native frosted layer (vibrancy) blurs the
+   desktop; the chrome is a translucent dark glass with light text, like riced
+   terminals. No CSS backdrop-filter (the blur comes from the native side). */
 :root[data-theme="glass"] {
   --ink: #eef1f6; --ink-soft: rgba(233,238,246,.58); --accent: #8b7cff; --unread: #8b7cff;
   --hairline: rgba(255,255,255,.14);
@@ -458,8 +460,8 @@ body {
 :root[data-theme="glass"] .nav.on,
 :root[data-theme="glass"] .li.on,
 :root[data-theme="glass"] .cat.on { background: rgba(255,255,255,.14); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,.16); }
-/* Volet de lecture en Verre : panneau sombre translucide + le mail en carte
-   blanche arrondie qui "flotte" dedans (DA glassmorphisme cohérente). */
+/* Reading pane in Glassmorphism: translucent dark panel + the message as a
+   rounded white card "floating" inside (consistent glassmorphism look). */
 :root[data-theme="glass"] .read { background: rgba(14,16,22,.40); }
 :root[data-theme="glass"] .read-head { border-bottom-color: rgba(255,255,255,.08); padding: 18px 20px 14px; }
 :root[data-theme="glass"] .read-subj { color: var(--ink); }
@@ -471,7 +473,7 @@ body {
   width: calc(100% - 32px); margin: 6px 16px 16px; border-radius: 14px;
   box-shadow: 0 12px 36px rgba(0,0,0,.45); }
 
-/* Composer (Nouveau message) en Verre : modale sombre translucide, texte lisible. */
+/* Composer (New message) in Glassmorphism: translucent dark dialog, readable text. */
 :root[data-theme="glass"] .composer {
   background: rgba(20,22,30,.92); border: 1px solid rgba(255,255,255,.12); color: var(--ink);
   -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%);
@@ -487,7 +489,7 @@ body {
 :root[data-theme="glass"] .att-chip {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); color: var(--ink); box-shadow: none;
 }
-/* Pastilles de comptes : plates (pas de bulle Frutiger) pour la DA verre. */
+/* Account dots: flat (no Frutiger bubble) for the glass look. */
 :root[data-theme="glass"] .orb { width: 12px; height: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,.18); }
 :root[data-theme="glass"] .orb::after { display: none; }
 :root[data-theme="glass"] .mailtab { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); color: var(--ink-soft); }
@@ -495,12 +497,12 @@ body {
 :root[data-theme="glass"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
 :root[data-theme="glass"] ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.28); background-clip: padding-box; border: 2px solid transparent; }
 
-/* Repli verre : moteurs sans transparence/flou natif -> panneau sombre lisible. */
+/* Glass fallback: engines without native transparency/blur get a readable dark panel. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root[data-theme="glass"] .win { background: rgba(24,26,34,.88); }
 }
 
-/* ---------- Choix du thème (panneau Réglages) ---------- */
+/* ---------- Theme choice (Settings panel) ---------- */
 .thememenu-head { display: flex; align-items: center; padding: 12px 16px; font-weight: 800; color: #0e6f97;
   border-bottom: 1px solid rgba(0,0,0,.06); }
 .theme-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
@@ -509,7 +511,7 @@ body {
 .theme-opt:hover { border-color: var(--accent); }
 .theme-opt.on { outline: 2px solid var(--accent); }
 
-/* Réglage densité du fond (thème Verre) */
+/* Background density setting (Glassmorphism theme) */
 .glass-ctl { display: flex; flex-direction: column; gap: 8px; }
 .glass-ctl-top { display: flex; align-items: center; justify-content: space-between; font-size: 12.5px; font-weight: 600; color: #5c6b74; }
 .glass-ctl-val { font-variant-numeric: tabular-nums; }
@@ -517,15 +519,15 @@ body {
   background: linear-gradient(90deg, var(--accent), rgba(140,124,255,.25)); cursor: pointer; }
 .glass-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%;
   background: #fff; border: 1px solid rgba(0,0,0,.15); box-shadow: 0 1px 4px rgba(0,0,0,.3); cursor: pointer; }
-:root[data-theme="dedsec"] .glass-ctl-top { color: #8A8F98; }
-:root[data-theme="dedsec"] .glass-slider { background: linear-gradient(90deg, #FF2D78, #2c3a3b); }
-:root[data-theme="dedsec"] .glass-slider::-webkit-slider-thumb { background: #22E6DC; border: 0; }
+:root[data-theme="zeroday"] .glass-ctl-top { color: #8A8F98; }
+:root[data-theme="zeroday"] .glass-slider { background: linear-gradient(90deg, #FF2D78, #2c3a3b); }
+:root[data-theme="zeroday"] .glass-slider::-webkit-slider-thumb { background: #22E6DC; border: 0; }
 
-/* Label de compte : ellipsis (ne pas couper l'email brutalement) */
+/* Account label: ellipsis (do not cut the address abruptly) */
 .nav-lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav .orb { cursor: pointer; }
 
-/* Palette rapide (clic sur une pastille de profil) */
+/* Quick palette (click on a profile dot) */
 .colorpop { position: fixed; z-index: 30; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 10px;
   border-radius: 12px; background: rgba(20,22,30,.92); border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 16px 40px rgba(0,0,0,.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
@@ -534,9 +536,9 @@ body {
 .swatch:hover { transform: scale(1.12); }
 .swatch.on { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.4); }
 
-/* Frutiger Aero : swatches en bulle brillante (même DA que les pastilles de profil).
-   Le dégradé de couleur vient du style inline (couleur fidèle) ; ici juste le
-   volume (ombre) + le reflet via ::after. */
+/* Frutiger Aero: glossy bubble swatches (same look as the profile dots).
+   The color gradient comes from the inline style (faithful color); here only
+   the volume (shadow) + the highlight through ::after. */
 :root[data-theme="aero"] .swatch {
   box-shadow: inset 0 -3px 5px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.25);
 }
@@ -546,10 +548,10 @@ body {
 }
 :root[data-theme="aero"] .swatch.on { border-color: #fff; box-shadow: inset 0 -3px 5px rgba(0,0,0,.28), 0 1px 3px rgba(0,0,0,.25); }
 
-/* DedSec : swatches carrés (même DA que les pastilles de profil) */
-:root[data-theme="dedsec"] .swatch { border-radius: 3px; }
+/* Zero Day: square swatches (same look as the profile dots) */
+:root[data-theme="zeroday"] .swatch { border-radius: 3px; }
 
-/* Menu "Ajouter un compte" : popover sombre (même DA que la palette rapide) */
+/* "Add account" menu: dark popover (same look as the quick palette) */
 .addpop { position: fixed; z-index: 30; min-width: 210px; padding: 6px; display: flex; flex-direction: column; gap: 2px;
   border-radius: 12px; background: rgba(20,22,30,.94); border: 1px solid rgba(255,255,255,.14);
   box-shadow: 0 16px 40px rgba(0,0,0,.5); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
@@ -562,7 +564,7 @@ body {
 .addpop-badge { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
   padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
 
-/* Formulaire de connexion Orange (IMAP) */
+/* IMAP connection form */
 .imapform { width: min(440px, 92vw); border-radius: 16px;
   border: 1px solid var(--hairline); background: rgba(255,255,255,.96);
   -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
@@ -575,12 +577,12 @@ body {
 .imap-adv summary { cursor: pointer; padding: 2px 0; }
 .imap-adv .c-row { margin-top: 8px; }
 .imap-note { font-size: 11.5px; color: var(--ink-soft); }
-:root[data-theme="dedsec"] .imapform { border-radius: 0; background: #0d1012; border: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .imap-body .c-row input { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
+:root[data-theme="zeroday"] .imapform { border-radius: 0; background: #0d1012; border: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .imap-body .c-row input { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
 :root[data-theme="glass"] .imapform { background: rgba(30,34,46,.96); border: 1px solid rgba(255,255,255,.12); }
 :root[data-theme="glass"] .imap-body .c-row input { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); color: var(--ink); }
 
-/* Panneau Réglages (apparence, confidentialité, comptes, à propos) */
+/* Settings panel (appearance, language, privacy, accounts, about) */
 .settingsmenu { width: min(760px, 94vw); height: min(560px, 86vh); display: flex; flex-direction: column;
   overflow: hidden; border-radius: 16px; color: #14323F;
   border: 1px solid var(--hairline); background: rgba(255,255,255,.95);
@@ -621,7 +623,7 @@ body {
 .about-list dt { color: #4d5b63; }
 .about-list dd { margin: 0; }
 .about-path { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; }
-/* Bandeau « images distantes bloquées » dans le volet de lecture */
+/* "Remote images blocked" bar in the reading pane */
 .img-bar { display: flex; align-items: center; gap: 12px; margin: 10px 20px 0; padding: 8px 12px; font-size: 12.5px;
   border-radius: 10px; background: rgba(255,233,168,.55); color: #5c4400; }
 .img-bar .img-bar-btn { margin-left: auto; padding: 5px 12px; font-size: 12px; }
@@ -636,13 +638,13 @@ body {
   font-size: 12px; font-weight: 600; cursor: pointer; color: #a12a2a;
   background: rgba(239,71,111,.10); border: 1px solid rgba(239,71,111,.35); }
 .settings-logout:hover { background: rgba(239,71,111,.18); }
-:root[data-theme="dedsec"] .settings-logout { border-radius: 0; color: #FF2D78; background: #1a1013; border: 1px solid #3a1420; }
-:root[data-theme="dedsec"] .settings-logout:hover { background: #24141a; }
-:root[data-theme="dedsec"] .settingsmenu { background: #0d0f12; border: 1px solid #202b2c; color: #ECECE8; }
-:root[data-theme="dedsec"] .settings-name { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
-:root[data-theme="dedsec"] .settings-email { color: #8A8F98; }
-:root[data-theme="dedsec"] .settings-row { border-bottom-color: #202b2c; }
-/* Verre : modale sombre translucide (croix visible, DA cohérente) */
+:root[data-theme="zeroday"] .settings-logout { border-radius: 0; color: #FF2D78; background: #1a1013; border: 1px solid #3a1420; }
+:root[data-theme="zeroday"] .settings-logout:hover { background: #24141a; }
+:root[data-theme="zeroday"] .settingsmenu { background: #0d0f12; border: 1px solid #202b2c; color: #ECECE8; }
+:root[data-theme="zeroday"] .settings-name { background: #08090c; border: 1px solid #2A2D33; color: #ECECE8; }
+:root[data-theme="zeroday"] .settings-email { color: #8A8F98; }
+:root[data-theme="zeroday"] .settings-row { border-bottom-color: #202b2c; }
+/* Glassmorphism: translucent dark dialog (visible close button, consistent look) */
 :root[data-theme="glass"] .settingsmenu { background: rgba(20,22,30,.92); border: 1px solid rgba(255,255,255,.12); color: var(--ink);
   -webkit-backdrop-filter: blur(22px) saturate(140%); backdrop-filter: blur(22px) saturate(140%); }
 :root[data-theme="glass"] .settingsmenu .composer-head { color: var(--ink); border-bottom-color: rgba(255,255,255,.10); }
@@ -653,14 +655,14 @@ body {
 .sw-classic { background: linear-gradient(135deg, #ffffff 0 52%, #1a73e8 52%); border-color: rgba(0,0,0,.18); }
 .sw-aero { background: linear-gradient(160deg, #3fb0ef, #bfe9ff 60%, #8fd06a); }
 .sw-glass { background: linear-gradient(135deg, #6d5ef6, #22d3ee 55%, #ec6ee8); }
-.sw-dedsec { background: linear-gradient(135deg, #0a0b0e 55%, #FF2D78); }
-:root[data-theme="dedsec"] .thememenu-head { color: #fff; border-bottom: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .theme-opt { background: #0f1315; border: 1px solid #202b2c; color: #ECECE8; }
+.sw-zeroday { background: linear-gradient(135deg, #0a0b0e 55%, #FF2D78); }
+:root[data-theme="zeroday"] .thememenu-head { color: #fff; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .theme-opt { background: #0f1315; border: 1px solid #202b2c; color: #ECECE8; }
 
 /* ============================================================= */
-/* ===  Thème Verre : variante MODE CLAIR (Mac en mode jour)  === */
-/* Réagit en direct au basculement jour/nuit du système.        */
-/* Mode nuit = règles Verre sombres ci-dessus (texte clair).    */
+/* ===  Glassmorphism theme: LIGHT MODE variant (Mac in light)  === */
+/* Reacts live when the system switches between light and dark.  */
+/* Dark mode = the dark glass rules above (light text).          */
 /* ============================================================= */
 @media (prefers-color-scheme: light) {
   :root[data-theme="glass"] {
@@ -697,7 +699,7 @@ body {
   :root[data-theme="glass"] .mailtab { background: rgba(255,255,255,.5); border-color: rgba(0,0,0,.08); color: var(--ink-soft); }
   :root[data-theme="glass"] .mailtab.on { background: rgba(255,255,255,.82); color: var(--ink); }
   :root[data-theme="glass"] ::-webkit-scrollbar-thumb { background: rgba(31,41,55,.28); }
-  /* Modales (composer / réglages) en clair */
+  /* Dialogs (composer / settings) in light mode */
   :root[data-theme="glass"] .composer,
   :root[data-theme="glass"] .settingsmenu { background: rgba(255,255,255,.95); border: 1px solid rgba(255,255,255,.6); color: var(--ink); }
   :root[data-theme="glass"] .composer-head,
@@ -715,28 +717,28 @@ body {
 }
 
 /* ============================================================= */
-/* ====  Panneau Réglages : variantes DedSec et Verre  ========= */
+/* ====  Settings panel: Zero Day and Glassmorphism variants  ==== */
 /* ============================================================= */
-:root[data-theme="dedsec"] .settingsmenu { border-radius: 0; }
-:root[data-theme="dedsec"] .settings-tabs { border-right: 1px solid #202b2c; }
-:root[data-theme="dedsec"] .settings-tab { border-radius: 0; text-transform: uppercase; letter-spacing: .04em; font-size: 11.5px; color: #cdd3d0; }
-:root[data-theme="dedsec"] .settings-tab:hover { background: #12161a; }
-:root[data-theme="dedsec"] .settings-tab.on { background: #12191b; color: #22E6DC; box-shadow: inset 3px 0 0 #FF2D78; }
-:root[data-theme="dedsec"] .settings-h { color: #fff; text-transform: uppercase; letter-spacing: .04em; font-size: 12px; }
-:root[data-theme="dedsec"] .settings-help,
-:root[data-theme="dedsec"] .settings-empty,
-:root[data-theme="dedsec"] .theme-opt-sub,
-:root[data-theme="dedsec"] .about-list dt { color: #9aa0a8; }
-:root[data-theme="dedsec"] .theme-opt { border-radius: 0; }
-:root[data-theme="dedsec"] .seg { border-color: #2c3a3b; border-radius: 0; }
-:root[data-theme="dedsec"] .seg-opt { color: #cdd3d0; }
-:root[data-theme="dedsec"] .seg-opt + .seg-opt { border-left-color: #2c3a3b; }
-:root[data-theme="dedsec"] .seg-opt.on { background: #FF2D78; color: #0a0c0f; }
-:root[data-theme="dedsec"] .toggle-row { border: 1px solid #202b2c; border-radius: 0; }
-:root[data-theme="dedsec"] .toggle { border-radius: 0; background: #2c3a3b; }
-:root[data-theme="dedsec"] .toggle::after { border-radius: 0; background: #ECECE8; }
-:root[data-theme="dedsec"] .toggle:checked { background: #FF2D78; }
-:root[data-theme="dedsec"] .img-bar { border-radius: 0; background: #12191b; color: #22E6DC; border: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .settingsmenu { border-radius: 0; }
+:root[data-theme="zeroday"] .settings-tabs { border-right: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .settings-tab { border-radius: 0; text-transform: uppercase; letter-spacing: .04em; font-size: 11.5px; color: #cdd3d0; }
+:root[data-theme="zeroday"] .settings-tab:hover { background: #12161a; }
+:root[data-theme="zeroday"] .settings-tab.on { background: #12191b; color: #22E6DC; box-shadow: inset 3px 0 0 #FF2D78; }
+:root[data-theme="zeroday"] .settings-h { color: #fff; text-transform: uppercase; letter-spacing: .04em; font-size: 12px; }
+:root[data-theme="zeroday"] .settings-help,
+:root[data-theme="zeroday"] .settings-empty,
+:root[data-theme="zeroday"] .theme-opt-sub,
+:root[data-theme="zeroday"] .about-list dt { color: #9aa0a8; }
+:root[data-theme="zeroday"] .theme-opt { border-radius: 0; }
+:root[data-theme="zeroday"] .seg { border-color: #2c3a3b; border-radius: 0; }
+:root[data-theme="zeroday"] .seg-opt { color: #cdd3d0; }
+:root[data-theme="zeroday"] .seg-opt + .seg-opt { border-left-color: #2c3a3b; }
+:root[data-theme="zeroday"] .seg-opt.on { background: #FF2D78; color: #0a0c0f; }
+:root[data-theme="zeroday"] .toggle-row { border: 1px solid #202b2c; border-radius: 0; }
+:root[data-theme="zeroday"] .toggle { border-radius: 0; background: #2c3a3b; }
+:root[data-theme="zeroday"] .toggle::after { border-radius: 0; background: #ECECE8; }
+:root[data-theme="zeroday"] .toggle:checked { background: #FF2D78; }
+:root[data-theme="zeroday"] .img-bar { border-radius: 0; background: #12191b; color: #22E6DC; border: 1px solid #202b2c; }
 
 :root[data-theme="glass"] .settingsmenu { color: var(--ink); }
 :root[data-theme="glass"] .settings-tabs { border-right-color: rgba(255,255,255,.10); }
@@ -764,30 +766,30 @@ body {
 }
 
 /* ============================================================= */
-/* ================  THÈME CLASSIC (par défaut)  =============== */
+/* ================  CLASSIC THEME (default)  ================== */
 /* ============================================================= */
-/* Clair, plat et sobre, dans l'esprit des outils Google : fond blanc, surfaces
-   gris très clair, accent bleu #1a73e8, typographie système, aucun verre, ombres
-   légères réservées aux fenêtres flottantes, coins légèrement arrondis.
-   Tout passe par des variables --c-* : la variante sombre ne redéfinit que ces
-   variables (mode « Automatique » = suit le système ; Clair/Sombre = forcé via
-   l'attribut data-mode sur <html>). Contrastes texte >= 4.5:1 (WCAG AA). */
+/* Light, flat and understated, in the spirit of Google's tools: white
+   background, very light grey surfaces, blue accent #1a73e8, system font, no
+   glass, light shadows only on floating windows, slightly rounded corners.
+   Everything goes through --c-* variables: the dark variant only redefines
+   them ("Automatic" mode follows the system; Light/Dark are forced through the
+   data-mode attribute on <html>). Text contrast >= 4.5:1 (WCAG AA). */
 :root[data-theme="classic"] {
   color-scheme: light;
-  --c-bg: #ffffff;           /* contenu : liste, lecture, fenêtres */
-  --c-surface: #f6f8fc;      /* chrome : barre du haut, colonne des comptes */
+  --c-bg: #ffffff;           /* content: list, reading pane, windows */
+  --c-surface: #f6f8fc;      /* chrome: top bar, accounts column */
   --c-hover: #eceff3;
   --c-selected: #d3e3fd;
   --c-selected-ink: #041e49;
-  --c-line: #e1e3e1;         /* séparateurs décoratifs */
-  --c-field: #eaf1fb;        /* champ de recherche */
-  --c-field-line: #747775;   /* contour des champs (>= 3:1) */
+  --c-line: #e1e3e1;         /* decorative separators */
+  --c-field: #eaf1fb;        /* search field */
+  --c-field-line: #747775;   /* field outline (>= 3:1) */
   --c-ink: #1f1f1f;
   --c-soft: #444746;
   --c-muted: #5e6368;
   --c-accent: #1a73e8;
   --c-accent-hover: #1765cc;
-  --c-accent-ink: #0b57d0;   /* accent utilisé comme couleur de texte */
+  --c-accent-ink: #0b57d0;   /* accent used as a text color */
   --c-on-accent: #ffffff;
   --c-banner-bg: #fef7e0;
   --c-banner-ink: #5c3c00;
@@ -810,7 +812,7 @@ body {
   --hairline: var(--c-line);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
-/* Variante sombre : suit le système (mode Automatique) ou forcée (Sombre). */
+/* Dark variant: follows the system (Automatic mode) or forced (Dark). */
 @media (prefers-color-scheme: dark) {
   :root[data-theme="classic"]:not([data-mode="light"]) {
     color-scheme: dark;
@@ -834,7 +836,7 @@ body {
   --c-frame-margin: 12px 16px 16px; --c-frame-radius: 8px; --c-frame-border: 1px solid #3c4043;
 }
 
-/* --- Cadre général --- */
+/* --- Overall frame --- */
 :root[data-theme="classic"] body { background: var(--c-surface); color: var(--c-ink); font-family: var(--font); }
 :root[data-theme="classic"] .sun,
 :root[data-theme="classic"] .hill,
@@ -843,7 +845,7 @@ body {
   border: 0; box-shadow: none; }
 :root[data-theme="classic"] :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 
-/* --- Barre du haut --- */
+/* --- Top bar --- */
 :root[data-theme="classic"] .top { background: var(--c-surface); border-bottom: 1px solid var(--c-line); padding: 10px 16px; }
 :root[data-theme="classic"] .search { background: var(--c-field); border: 1px solid transparent; border-radius: 8px;
   box-shadow: none; color: var(--c-ink); padding: 9px 14px; font-size: 14px; }
@@ -861,7 +863,7 @@ body {
 :root[data-theme="classic"] [data-tip]:hover::after { background: var(--c-tip-bg); color: var(--c-tip-ink);
   border-radius: 4px; box-shadow: none; font-weight: 500; }
 
-/* --- Colonne des comptes et dossiers --- */
+/* --- Accounts and folders column --- */
 :root[data-theme="classic"] .rail-wrap { background: var(--c-surface); border-right: 0; }
 :root[data-theme="classic"] .rail-add { background: var(--c-bg); color: var(--c-ink); border: 1px solid var(--c-line);
   border-radius: 8px; box-shadow: none; }
@@ -873,7 +875,7 @@ body {
 :root[data-theme="classic"] .orb::after { display: none; }
 :root[data-theme="classic"] .rail-sep { color: var(--c-soft); font-weight: 600; letter-spacing: .04em; }
 
-/* --- Liste des messages --- */
+/* --- Message list --- */
 :root[data-theme="classic"] .listcol { background: var(--c-bg); border-right: 1px solid var(--c-line); }
 :root[data-theme="classic"] .listbar { background: var(--c-bg); border-bottom: 1px solid var(--c-line); }
 :root[data-theme="classic"] .listbar-title { color: var(--c-soft); }
@@ -898,7 +900,7 @@ body {
 :root[data-theme="classic"] .splitter:hover::before,
 :root[data-theme="classic"] .splitter.dragging::before { background: var(--c-line); }
 
-/* --- Volet de lecture --- */
+/* --- Reading pane --- */
 :root[data-theme="classic"] .read { background: var(--c-bg); }
 :root[data-theme="classic"] .read-empty { color: var(--c-soft); }
 :root[data-theme="classic"] .read-head { border-bottom: 1px solid var(--c-line); }
@@ -919,7 +921,7 @@ body {
 :root[data-theme="classic"] .banner { background: var(--c-banner-bg); color: var(--c-banner-ink); border-bottom: 1px solid var(--c-line); }
 :root[data-theme="classic"] .banner-x:hover { background: rgba(127, 127, 127, .18); }
 
-/* --- Fenêtres (composer, réglages, IMAP) et menus flottants --- */
+/* --- Windows (composer, settings, IMAP) and floating menus --- */
 :root[data-theme="classic"] .modal-backdrop { background: var(--c-backdrop); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-theme="classic"] .composer,
 :root[data-theme="classic"] .settingsmenu,
@@ -961,7 +963,7 @@ body {
 :root[data-theme="classic"] .settings-logout { color: var(--c-danger); background: var(--c-danger-bg); border: 1px solid transparent; border-radius: 8px; }
 :root[data-theme="classic"] .settings-logout:hover { border-color: var(--c-danger); }
 
-/* --- Panneau Réglages --- */
+/* --- Settings panel --- */
 :root[data-theme="classic"] .settings-tabs { background: var(--c-surface); border-right: 1px solid var(--c-line); }
 :root[data-theme="classic"] .settings-tab { color: var(--c-ink); font-weight: 500; border-radius: 8px; }
 :root[data-theme="classic"] .settings-tab:hover { background: var(--c-hover); }
@@ -987,11 +989,19 @@ body {
 :root[data-theme="classic"] .toggle:checked { background: var(--c-accent); }
 :root[data-theme="classic"] .glass-slider { background: linear-gradient(90deg, var(--c-accent), var(--c-line)); }
 
-/* --- Barres de défilement --- */
+/* --- Scrollbars --- */
 :root[data-theme="classic"] ::-webkit-scrollbar-thumb { background: var(--c-scroll); border-radius: 999px;
   border: 2px solid transparent; background-clip: padding-box; }
 :root[data-theme="classic"] ::-webkit-scrollbar-thumb:hover { background: var(--c-field-line); background-clip: padding-box; border: 2px solid transparent; }
 
-/* Onglets de catégories : défilement horizontal sans barre visible */
+/* Category tabs: horizontal scrolling without a visible bar */
 .cats { scrollbar-width: none; }
 .cats::-webkit-scrollbar { display: none; }
+
+/* ---------- Language choice (Settings panel) ---------- */
+.lang-opt { text-align: left; font: inherit; font-size: 13px; font-weight: 700; }
+.lang-code { flex: none; width: 34px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
+  border: 1px solid currentColor; opacity: .7; }
+.lang-opt.on .lang-code { opacity: 1; }
+:root[data-theme="zeroday"] .lang-code { border-radius: 0; }

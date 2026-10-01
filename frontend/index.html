@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="classic">
+<html lang="en" data-theme="classic">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,78 +17,78 @@
 
   <div class="win">
     <header class="top">
-      <input id="search" class="search" type="search" placeholder="Rechercher dans les mails…" autocomplete="off">
-      <button id="settingsbtn" class="ghost" title="Réglages : apparence, confidentialité, comptes">Réglages</button>
-      <button id="compose" class="gel">Écrire</button>
+      <input id="search" class="search" type="search" placeholder="Search mail…" data-i18n-placeholder="search.placeholder" data-i18n-aria-label="search.placeholder" aria-label="Search mail…" autocomplete="off">
+      <button id="settingsbtn" class="ghost" title="Settings: appearance, language, privacy, accounts" data-i18n-title="top.settingsTitle">Settings</button>
+      <button id="compose" class="gel">Compose</button>
     </header>
 
-    <div class="dedsec-term" aria-hidden="true">root@dedsec:~$ MAIL_SYS <span class="ok">// ONLINE</span> [ x_x ]<span class="caret"></span></div>
+    <div class="zeroday-term" aria-hidden="true">root@zeroday:~$ mail --status <span class="ok">// ONLINE</span><span class="caret"></span></div>
 
     <div class="body" id="appbody">
-      <nav class="rail-wrap" aria-label="Comptes et dossiers">
+      <nav class="rail-wrap" aria-label="Accounts and folders" data-i18n-aria-label="rail.label">
         <div class="rail" id="rail"></div>
-        <button class="rail-add" id="addaccount" title="Ajouter un compte">+ Ajouter un compte</button>
+        <button class="rail-add" id="addaccount" title="Add an account" data-i18n-title="rail.addAccountTitle" data-i18n="rail.addAccount">+ Add account</button>
       </nav>
       <section class="listcol">
         <div class="listbar">
-          <button id="sync" class="ghost" title="Synchroniser">Synchroniser</button>
-          <button id="markread" class="ghost" title="Tout marquer comme lu">Tout marquer lu</button>
+          <button id="sync" class="ghost" title="Sync">Sync</button>
+          <button id="markread" class="ghost" title="Mark all as read">Mark all as read</button>
           <span class="listbar-title" id="listbar-title"></span>
         </div>
         <div class="cats" id="cats"></div>
-        <div class="list" id="list" aria-label="Messages"></div>
+        <div class="list" id="list" aria-label="Messages" data-i18n-aria-label="list.label"></div>
       </section>
-      <div class="splitter" id="splitter" title="Glisser pour redimensionner" aria-hidden="true"></div>
-      <section class="read" id="read" aria-label="Lecture">
-        <div class="read-empty">Sélectionne un message pour le lire.</div>
+      <div class="splitter" id="splitter" title="Drag to resize" data-i18n-title="splitter.title" aria-hidden="true"></div>
+      <section class="read" id="read" aria-label="Reading pane" data-i18n-aria-label="read.label">
+        <div class="read-empty" data-i18n="read.empty">Select a message to read it.</div>
       </section>
     </div>
   </div>
 
   <div class="modal-backdrop" id="composer" hidden>
-    <div class="composer">
+    <div class="composer" role="dialog" aria-modal="true" aria-labelledby="composer-title">
       <div class="composer-head">
-        <span id="composer-title">Nouveau message</span>
-        <button class="icon-btn" id="c-close" title="Fermer"></button>
+        <span id="composer-title">New message</span>
+        <button class="icon-btn" id="c-close" title="Close" aria-label="Close" data-i18n-title="common.close" data-i18n-aria-label="common.close"></button>
       </div>
       <div class="composer-body">
-        <label class="c-row"><span class="c-lbl">De</span><select id="c-from"></select></label>
-        <label class="c-row"><span class="c-lbl">À</span><input id="c-to" placeholder="destinataires, séparés par des virgules"></label>
-        <label class="c-row"><span class="c-lbl">Cc</span><input id="c-cc" placeholder="optionnel"></label>
-        <label class="c-row"><span class="c-lbl">Objet</span><input id="c-subject" placeholder="objet du message"></label>
-        <textarea id="c-body" placeholder="Votre message…"></textarea>
+        <label class="c-row"><span class="c-lbl" data-i18n="composer.from">From</span><select id="c-from"></select></label>
+        <label class="c-row"><span class="c-lbl" data-i18n="composer.to">To</span><input id="c-to" placeholder="recipients, separated by commas" data-i18n-placeholder="composer.toPlaceholder"></label>
+        <label class="c-row"><span class="c-lbl" data-i18n="composer.cc">Cc</span><input id="c-cc" placeholder="optional" data-i18n-placeholder="composer.ccPlaceholder"></label>
+        <label class="c-row"><span class="c-lbl" data-i18n="composer.subject">Subject</span><input id="c-subject" placeholder="message subject" data-i18n-placeholder="composer.subjectPlaceholder"></label>
+        <textarea id="c-body" placeholder="Your message…" data-i18n-placeholder="composer.bodyPlaceholder" aria-label="Message" data-i18n-aria-label="composer.bodyLabel"></textarea>
         <div class="c-atts" id="c-atts"></div>
         <input type="file" id="c-file" multiple hidden>
       </div>
       <div class="composer-foot">
-        <button class="gel" id="c-send">Envoyer</button>
-        <button class="ghost" id="c-attach">Joindre</button>
-        <button class="ghost" id="c-cancel">Annuler</button>
-        <span id="c-status" class="c-status"></span>
+        <button class="gel" id="c-send">Send</button>
+        <button class="ghost" id="c-attach">Attach</button>
+        <button class="ghost" id="c-cancel" data-i18n="common.cancel">Cancel</button>
+        <span id="c-status" class="c-status" role="status"></span>
       </div>
     </div>
   </div>
 
   <div class="modal-backdrop" id="imapmodal" hidden>
-    <div class="imapform">
+    <div class="imapform" role="dialog" aria-modal="true" aria-labelledby="imap-title">
       <div class="composer-head thememenu-head">
-        <span>Connecter une adresse IMAP (lecture seule)</span>
-        <button class="icon-btn" id="imap-close" title="Fermer"></button>
+        <span id="imap-title" data-i18n="imap.title">Connect an IMAP address (read-only)</span>
+        <button class="icon-btn" id="imap-close" title="Close" aria-label="Close" data-i18n-title="common.close" data-i18n-aria-label="common.close"></button>
       </div>
       <div class="imap-body">
-        <label class="c-row"><span class="c-lbl">Email</span><input id="imap-email" type="email" placeholder="vous@example.com" autocomplete="username"></label>
-        <label class="c-row"><span class="c-lbl">Mot de passe</span><input id="imap-pass" type="password" placeholder="mot de passe du compte" autocomplete="current-password"></label>
+        <label class="c-row"><span class="c-lbl" data-i18n="imap.email">Email</span><input id="imap-email" type="email" placeholder="you@example.com" data-i18n-placeholder="imap.emailPlaceholder" autocomplete="username"></label>
+        <label class="c-row"><span class="c-lbl" data-i18n="imap.password">Password</span><input id="imap-pass" type="password" placeholder="account password" data-i18n-placeholder="imap.passwordPlaceholder" autocomplete="current-password"></label>
         <details class="imap-adv">
-          <summary>Serveur IMAP (par défaut : Orange)</summary>
-          <label class="c-row"><span class="c-lbl">Serveur</span><input id="imap-host" value="imap.orange.fr"></label>
-          <label class="c-row"><span class="c-lbl">Port</span><input id="imap-port" type="number" value="993"></label>
+          <summary data-i18n="imap.server">IMAP server (default: Orange)</summary>
+          <label class="c-row"><span class="c-lbl" data-i18n="imap.host">Server</span><input id="imap-host" value="imap.orange.fr"></label>
+          <label class="c-row"><span class="c-lbl" data-i18n="imap.port">Port</span><input id="imap-port" type="number" value="993"></label>
         </details>
-        <div class="imap-note">Ton mot de passe est chiffré et stocké uniquement sur cet ordinateur. Les comptes IMAP sont en lecture seule (pas d'envoi).</div>
+        <div class="imap-note" data-i18n="imap.note">Your password is encrypted and stored only on this computer. IMAP accounts are read-only (no sending).</div>
       </div>
       <div class="composer-foot">
-        <button class="gel" id="imap-connect">Connecter</button>
-        <button class="ghost" id="imap-cancel">Annuler</button>
-        <span id="imap-status" class="c-status"></span>
+        <button class="gel" id="imap-connect" data-i18n="imap.connect">Connect</button>
+        <button class="ghost" id="imap-cancel" data-i18n="common.cancel">Cancel</button>
+        <span id="imap-status" class="c-status" role="status"></span>
       </div>
     </div>
   </div>
@@ -96,71 +96,79 @@
   <div class="modal-backdrop" id="settingsmodal" hidden>
     <div class="settingsmenu" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="composer-head thememenu-head">
-        <span id="settings-title">Réglages</span>
-        <button class="icon-btn" id="settings-close" title="Fermer" aria-label="Fermer"></button>
+        <span id="settings-title" data-i18n="settings.title">Settings</span>
+        <button class="icon-btn" id="settings-close" title="Close" aria-label="Close" data-i18n-title="common.close" data-i18n-aria-label="common.close"></button>
       </div>
       <div class="settings-layout">
-        <nav class="settings-tabs" role="tablist" aria-label="Sections des réglages" aria-orientation="vertical">
-          <button class="settings-tab on" role="tab" id="tab-appearance" data-pane="appearance" aria-controls="pane-appearance" aria-selected="true" tabindex="0">Apparence</button>
-          <button class="settings-tab" role="tab" id="tab-privacy" data-pane="privacy" aria-controls="pane-privacy" aria-selected="false" tabindex="-1">Confidentialité</button>
-          <button class="settings-tab" role="tab" id="tab-accounts" data-pane="accounts" aria-controls="pane-accounts" aria-selected="false" tabindex="-1">Comptes</button>
-          <button class="settings-tab" role="tab" id="tab-about" data-pane="about" aria-controls="pane-about" aria-selected="false" tabindex="-1">À propos</button>
+        <nav class="settings-tabs" role="tablist" aria-label="Settings sections" data-i18n-aria-label="settings.sections" aria-orientation="vertical">
+          <button class="settings-tab on" role="tab" id="tab-appearance" data-pane="appearance" aria-controls="pane-appearance" aria-selected="true" tabindex="0" data-i18n="settings.tab.appearance">Appearance</button>
+          <button class="settings-tab" role="tab" id="tab-language" data-pane="language" aria-controls="pane-language" aria-selected="false" tabindex="-1" data-i18n="settings.tab.language">Language</button>
+          <button class="settings-tab" role="tab" id="tab-privacy" data-pane="privacy" aria-controls="pane-privacy" aria-selected="false" tabindex="-1" data-i18n="settings.tab.privacy">Privacy</button>
+          <button class="settings-tab" role="tab" id="tab-accounts" data-pane="accounts" aria-controls="pane-accounts" aria-selected="false" tabindex="-1" data-i18n="settings.tab.accounts">Accounts</button>
+          <button class="settings-tab" role="tab" id="tab-about" data-pane="about" aria-controls="pane-about" aria-selected="false" tabindex="-1" data-i18n="settings.tab.about">About</button>
         </nav>
         <div class="settings-panes">
           <section class="settings-pane" id="pane-appearance" data-pane="appearance" role="tabpanel" aria-labelledby="tab-appearance" tabindex="0">
-            <h2 class="settings-h">Thème</h2>
+            <h2 class="settings-h" data-i18n="settings.theme">Theme</h2>
             <div class="theme-opts">
-              <button class="theme-opt" data-theme-val="classic"><span class="sw sw-classic"></span><span class="theme-opt-txt">Classic<span class="theme-opt-sub">Clair et sobre, par défaut</span></span></button>
-              <button class="theme-opt" data-theme-val="aero"><span class="sw sw-aero"></span><span class="theme-opt-txt">Frutiger Aero<span class="theme-opt-sub">Ciel, verre et bulles</span></span></button>
-              <button class="theme-opt" data-theme-val="glass"><span class="sw sw-glass"></span><span class="theme-opt-txt">Glassmorphisme<span class="theme-opt-sub">Verre dépoli (flou natif sur macOS)</span></span></button>
-              <button class="theme-opt" data-theme-val="dedsec"><span class="sw sw-dedsec"></span><span class="theme-opt-txt">DedSec<span class="theme-opt-sub">Sombre, terminal, glitch</span></span></button>
+              <button class="theme-opt" data-theme-val="classic"><span class="sw sw-classic"></span><span class="theme-opt-txt">Classic<span class="theme-opt-sub" data-i18n="theme.classicSub">Light and understated, the default</span></span></button>
+              <button class="theme-opt" data-theme-val="aero"><span class="sw sw-aero"></span><span class="theme-opt-txt">Frutiger Aero<span class="theme-opt-sub" data-i18n="theme.aeroSub">Sky, glass and bubbles</span></span></button>
+              <button class="theme-opt" data-theme-val="glass"><span class="sw sw-glass"></span><span class="theme-opt-txt">Glassmorphism<span class="theme-opt-sub" data-i18n="theme.glassSub">Frosted glass (native blur on macOS)</span></span></button>
+              <button class="theme-opt" data-theme-val="zeroday"><span class="sw sw-zeroday"></span><span class="theme-opt-txt">Zero Day<span class="theme-opt-sub" data-i18n="theme.zerodaySub">Dark, terminal, glitch</span></span></button>
             </div>
             <div class="settings-block" id="classic-mode-ctl">
-              <h2 class="settings-h">Mode du thème Classic</h2>
-              <div class="seg" role="radiogroup" aria-label="Mode du thème Classic">
-                <button class="seg-opt" role="radio" data-mode-val="auto">Automatique</button>
-                <button class="seg-opt" role="radio" data-mode-val="light">Clair</button>
-                <button class="seg-opt" role="radio" data-mode-val="dark">Sombre</button>
+              <h2 class="settings-h" data-i18n="settings.classicMode">Classic theme mode</h2>
+              <div class="seg" role="radiogroup" aria-label="Classic theme mode" data-i18n-aria-label="settings.classicMode">
+                <button class="seg-opt" role="radio" data-mode-val="auto" data-i18n="mode.auto">Automatic</button>
+                <button class="seg-opt" role="radio" data-mode-val="light" data-i18n="mode.light">Light</button>
+                <button class="seg-opt" role="radio" data-mode-val="dark" data-i18n="mode.dark">Dark</button>
               </div>
-              <p class="settings-help">« Automatique » suit le réglage clair ou sombre du système.</p>
+              <p class="settings-help" data-i18n="settings.classicModeHelp">"Automatic" follows the system light or dark setting.</p>
             </div>
             <div class="settings-block glass-ctl" id="glass-ctl">
-              <div class="glass-ctl-top"><span>Densité du fond (Glassmorphisme)</span><span class="glass-ctl-val" id="glass-alpha-val">60%</span></div>
+              <div class="glass-ctl-top"><span data-i18n="settings.glassDensity">Background density (Glassmorphism)</span><span class="glass-ctl-val" id="glass-alpha-val">60%</span></div>
               <input type="range" id="glass-alpha" class="glass-slider" min="0" max="100" value="60"
-                     title="Opacité du dépoli en thème Glassmorphisme" aria-label="Densité du fond">
-              <p class="settings-help">Effet visible sur macOS uniquement (flou natif du bureau).</p>
+                     title="Frosted glass opacity in the Glassmorphism theme" data-i18n-title="settings.glassDensityTitle"
+                     aria-label="Background density" data-i18n-aria-label="settings.glassDensityAria">
+              <p class="settings-help" data-i18n="settings.glassHelp">Visible on macOS only (native desktop blur).</p>
             </div>
           </section>
+          <section class="settings-pane" id="pane-language" data-pane="language" role="tabpanel" aria-labelledby="tab-language" tabindex="0" hidden>
+            <h2 class="settings-h" id="language-h" data-i18n="settings.language">Language</h2>
+            <div class="lang-opts" id="lang-opts" role="radiogroup" aria-labelledby="language-h"></div>
+            <p class="settings-help" data-i18n="settings.languageHelp">On first launch, Maily follows the language of your system when it is available, and English otherwise.</p>
+          </section>
           <section class="settings-pane" id="pane-privacy" data-pane="privacy" role="tabpanel" aria-labelledby="tab-privacy" tabindex="0" hidden>
-            <h2 class="settings-h">Images distantes</h2>
+            <h2 class="settings-h" data-i18n="settings.remoteImages">Remote images</h2>
             <label class="toggle-row">
               <span class="toggle-txt">
-                <span class="toggle-title">Charger automatiquement les images distantes</span>
-                <span class="settings-help">Désactivé par défaut. Une image hébergée sur Internet peut servir de « pixel espion » : l'expéditeur apprend que tu as ouvert le mail, quand, et depuis quelle adresse IP. Les images intégrées au message (pièces jointes inline) s'affichent toujours.</span>
+                <span class="toggle-title" data-i18n="settings.remoteImagesToggle">Load remote images automatically</span>
+                <span class="settings-help" data-i18n="settings.remoteImagesHelp">Off by default. An image hosted on the Internet can act as a "tracking pixel": the sender learns that you opened the message, when, and from which IP address. Images embedded in the message (inline attachments) are always shown.</span>
               </span>
               <input type="checkbox" id="remote-images" class="toggle">
             </label>
-            <p class="settings-help">Quand elles sont bloquées, un bandeau « Afficher les images » permet de les charger pour un seul message.</p>
+            <p class="settings-help" data-i18n="settings.remoteImagesNote">When they are blocked, a "Show images" bar lets you load them for a single message.</p>
           </section>
           <section class="settings-pane" id="pane-accounts" data-pane="accounts" role="tabpanel" aria-labelledby="tab-accounts" tabindex="0" hidden>
-            <h2 class="settings-h">Profils</h2>
-            <p class="settings-help">Nom affiché et couleur de chaque boîte. Pour en ajouter une, utilise « + Ajouter un compte » en bas de la colonne de gauche.</p>
+            <h2 class="settings-h" data-i18n="settings.profiles">Profiles</h2>
+            <p class="settings-help" data-i18n="settings.profilesHelp">Display name and color of each mailbox. To add one, use "+ Add account" at the bottom of the left column.</p>
             <div class="settings-body" id="settings-accounts"></div>
           </section>
           <section class="settings-pane" id="pane-about" data-pane="about" role="tabpanel" aria-labelledby="tab-about" tabindex="0" hidden>
             <h2 class="settings-h">Maily</h2>
             <dl class="about-list">
-              <dt>Version</dt><dd id="about-version">?</dd>
-              <dt>Données locales</dt><dd id="about-datadir" class="about-path">?</dd>
-              <dt>Licence</dt><dd>MIT</dd>
+              <dt data-i18n="about.version">Version</dt><dd id="about-version">?</dd>
+              <dt data-i18n="about.dataFolder">Local data</dt><dd id="about-datadir" class="about-path">?</dd>
+              <dt data-i18n="about.license">License</dt><dd>MIT</dd>
             </dl>
-            <p class="settings-help">Tout reste sur cet ordinateur : base SQLite, pièces jointes et secrets chiffrés sont dans le dossier ci-dessus. Aucun serveur tiers.</p>
+            <p class="settings-help" data-i18n="about.help">Everything stays on this computer: the SQLite database, attachments and encrypted secrets are in the folder above. No third-party server.</p>
           </section>
         </div>
       </div>
     </div>
   </div>
 
+  <script src="/static/i18n.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

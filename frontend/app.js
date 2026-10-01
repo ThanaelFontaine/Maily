@@ -1,18 +1,22 @@
 "use strict";
 
+/* Every user-visible string goes through tr() (frontend/i18n.js) with a key of
+   frontend/i18n/en.json. Never write interface text directly in this file. */
+
 const TOKEN = window.MAILY_TOKEN || "";
 const AUTH = { headers: { Authorization: "Bearer " + TOKEN } };
 const PALETTE = ["#1a73e8", "#188038", "#e37400", "#9334e6", "#d93025", "#007b83"];
-// Fuseau horaire : celui du systeme (undefined = fuseau local du navigateur).
+// Time zone: the system one (undefined = local time zone of the browser).
 const TZ = undefined;
-const THEMES = ["classic", "aero", "glass", "dedsec"];
+const THEMES = ["classic", "aero", "glass", "zeroday"];
 const DEFAULT_THEME = "classic";
 
-/* Préférences de l'interface : rangées côté serveur (prefs.json dans le dossier
-   de données, GET/POST /prefs). Le localStorage ne convient pas : l'API locale
-   change de port à chaque lancement, donc d'origine, et son stockage repart
-   vide. Les anciennes valeurs du localStorage sont migrées une fois. */
-const PREFS = { theme: DEFAULT_THEME, classic_mode: "auto", remote_images: false, list_width: null };
+/* Interface preferences: stored server-side (prefs.json in the data folder,
+   GET/POST /prefs). localStorage does not work here: the local API listens on
+   a new port at each launch, hence a new origin, and its storage starts empty.
+   Old localStorage values are migrated once. `language` is null until the
+   user picks one: the interface then follows the system language. */
+const PREFS = { theme: DEFAULT_THEME, classic_mode: "auto", remote_images: false, list_width: null, language: null };
 const LEGACY_PREF_KEYS = {
   theme: "maily_theme", classic_mode: "maily_classic_mode",
   remote_images: "maily_remote_images", list_width: "maily_list_width",
@@ -25,7 +29,7 @@ function legacyPref(key) {
 async function loadPrefs() {
   let data;
   try { data = await api("/prefs"); }
-  catch { return; }                         // API injoignable : valeurs par défaut
+  catch { return; }                         // local API unreachable: defaults
   Object.assign(PREFS, data.prefs || {});
   const stored = new Set(data.stored || []);
   for (const [key, legacyKey] of Object.entries(LEGACY_PREF_KEYS)) {
@@ -36,16 +40,16 @@ async function loadPrefs() {
     if (key === "remote_images") value = raw === "1";
     if (key === "list_width") { value = parseInt(raw, 10); if (!value) continue; }
     try { Object.assign(PREFS, (await postAction("/prefs", { [key]: value })).prefs); }
-    catch { /* ancienne valeur invalide : ignorée */ }
+    catch { /* invalid old value: ignored */ }
   }
 }
 
 function savePref(key, value) {
   PREFS[key] = value;
-  postAction("/prefs", { [key]: value }).catch(() => banner("Réglage non enregistré (API locale injoignable)."));
+  postAction("/prefs", { [key]: value }).catch(() => banner(tr("toast.prefNotSaved")));
 }
 
-/* Icônes SVG épurées (style trait, currentColor) - cohérentes avec la DA verre. */
+/* Clean line icons (stroke, currentColor). */
 const ICONS = {
   theme: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/>',
   edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
@@ -64,7 +68,7 @@ const ICONS = {
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
-  // "mark_email_read" facon Google : enveloppe + coche.
+  // Google-style "mark_email_read": envelope + check mark.
   mail_read: '<path d="M22 12.2V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9.5"/><path d="m2 7 10 6 10-6"/><path d="m16 18.5 2 2 4-4"/>',
   at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
@@ -74,10 +78,10 @@ function ico(name) {
 }
 
 const CATEGORIES = [
-  { key: "primary", label: "Principale", icon: "inbox" },
-  { key: "promotions", label: "Promotions", icon: "tag" },
-  { key: "social", label: "Réseaux sociaux", icon: "users" },
-  { key: "updates", label: "Notifications", icon: "bell" },
+  { key: "primary", label: "category.primary", icon: "inbox" },
+  { key: "promotions", label: "category.promotions", icon: "tag" },
+  { key: "social", label: "category.social", icon: "users" },
+  { key: "updates", label: "category.updates", icon: "bell" },
 ];
 
 const state = {
@@ -88,9 +92,36 @@ const state = {
 const accountColors = {};
 const el = (sel) => document.querySelector(sel);
 
+/* ------- Errors: the API sends a stable code (X-Maily-Error header) that is
+   translated here; its English `detail` only goes to the console. ------- */
+class ApiError extends Error {
+  constructor(status, code, detail) {
+    super(detail || ("HTTP " + status));
+    this.status = status;
+    this.code = code || "";
+  }
+}
+
+async function apiFailure(r) {
+  let detail = "";
+  try { const body = await r.json(); detail = typeof body.detail === "string" ? body.detail : ""; }
+  catch { /* no JSON body */ }
+  return new ApiError(r.status, r.headers.get("x-maily-error") || "", detail);
+}
+
+// Translated message for a failed action: the action's own message, followed by
+// the translated reason when the API gave a known error code.
+function errText(key, e, vars) {
+  if (e) console.warn(key, e);
+  const base = tr(key, vars);
+  const code = e && e.code;
+  if (code && I18N.has("error." + code)) return base + " " + tr("error." + code);
+  return base;
+}
+
 async function api(path) {
   const r = await fetch(path, AUTH);
-  if (!r.ok) throw new Error(path + " -> " + r.status);
+  if (!r.ok) throw await apiFailure(r);
   return r.json();
 }
 
@@ -99,7 +130,7 @@ async function postAction(path, body) {
   const opts = { method: "POST", headers };
   if (body !== undefined) { headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
   const r = await fetch(path, opts);
-  if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+  if (!r.ok) throw await apiFailure(r);
   return r.json();
 }
 
@@ -111,13 +142,14 @@ function dismissBanner() {
 }
 function banner(msg) {
   let b = el(".banner");
-  if (!b) { b = document.createElement("div"); b.className = "banner"; el(".win").insertBefore(b, el(".body")); }
-  b.innerHTML = `<span class="banner-msg"></span><button class="banner-x" title="Fermer" aria-label="Fermer">×</button>`;
-  b.querySelector(".banner-msg").textContent = msg;   // textContent : pas d'injection HTML
+  if (!b) { b = document.createElement("div"); b.className = "banner"; b.setAttribute("role", "status"); el(".win").insertBefore(b, el(".body")); }
+  const close = esc(tr("common.close"));
+  b.innerHTML = `<span class="banner-msg"></span><button class="banner-x" title="${close}" aria-label="${close}">×</button>`;
+  b.querySelector(".banner-msg").textContent = msg;   // textContent: no HTML injection
   b.querySelector(".banner-x").onclick = dismissBanner;
   b.classList.add("show");
   if (_bannerTimer) clearTimeout(_bannerTimer);
-  _bannerTimer = setTimeout(dismissBanner, 5000);      // auto-fermeture 5 s
+  _bannerTimer = setTimeout(dismissBanner, 5000);      // closes itself after 5 s
 }
 
 function esc(s) {
@@ -126,7 +158,7 @@ function esc(s) {
 }
 
 function fromName(addr) {
-  if (!addr) return "(inconnu)";
+  if (!addr) return tr("message.unknownSender");
   const m = addr.match(/^\s*"?([^"<]+?)"?\s*<.+>/);
   return (m ? m[1] : addr).trim();
 }
@@ -136,45 +168,50 @@ function emailOnly(addr) {
   return (m ? m[1] : addr || "").trim();
 }
 
+// Time today, short date otherwise, in the active interface language.
 function fmtDate(ms) {
   if (!ms) return "";
+  const loc = I18N.locale();
   const d = new Date(Number(ms));
-  const dParis = d.toLocaleDateString("fr-FR", { timeZone: TZ });
-  const nowParis = new Date().toLocaleDateString("fr-FR", { timeZone: TZ });
-  return dParis === nowParis
-    ? d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: TZ })
-    : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: TZ });
+  const sameDay = d.toLocaleDateString(loc, { timeZone: TZ }) === new Date().toLocaleDateString(loc, { timeZone: TZ });
+  return sameDay
+    ? d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit", timeZone: TZ })
+    : d.toLocaleDateString(loc, { day: "2-digit", month: "short", timeZone: TZ });
 }
 
 function fmtSize(b) {
   if (!b) return "";
   const k = b / 1024;
-  return k < 1024 ? Math.round(k) + " Ko" : (k / 1024).toFixed(1) + " Mo";
+  return k < 1024
+    ? tr("size.kb", { n: I18N.formatNumber(Math.round(k)) })
+    : tr("size.mb", { n: I18N.formatNumber(k / 1024, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
 }
+
+function noSubject(s) { return esc(s) || esc(tr("message.noSubject")); }
 
 function orb(color, id) {
   return `<span class="orb"${id != null ? ` data-acc="${id}"` : ""} style="background:linear-gradient(180deg, ${color}cc, ${color})"></span>`;
 }
 
-/* ------- Couleurs de compte : palette thème-aware + choix persistant ------- */
+/* ------- Account colors: theme-aware palette + persistent choice ------- */
 const THEME_PALETTES = {
   classic: ["#1a73e8", "#188038", "#e37400", "#d93025", "#9334e6", "#007b83", "#b06000", "#c5221f"],
   aero:   ["#2e5fff", "#0e91d8", "#18c07a", "#14b8a6", "#f5a524", "#ef476f", "#c159f5", "#8b5cf6"],
   glass:  ["#4f7cff", "#38bdf8", "#34d399", "#2dd4bf", "#fbbf24", "#fb7185", "#c084fc", "#a78bfa"],
-  dedsec: ["#FF2D78", "#22E6DC", "#4AF626", "#F5A524", "#8b7cff", "#ef476f", "#00E5FF", "#39FF14"],
+  zeroday: ["#FF2D78", "#22E6DC", "#4AF626", "#F5A524", "#8b7cff", "#ef476f", "#00E5FF", "#39FF14"],
 };
 function paletteForTheme() {
   return THEME_PALETTES[document.documentElement.dataset.theme] || THEME_PALETTES.classic;
 }
-// Fond d'un swatch : même DA que les pastilles de profil (dégradé brillant en
-// Aero, à-plat ailleurs) pour une couleur fidèle.
+// Swatch background: same look as the profile dots (glossy gradient in Aero,
+// flat elsewhere) so that the color is faithful.
 function swatchBg(c) {
   return document.documentElement.dataset.theme === "aero"
     ? `background:linear-gradient(180deg, ${c}cc, ${c})`
     : `background-color:${c}`;
 }
 
-// Met a jour un profil (nom et/ou couleur) en base, puis recolore/renomme en place.
+// Updates a profile (name and/or color) in the database, then recolors/renames in place.
 async function updateAccount(id, patch) {
   let acc;
   try {
@@ -183,9 +220,9 @@ async function updateAccount(id, patch) {
       headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    if (!r.ok) throw new Error();
+    if (!r.ok) throw await apiFailure(r);
     acc = await r.json();
-  } catch { banner("Mise à jour du profil impossible."); return null; }
+  } catch (e) { banner(errText("toast.profileUpdateFailed", e)); return null; }
   const a = state.accounts.find((x) => x.id === id);
   if (a) Object.assign(a, acc);
   if (patch.color) {
@@ -217,7 +254,7 @@ function openColorPicker(accountId, anchor) {
   pop.className = "colorpop";
   const cur = (accountColors[accountId] || "").toLowerCase();
   pop.innerHTML = paletteForTheme().map((c) =>
-    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" title="${c}"></button>`
+    `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" title="${c}" aria-label="${esc(tr("settings.colorLabel", { color: c }))}"></button>`
   ).join("");
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
@@ -231,7 +268,7 @@ function openColorPicker(accountId, anchor) {
   setTimeout(() => document.addEventListener("click", onDoc, true), 0);
 }
 
-/* ------- Ajouter un compte : menu + flow OAuth Google ------- */
+/* ------- Add an account: menu + Google OAuth flow ------- */
 function closeAddMenu() {
   const p = document.getElementById("addpop");
   if (p) { if (p._onDoc) document.removeEventListener("click", p._onDoc, true); p.remove(); }
@@ -243,13 +280,13 @@ function openAddMenu(anchor) {
   pop.className = "addpop";
   pop.innerHTML =
     `<button class="addpop-item" data-p="google">${ico("at")}` +
-    `<span>Compte Google<span class="addpop-sub">Gmail / Google Workspace</span></span></button>` +
+    `<span>${esc(tr("add.google"))}<span class="addpop-sub">${esc(tr("add.googleSub"))}</span></span></button>` +
     `<button class="addpop-item" data-p="orange">${ico("at")}` +
-    `<span>Adresse IMAP<span class="addpop-sub">Lecture seule · Orange ou autre</span></span></button>`;
+    `<span>${esc(tr("add.imap"))}<span class="addpop-sub">${esc(tr("add.imapSub"))}</span></span></button>`;
   document.body.appendChild(pop);
   const r = anchor.getBoundingClientRect();
   pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)) + "px";
-  // Le bouton est en bas de la colonne : on ouvre le menu vers le haut.
+  // The button sits at the bottom of the column: the menu opens upwards.
   pop.style.top = Math.max(8, r.top - pop.offsetHeight - 6) + "px";
   pop.querySelector('[data-p="google"]').onclick = () => { closeAddMenu(); addGoogleAccount(); };
   pop.querySelector('[data-p="orange"]').onclick = () => { closeAddMenu(); openImapForm(); };
@@ -263,20 +300,20 @@ function openAddMenu(anchor) {
 async function addGoogleAccount() {
   const btn = el("#addaccount");
   btn.disabled = true;
-  banner("Autorise Maily dans la fenêtre de ton navigateur…");
+  banner(tr("toast.authorizeInBrowser"));
   try {
     const acc = await postAction("/accounts/google");
-    banner("Compte ajouté : " + (acc.email || ""));
+    banner(tr("toast.accountAdded", { email: acc.email || "" }));
     await loadAccounts();
     if (acc.account_id) {
       selectAccount(acc.account_id);
-      // Première synchro en tâche de fond (le backfill peut durer).
+      // First sync in the background (the backfill can take a while).
       fetch("/accounts/" + acc.account_id + "/sync", { method: "POST", ...AUTH })
         .then(() => { loadAccounts(); loadMessages(); })
         .catch(() => {});
     }
   } catch (e) {
-    banner("Ajout du compte échoué : " + e.message);
+    banner(errText("toast.addAccountFailed", e));
   } finally {
     btn.disabled = false;
   }
@@ -292,30 +329,25 @@ function openImapForm() {
   el("#imap-email").focus();
 }
 function closeImapForm() {
-  el("#imap-pass").value = "";                 // ne pas laisser trainer le mot de passe
+  el("#imap-pass").value = "";                 // never leave the password lying around
   el("#imapmodal").hidden = true;
 }
 async function connectImap() {
   const status = el("#imap-status");
   const email = el("#imap-email").value.trim();
   const password = el("#imap-pass").value;
-  if (!email || !password) { status.textContent = "Email et mot de passe requis."; return; }
+  if (!email || !password) { status.textContent = tr("imap.required"); return; }
   const btn = el("#imap-connect");
   btn.disabled = true;
-  status.textContent = "Connexion…";
+  status.textContent = tr("imap.connecting");
   try {
-    const r = await fetch("/accounts/imap", {
-      method: "POST", headers: { ...AUTH.headers, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email, password,
-        host: el("#imap-host").value.trim() || "imap.orange.fr",
-        port: Number(el("#imap-port").value) || 993,
-      }),
+    const data = await postAction("/accounts/imap", {
+      email, password,
+      host: el("#imap-host").value.trim() || "imap.orange.fr",
+      port: Number(el("#imap-port").value) || 993,
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data.detail || ("HTTP " + r.status));
     closeImapForm();
-    banner("Compte IMAP connecté : " + data.email);
+    banner(tr("toast.imapConnected", { email: data.email }));
     await loadAccounts();
     if (data.account_id) {
       selectAccount(data.account_id);
@@ -324,7 +356,7 @@ async function connectImap() {
         .catch(() => {});
     }
   } catch (e) {
-    status.textContent = "Échec : " + e.message;
+    status.textContent = errText("imap.failed", e);
   } finally {
     btn.disabled = false;
   }
@@ -334,7 +366,7 @@ function updateLayout() {
   el("#appbody").classList.toggle("no-read", !state.currentId);
 }
 
-/* ------------------------- Rail : comptes + dossiers ------------------------- */
+/* ------------------------- Rail: accounts + folders ------------------------- */
 
 async function loadAccounts() {
   const accs = await api("/accounts");
@@ -345,7 +377,7 @@ async function loadAccounts() {
 
   const all = document.createElement("div");
   all.className = "nav" + (state.accountId === null ? " on" : "");
-  all.innerHTML = `<span class="nav-ico">${ico("inbox")}</span> Tout (unifié)`;
+  all.innerHTML = `<span class="nav-ico">${ico("inbox")}</span> ${esc(tr("rail.unified"))}`;
   all.onclick = () => selectAccount(null);
   rail.appendChild(all);
 
@@ -370,13 +402,13 @@ async function loadFolders(accountId) {
 
   const sep = document.createElement("div");
   sep.className = "rail-sep";
-  sep.textContent = "Dossiers";
+  sep.textContent = tr("rail.folders");
   rail.appendChild(sep);
 
   const special = [
-    { name: "Boîte de réception", icon: "inbox", folder: { type: "inbox" } },
-    { name: "Archivés", icon: "archive", folder: { type: "archived" } },
-    { name: "Corbeille", icon: "trash", folder: { type: "trash" } },
+    { name: tr("folder.inbox"), icon: "inbox", folder: { type: "inbox" } },
+    { name: tr("folder.archived"), icon: "archive", folder: { type: "archived" } },
+    { name: tr("folder.trash"), icon: "trash", folder: { type: "trash" } },
   ];
   special.forEach((s) => rail.appendChild(folderNav(s.icon, s.name, s.folder)));
 
@@ -384,7 +416,7 @@ async function loadFolders(accountId) {
   if (userLabels.length) {
     const sep2 = document.createElement("div");
     sep2.className = "rail-sep";
-    sep2.textContent = "Libellés";
+    sep2.textContent = tr("rail.labels");
     rail.appendChild(sep2);
     userLabels.forEach((l) =>
       rail.appendChild(folderNav("tag", l.name, { type: "label", id: l.gmail_label_id, name: l.name })));
@@ -421,7 +453,7 @@ function selectFolder(folder) {
   loadMessages();
 }
 
-/* ------------------------- Onglets de catégories Gmail ------------------------- */
+/* ------------------------- Gmail category tabs ------------------------- */
 
 function renderCats() {
   const cats = el("#cats");
@@ -430,23 +462,23 @@ function renderCats() {
   cats.style.display = "flex";
   cats.innerHTML = "";
   CATEGORIES.forEach((c) => {
-    const t = document.createElement("div");
-    t.className = "cat" + (state.category === c.key ? " on" : "");
-    t.innerHTML = `${ico(c.icon)} ${c.label}`;
-    t.onclick = () => { state.category = c.key; renderCats(); loadMessages(); };
-    cats.appendChild(t);
+    const tab = document.createElement("div");
+    tab.className = "cat" + (state.category === c.key ? " on" : "");
+    tab.innerHTML = `${ico(c.icon)} ${esc(tr(c.label))}`;
+    tab.onclick = () => { state.category = c.key; renderCats(); loadMessages(); };
+    cats.appendChild(tab);
   });
 }
 
 function listTitle() {
-  if (state.query) return "Recherche : " + state.query;
-  if (state.folder.type === "archived") return "Archivés";
-  if (state.folder.type === "trash") return "Corbeille";
+  if (state.query) return tr("list.searchTitle", { query: state.query });
+  if (state.folder.type === "archived") return tr("folder.archived");
+  if (state.folder.type === "trash") return tr("folder.trash");
   if (state.folder.type === "label") return state.folder.name;
   return "";
 }
 
-/* ------------------------- Liste des messages ------------------------- */
+/* ------------------------- Message list ------------------------- */
 
 function messagesQuery() {
   if (state.query) {
@@ -469,13 +501,13 @@ async function loadMessages() {
   el("#listbar-title").textContent = listTitle();
   let msgs;
   try { msgs = await api(messagesQuery()); }
-  catch (e) { banner("Erreur de chargement : " + e.message); return; }
-  if (seq !== state.listSeq) return;  // une requete plus recente a pris le relais
+  catch (e) { banner(errText("toast.loadFailed", e)); return; }
+  if (seq !== state.listSeq) return;  // a more recent request took over
   state.currentMsgs = msgs;
 
   list.innerHTML = "";
   if (!msgs.length) {
-    list.innerHTML = `<div class="list-empty">Aucun message ici. Clique sur « Synchroniser » si besoin.</div>`;
+    list.innerHTML = `<div class="list-empty">${esc(tr("list.empty"))}</div>`;
     return;
   }
   msgs.forEach((m) => {
@@ -490,7 +522,7 @@ async function loadMessages() {
          <span class="li-from" style="color:${m.is_unread ? "var(--ink)" : "var(--ink-soft)"}">${esc(fromName(m.addr_from))}</span>
          <span class="li-time">${fmtDate(m.internal_date)}</span>
        </div>
-       <div class="li-subj">${esc(m.subject) || "(sans sujet)"}</div>`;
+       <div class="li-subj">${noSubject(m.subject)}</div>`;
     row.onclick = (e) => {
       if (e.metaKey || e.ctrlKey) openInTab(m.id, m.subject);
       else openSingle(m.id);
@@ -501,7 +533,7 @@ async function loadMessages() {
 
 async function markAllRead() {
   const unread = state.currentMsgs.filter((m) => m.is_unread);
-  if (!unread.length) { banner("Aucun message non lu ici."); return; }
+  if (!unread.length) { banner(tr("toast.noUnread")); return; }
   const btn = el("#markread");
   btn.disabled = true;
   let ok = 0;
@@ -510,16 +542,16 @@ async function markAllRead() {
       await postAction(`/messages/${m.id}/modify`, { remove_labels: ["UNREAD"] });
       ok++;
     }
-    banner(`${ok} message(s) marqué(s) comme lu(s).`);
+    banner(tr("toast.markedRead", { count: ok }));
   } catch (e) {
-    banner(`Erreur après ${ok} marqué(s) : ` + e.message);
+    banner(errText("toast.markReadStopped", e, { count: ok }));
   } finally {
     await loadMessages();
     btn.disabled = false;
   }
 }
 
-/* ------------------------- Lecture d'un message ------------------------- */
+/* ------------------------- Reading a message ------------------------- */
 
 const BASE_CSS = `
   :root { color-scheme: light; }
@@ -546,11 +578,11 @@ function buildDoc(fragment) {
 
 function remoteImagesAllowed() { return PREFS.remote_images === true; }
 
-// Rend {html, blocked} : `blocked` = nombre de ressources distantes retirees
-// par le nettoyage cote serveur (en-tete X-Maily-Blocked-Remote).
+// Returns {html, blocked}: `blocked` = number of remote resources removed by
+// the server-side sanitizer (X-Maily-Blocked-Remote header).
 async function fetchHtml(id, allowRemote) {
   const r = await fetch("/messages/" + id + "/html?allow_remote=" + (allowRemote ? "true" : "false"), AUTH);
-  if (!r.ok) throw new Error("/messages/" + id + "/html -> " + r.status);
+  if (!r.ok) throw await apiFailure(r);
   const blocked = parseInt(r.headers.get("x-maily-blocked-remote") || "0", 10) || 0;
   return { html: await r.text(), blocked };
 }
@@ -562,7 +594,7 @@ async function renderAttachments(id, wrap) {
   const real = atts.filter((a) => !a.content_id);
   if (!real.length) { wrap.style.display = "none"; return; }
   wrap.innerHTML = real.map((a) =>
-    `<button class="att-chip" data-att="${a.id}">${ico("paperclip")} ${esc(a.filename) || "fichier"}` +
+    `<button class="att-chip" data-att="${a.id}">${ico("paperclip")} ${esc(a.filename) || esc(tr("message.attachmentFallback"))}` +
     `<span class="att-size">${fmtSize(a.size)}</span></button>`).join("");
   wrap.querySelectorAll(".att-chip").forEach((btn) => {
     const att = real.find((x) => String(x.id) === btn.dataset.att);
@@ -573,20 +605,20 @@ async function renderAttachments(id, wrap) {
 async function downloadAttachment(id, attId, att) {
   try {
     const r = await fetch(`/messages/${id}/attachments/${attId}/download`, AUTH);
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) throw await apiFailure(r);
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = (att && att.filename) || "piece-jointe";
+    a.href = url; a.download = (att && att.filename) || "attachment";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-  } catch (e) { banner("Téléchargement échoué : " + e.message); }
+  } catch (e) { banner(errText("toast.downloadFailed", e)); }
 }
 
 async function exportEml(id) {
   try {
     const r = await fetch(`/messages/${id}/eml`, AUTH);
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) throw await apiFailure(r);
     const blob = await r.blob();
     const cd = r.headers.get("content-disposition") || "";
     const m = cd.match(/filename\*=UTF-8''([^;]+)/i) || cd.match(/filename="([^"]+)"/i);
@@ -596,15 +628,15 @@ async function exportEml(id) {
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    banner("Message exporté : " + name);
-  } catch (e) { banner("Export .eml échoué : " + e.message); }
+    banner(tr("toast.emlExported", { name }));
+  } catch (e) { banner(errText("toast.emlFailed", e)); }
 }
 
 function openSingle(id) { state.tabs = []; openMessage(id); }
 
 function openInTab(id, subject) {
-  // Un mail deja ouvert seul (hors onglets) doit devenir un onglet, sinon le
-  // Cmd+clic ne cree qu'un onglet (longueur 1 -> pas de barre) au 1er coup.
+  // A message already open on its own (no tabs) must become a tab, otherwise
+  // the first Cmd+click only creates one tab (length 1, so no tab bar).
   if (state.currentId && !state.tabs.some((t) => t.id === state.currentId)) {
     const cur = (state.currentMsgs || []).find((m) => m.id === state.currentId);
     state.tabs.push({ id: state.currentId, subject: cur ? cur.subject : "" });
@@ -619,7 +651,7 @@ function closeTab(id) {
   if (state.tabs.length === 0) { closeReading(); return; }
   if (state.tabs.length === 1) {
     const only = state.tabs[0].id;
-    state.tabs = [];  // 1 seul mail restant = pas de barre d'onglets
+    state.tabs = [];  // a single message left: no tab bar
     openMessage(wasCurrent ? only : state.currentId);
     return;
   }
@@ -632,8 +664,8 @@ function renderTabBar() {
   state.tabs.forEach((t) => {
     const chip = document.createElement("div");
     chip.className = "mailtab" + (t.id === state.currentId ? " on" : "");
-    chip.innerHTML = `<span class="mailtab-lbl">${esc(t.subject) || "(sans sujet)"}</span>` +
-      `<span class="mailtab-x" title="Fermer l'onglet">×</span>`;
+    chip.innerHTML = `<span class="mailtab-lbl">${noSubject(t.subject)}</span>` +
+      `<span class="mailtab-x" title="${esc(tr("read.closeTab"))}">×</span>`;
     chip.querySelector(".mailtab-lbl").onclick = () => openMessage(t.id);
     chip.querySelector(".mailtab-x").onclick = (e) => { e.stopPropagation(); closeTab(t.id); };
     bar.appendChild(chip);
@@ -641,19 +673,29 @@ function renderTabBar() {
   return bar;
 }
 
+function readEmpty(text) {
+  return `<div class="read-empty">${esc(text)}</div>`;
+}
+
 function closeReading() {
   state.currentId = null;
   state.tabs = [];
-  el("#read").innerHTML = `<div class="read-empty">Sélectionne un message pour le lire.</div>`;
+  el("#read").innerHTML = readEmpty(tr("read.empty"));
   updateLayout();
   loadMessages();
+}
+
+// Action button (icon only) with a tooltip and an accessible name.
+function iconButton(id, icon, labelKey) {
+  const label = esc(tr(labelKey));
+  return `<button class="ghost io" id="${id}" title="${label}" aria-label="${label}" data-tip="${label}">${ico(icon)}</button>`;
 }
 
 async function openMessage(id) {
   const seq = ++state.openSeq;
   state.currentId = id;
   updateLayout();
-  // MAJ optimiste : la pastille non-lu disparait immediatement au clic
+  // Optimistic update: the unread dot disappears as soon as the row is clicked.
   const listRow = document.querySelector(`.li[data-id="${id}"]`);
   if (listRow) {
     listRow.querySelector(".li-dot")?.classList.add("seen");
@@ -662,8 +704,8 @@ async function openMessage(id) {
   }
   let m;
   try { m = await api("/messages/" + id); }
-  catch (e) { banner("Erreur : " + e.message); return; }
-  if (seq !== state.openSeq) return;  // un autre mail a ete ouvert entre-temps
+  catch (e) { banner(errText("toast.openFailed", e)); return; }
+  if (seq !== state.openSeq) return;  // another message was opened in the meantime
 
   const read = el("#read");
   read.innerHTML = "";
@@ -672,22 +714,21 @@ async function openMessage(id) {
   const head = document.createElement("div");
   head.className = "read-head";
   const inTrash = state.folder.type === "trash";
-  // IMAP (Orange, etc.) = lecture seule : pas de réponse/transfert (pas de SMTP).
+  // IMAP (Orange, etc.) is read-only: no reply or forward (no SMTP).
   const isImap = ((state.accounts.find((a) => a.id === m.account_id) || {}).provider === "imap");
   const sendButtons = isImap ? "" :
-    `<button class="gel" id="replybtn">${ico("reply")} Répondre</button>
-     <button class="ghost io" id="fwdbtn" title="Transférer" data-tip="Transférer">${ico("forward")}</button>`;
+    `<button class="gel" id="replybtn">${ico("reply")} ${esc(tr("read.reply"))}</button>
+     ${iconButton("fwdbtn", "forward", "read.forward")}`;
   head.innerHTML =
-    `<button class="read-close" id="read-close" title="Fermer">${ico("x")}</button>
-     <h1 class="read-subj">${esc(m.subject) || "(sans sujet)"}</h1>
+    `<button class="read-close" id="read-close" title="${esc(tr("common.close"))}" aria-label="${esc(tr("common.close"))}">${ico("x")}</button>
+     <h1 class="read-subj">${noSubject(m.subject)}</h1>
      <div class="read-meta">${esc(m.addr_from)} · ${fmtDate(m.internal_date)}</div>
      <div class="read-actions">
        ${sendButtons}
-       <button class="ghost io" id="emlbtn" title="Télécharger en .eml" data-tip="Télécharger .eml">${ico("download")}</button>
+       ${iconButton("emlbtn", "download", "read.downloadEml")}
        ${inTrash
-        ? `<button class="ghost io" id="untrashbtn" title="Restaurer" data-tip="Restaurer">${ico("restore")}</button>`
-        : `<button class="ghost io" id="archbtn" title="Archiver" data-tip="Archiver">${ico("archive")}</button>
-           <button class="ghost io" id="trashbtn" title="Corbeille" data-tip="Corbeille">${ico("trash")}</button>`}
+        ? iconButton("untrashbtn", "restore", "read.restore")
+        : iconButton("archbtn", "archive", "read.archive") + iconButton("trashbtn", "trash", "read.trash")}
      </div>`;
   read.appendChild(head);
 
@@ -695,7 +736,7 @@ async function openMessage(id) {
   const replyBtn = head.querySelector("#replybtn");
   if (replyBtn) {
     const replyColor = accountColors[m.account_id];
-    // Couleur du profil + texte blanc (lisible quel que soit le thème).
+    // Account color + white text (readable in every theme).
     if (replyColor) { replyBtn.style.background = replyColor; replyBtn.style.borderColor = "transparent"; replyBtn.style.color = "#fff"; }
     replyBtn.onclick = () => replyTo(m);
   }
@@ -704,17 +745,17 @@ async function openMessage(id) {
   head.querySelector("#emlbtn").onclick = () => exportEml(id);
   if (inTrash) {
     head.querySelector("#untrashbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/untrash`); afterAction("Restauré."); }
-      catch (e) { banner("Erreur : " + e.message); }
+      try { await postAction(`/messages/${id}/untrash`); afterAction(tr("toast.restored")); }
+      catch (e) { banner(errText("toast.actionFailed", e)); }
     };
   } else {
     head.querySelector("#archbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction("Archivé."); }
-      catch (e) { banner("Erreur : " + e.message); }
+      try { await postAction(`/messages/${id}/modify`, { remove_labels: ["INBOX"] }); afterAction(tr("toast.archived")); }
+      catch (e) { banner(errText("toast.actionFailed", e)); }
     };
     head.querySelector("#trashbtn").onclick = async () => {
-      try { await postAction(`/messages/${id}/trash`); afterAction("Déplacé vers la corbeille."); }
-      catch (e) { banner("Erreur : " + e.message); }
+      try { await postAction(`/messages/${id}/trash`); afterAction(tr("toast.trashed")); }
+      catch (e) { banner(errText("toast.actionFailed", e)); }
     };
   }
 
@@ -731,29 +772,33 @@ async function openMessage(id) {
   const frame = document.createElement("iframe");
   frame.className = "read-frame";
   frame.setAttribute("sandbox", "");
+  frame.title = m.subject || tr("message.noSubject");
   read.appendChild(frame);
 
   const render = async (allowRemote) => {
     const { html, blocked } = await fetchHtml(id, allowRemote);
     if (seq !== state.openSeq) return;
-    const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || "(vide)"}</pre>`;
+    const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || esc(tr("message.empty"))}</pre>`;
     frame.srcdoc = buildDoc(body);
     if (!allowRemote && blocked > 0) {
-      imgBar.innerHTML = `<span>${blocked} image(s) distante(s) bloquée(s) pour protéger ta vie privée.</span>` +
-        `<button class="ghost img-bar-btn">Afficher les images</button>`;
-      imgBar.querySelector("button").onclick = () => { imgBar.hidden = true; render(true).catch((e) => banner("Erreur : " + e.message)); };
+      imgBar.innerHTML = `<span>${esc(tr("read.remoteBlocked", { count: blocked }))}</span>` +
+        `<button class="ghost img-bar-btn">${esc(tr("read.showImages"))}</button>`;
+      imgBar.querySelector("button").onclick = () => {
+        imgBar.hidden = true;
+        render(true).catch((e) => banner(errText("toast.openFailed", e)));
+      };
       imgBar.hidden = false;
     } else {
       imgBar.hidden = true;
     }
   };
   try { await render(remoteImagesAllowed()); }
-  catch (e) { banner("Erreur : " + e.message); }
+  catch (e) { banner(errText("toast.openFailed", e)); }
 
   if (m.is_unread) {
     postAction(`/messages/${id}/modify`, { remove_labels: ["UNREAD"] })
       .then(loadMessages)
-      .catch(() => { banner("Impossible de marquer comme lu."); loadMessages(); });
+      .catch((e) => { banner(errText("toast.markReadFailed", e)); loadMessages(); });
   } else {
     loadMessages();
   }
@@ -763,14 +808,14 @@ function afterAction(msg) {
   banner(msg);
   state.currentId = null;
   state.tabs = [];
-  el("#read").innerHTML = `<div class="read-empty">${esc(msg)}</div>`;
+  el("#read").innerHTML = readEmpty(msg);
   updateLayout();
   loadMessages();
 }
 
-/* ------------------------- Composition ------------------------- */
+/* ------------------------- Composer ------------------------- */
 
-// Bouton "Envoyer" a la couleur du profil expediteur selectionne.
+// "Send" button in the color of the selected sender account.
 function syncSendColor() {
   const btn = el("#c-send");
   if (!btn) return;
@@ -783,9 +828,9 @@ function syncSendColor() {
 function openComposer(prefill) {
   const fromSel = el("#c-from");
   fromSel.innerHTML = "";
-  // Seuls les comptes capables d'envoyer (Gmail) : l'IMAP est en lecture seule.
+  // Only accounts that can send (Gmail): IMAP accounts are read-only.
   const sendable = (state.accounts || []).filter((a) => a.provider !== "imap");
-  if (!sendable.length) { banner("Aucun compte capable d'envoyer (les comptes IMAP sont en lecture seule)."); return; }
+  if (!sendable.length) { banner(tr("toast.noSendableAccount")); return; }
   sendable.forEach((a) => {
     const o = document.createElement("option");
     o.value = a.id; o.textContent = a.display_name || a.email;
@@ -794,13 +839,14 @@ function openComposer(prefill) {
   if (prefill.accountId && sendable.some((a) => a.id === prefill.accountId)) fromSel.value = prefill.accountId;
   fromSel.onchange = syncSendColor;
   syncSendColor();
-  el("#composer-title").textContent = prefill.title || "Nouveau message";
+  const c = el("#composer");
+  c.dataset.titleKey = prefill.titleKey || "composer.new";
+  el("#composer-title").textContent = tr(c.dataset.titleKey);
   el("#c-to").value = prefill.to || "";
   el("#c-cc").value = "";
   el("#c-subject").value = prefill.subject || "";
   el("#c-body").value = prefill.body || "";
   el("#c-status").textContent = "";
-  const c = el("#composer");
   c.dataset.inReplyTo = prefill.inReplyTo || "";
   c.dataset.threadId = prefill.threadId || "";
   state.composerAtts = [];
@@ -817,8 +863,9 @@ function closeComposer() { el("#composer").hidden = true; }
 function renderComposerAtts() {
   const wrap = el("#c-atts");
   const atts = state.composerAtts || [];
+  const remove = esc(tr("composer.removeAttachment"));
   wrap.innerHTML = atts.map((a, i) =>
-    `<span class="c-att">${ico("paperclip")} ${esc(a.filename)}<span class="c-att-x" data-i="${i}">×</span></span>`).join("");
+    `<span class="c-att">${ico("paperclip")} ${esc(a.filename)}<span class="c-att-x" data-i="${i}" title="${remove}" aria-label="${remove}" role="button">×</span></span>`).join("");
   wrap.querySelectorAll(".c-att-x").forEach((x) => {
     x.onclick = () => { state.composerAtts.splice(Number(x.dataset.i), 1); renderComposerAtts(); };
   });
@@ -834,7 +881,7 @@ function addComposerFiles(fileList) {
         renderComposerAtts();
         resolve();
       };
-      reader.onerror = () => { banner("Lecture du fichier échouée : " + f.name); resolve(); };
+      reader.onerror = () => { banner(tr("toast.fileReadFailed", { name: f.name })); resolve(); };
       reader.readAsDataURL(f);
     });
     state.pendingReads.push(p);
@@ -845,10 +892,10 @@ function addComposerFiles(fileList) {
 async function sendComposer() {
   const status = el("#c-status");
   const to = el("#c-to").value.trim();
-  if (!to) { status.textContent = "Ajoute au moins un destinataire."; return; }
+  if (!to) { status.textContent = tr("composer.needRecipient"); return; }
   el("#c-send").disabled = true;
-  status.textContent = "Préparation…";
-  await Promise.allSettled(state.pendingReads);  // attendre que les PJ soient lues
+  status.textContent = tr("composer.preparing");
+  await Promise.allSettled(state.pendingReads);  // wait until attachments are read
   const payload = {
     account_id: Number(el("#c-from").value),
     to, cc: el("#c-cc").value.trim() || null,
@@ -859,58 +906,60 @@ async function sendComposer() {
     attachments: state.composerAtts || [],
     idempotency_key: state.composerKey,
   };
-  status.textContent = "Envoi…";
+  status.textContent = tr("composer.sending");
   try {
-    const r = await fetch("/send", {
-      method: "POST", headers: { ...AUTH.headers, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!r.ok) throw new Error(r.status + " " + (await r.text()));
+    await postAction("/send", payload);
     closeComposer();
-    banner("Message envoyé.");
+    banner(tr("toast.sent"));
     fetch("/accounts/" + payload.account_id + "/sync", { method: "POST", ...AUTH })
       .then(loadMessages).catch(() => {});
-  } catch (e) { status.textContent = "Échec de l'envoi : " + e.message; }
+  } catch (e) { status.textContent = errText("composer.sendFailed", e); }
   el("#c-send").disabled = false;
 }
 
+// Subject prefixes already present are kept as they are, whatever the language
+// of the client that wrote them.
+const REPLY_PREFIX = /^\s*(re|aw|sv|antw)\s*:/i;
+const FORWARD_PREFIX = /^\s*(fwd?|tr|wg|rv|enc|i)\s*:/i;
+
 function replyTo(m) {
+  const subject = m.subject || "";
   openComposer({
-    title: "Répondre", accountId: m.account_id, to: emailOnly(m.addr_from),
-    subject: /^re\s*:/i.test(m.subject || "") ? m.subject : "Re: " + (m.subject || ""),
+    titleKey: "composer.reply", accountId: m.account_id, to: emailOnly(m.addr_from),
+    subject: REPLY_PREFIX.test(subject) ? subject : tr("composer.replyPrefix") + " " + subject,
     inReplyTo: m.rfc822_message_id || "", threadId: m.thread_id || "",
-    body: "\n\n----- Message d'origine -----\n" + (m.body_text || ""),
+    body: "\n\n" + tr("composer.originalMessage") + "\n" + (m.body_text || ""),
   });
 }
 
 function forward(m) {
+  const subject = m.subject || "";
   openComposer({
-    title: "Transférer", accountId: m.account_id,
-    subject: /^tr\s*:/i.test(m.subject || "") ? m.subject : "Tr: " + (m.subject || ""),
-    body: "\n\n----- Message transféré -----\nDe : " + (m.addr_from || "") +
-      "\nObjet : " + (m.subject || "") + "\n\n" + (m.body_text || ""),
+    titleKey: "composer.forward", accountId: m.account_id,
+    subject: FORWARD_PREFIX.test(subject) ? subject : tr("composer.forwardPrefix") + " " + subject,
+    body: "\n\n" + tr("composer.forwardedMessage") + "\n" +
+      tr("composer.forwardedFrom", { from: m.addr_from || "" }) + "\n" +
+      tr("composer.forwardedSubject", { subject }) + "\n\n" + (m.body_text || ""),
   });
 }
 
-/* ------------------------- Recherche ------------------------- */
+/* ------------------------- Search ------------------------- */
 
 function initSearch() {
-  let t;
+  let timer;
   el("#search").addEventListener("input", (e) => {
-    clearTimeout(t);
+    clearTimeout(timer);
     state.query = e.target.value.trim();
     renderCats();
-    t = setTimeout(loadMessages, 250);
+    timer = setTimeout(loadMessages, 250);
   });
 }
 
-/* ------------------------- Synchro ------------------------- */
+/* ------------------------- Sync ------------------------- */
 
 async function syncAll() {
   const btn = el("#sync");
   btn.disabled = true;
-  const label = btn.innerHTML;
-  btn.innerHTML = ico("refresh");
   btn.classList.add("spinning");
   try {
     const accs = await api("/accounts");
@@ -919,22 +968,22 @@ async function syncAll() {
       await loadAccounts();
       await loadMessages();
     }
-  } catch (e) { banner("Erreur de synchro : " + e.message); }
+  } catch (e) { banner(errText("toast.syncFailed", e)); }
   btn.disabled = false;
   btn.classList.remove("spinning");
-  btn.innerHTML = label;
 }
 
-/* ------------------------- Init ------------------------- */
+/* ------------------------- Appearance ------------------------- */
 
-function setTheme(t, persist = true) {
-  if (!THEMES.includes(t)) t = DEFAULT_THEME;
-  document.documentElement.dataset.theme = t;
-  if (persist) savePref("theme", t);
+function setTheme(theme, persist = true) {
+  if (theme === "dedsec") theme = "zeroday";   // former name of the Zero Day theme
+  if (!THEMES.includes(theme)) theme = DEFAULT_THEME;
+  document.documentElement.dataset.theme = theme;
+  if (persist) savePref("theme", theme);
   refreshAppearancePane();
 }
 
-// Mode du theme Classic : "auto" suit le systeme, "light"/"dark" le forcent.
+// Classic theme mode: "auto" follows the system, "light"/"dark" force it.
 function setClassicMode(mode, persist = true) {
   if (!["auto", "light", "dark"].includes(mode)) mode = "auto";
   if (mode === "auto") delete document.documentElement.dataset.mode;
@@ -945,7 +994,7 @@ function setClassicMode(mode, persist = true) {
 
 function refreshAppearancePane() {
   const cur = document.documentElement.dataset.theme;
-  document.querySelectorAll(".theme-opt").forEach((b) => {
+  document.querySelectorAll(".theme-opt[data-theme-val]").forEach((b) => {
     const on = b.dataset.themeVal === cur;
     b.classList.toggle("on", on);
     b.setAttribute("aria-pressed", on ? "true" : "false");
@@ -958,44 +1007,86 @@ function refreshAppearancePane() {
   });
   const cm = el("#classic-mode-ctl");
   if (cm) cm.hidden = cur !== "classic";
-  const gc = el("#glass-ctl");                 // slider de densité : uniquement en Verre
+  const gc = el("#glass-ctl");                 // density slider: Glassmorphism only
   if (gc) gc.hidden = cur !== "glass";
 }
 
-/* ------- Panneau Réglages : apparence, confidentialité, comptes, à propos ------- */
+/* ------------------------- Language ------------------------- */
+
+// Native names (English, Français, ...) with the name in the current language below.
+function renderLanguagePane() {
+  const wrap = el("#lang-opts");
+  if (!wrap) return;
+  wrap.innerHTML = I18N.LANGUAGES.map((l) => {
+    const on = l.code === I18N.language;
+    return `<button class="theme-opt lang-opt${on ? " on" : ""}" role="radio" aria-checked="${on}" data-lang-val="${l.code}" lang="${l.code}">` +
+      `<span class="lang-code" aria-hidden="true">${l.code.toUpperCase()}</span>` +
+      `<span class="theme-opt-txt">${esc(l.name)}<span class="theme-opt-sub" lang="${I18N.language}">${esc(tr("language." + l.code))}</span></span></button>`;
+  }).join("");
+  wrap.querySelectorAll(".lang-opt").forEach((b) => {
+    b.onclick = () => changeLanguage(b.dataset.langVal);
+  });
+}
+
+async function changeLanguage(code) {
+  if (code === I18N.language && PREFS.language === code) return;
+  savePref("language", code);
+  await I18N.setLanguage(code);
+  refreshTexts();
+  const btn = el(`.lang-opt[data-lang-val="${code}"]`);
+  if (btn) btn.focus();
+}
+
+// Re-renders everything that carries text after a language change.
+function refreshTexts() {
+  I18N.applyDom();
+  paintStaticIcons();
+  renderCats();
+  renderLanguagePane();
+  const c = el("#composer");
+  if (c.dataset.titleKey) el("#composer-title").textContent = tr(c.dataset.titleKey);
+  if (!el("#pane-accounts").hidden) renderSettings();
+  if (!state.currentId) el("#read").innerHTML = readEmpty(tr("read.empty"));
+  loadAccounts().catch(() => {});
+  if (state.currentId) openMessage(state.currentId);
+  else loadMessages();
+}
+
+/* ------- Settings panel: appearance, language, privacy, accounts, about ------- */
 function showSettingsPane(name) {
   document.querySelectorAll(".settings-tab").forEach((t) => {
     const on = t.dataset.pane === name;
     t.classList.toggle("on", on);
     t.setAttribute("aria-selected", on ? "true" : "false");
-    t.tabIndex = on ? 0 : -1;              // tabulation itinérante (motif ARIA tablist)
+    t.tabIndex = on ? 0 : -1;              // roving tabindex (ARIA tablist pattern)
   });
   document.querySelectorAll(".settings-pane").forEach((p) => { p.hidden = p.dataset.pane !== name; });
   if (name === "accounts") renderSettings();
+  if (name === "language") renderLanguagePane();
   if (name === "about") loadAbout();
 }
 
 function renderSettings() {
   const wrap = el("#settings-accounts");
   if (!state.accounts.length) {
-    wrap.innerHTML = `<div class="settings-empty">Aucun compte pour l'instant.</div>`;
+    wrap.innerHTML = `<div class="settings-empty">${esc(tr("settings.noAccounts"))}</div>`;
     return;
   }
   const pal = paletteForTheme();
   wrap.innerHTML = state.accounts.map((a) => {
     const cur = (accountColors[a.id] || "").toLowerCase();
     const sw = pal.map((c) =>
-      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" data-acc="${a.id}" title="${c}" aria-label="Couleur ${c}"></button>`
+      `<button class="swatch${c.toLowerCase() === cur ? " on" : ""}" style="${swatchBg(c)}" data-c="${c}" data-acc="${a.id}" title="${c}" aria-label="${esc(tr("settings.colorLabel", { color: c }))}"></button>`
     ).join("");
-    const kind = a.provider === "imap" ? "IMAP · lecture seule" : "Gmail";
+    const kind = a.provider === "imap" ? tr("settings.kindImap") : tr("settings.kindGmail");
     return `<div class="settings-row">
       <div class="settings-row-top">
         ${orb(accountColors[a.id], a.id)}
-        <input class="settings-name" data-acc="${a.id}" value="${esc(a.display_name || "")}" placeholder="${esc(a.email)}" maxlength="60" aria-label="Nom affiché pour ${esc(a.email)}">
+        <input class="settings-name" data-acc="${a.id}" value="${esc(a.display_name || "")}" placeholder="${esc(a.email)}" maxlength="60" aria-label="${esc(tr("settings.displayNameFor", { email: a.email }))}">
       </div>
-      <div class="settings-email">${esc(a.email)} · ${kind}</div>
+      <div class="settings-email">${esc(a.email)} · ${esc(kind)}</div>
       <div class="settings-swatches">${sw}</div>
-      <button class="settings-logout" data-acc="${a.id}" data-email="${esc(a.email)}">Déconnecter</button>
+      <button class="settings-logout" data-acc="${a.id}" data-email="${esc(a.email)}">${esc(tr("settings.disconnect"))}</button>
     </div>`;
   }).join("");
   wrap.querySelectorAll(".settings-name").forEach((inp) => {
@@ -1017,20 +1108,20 @@ async function loadAbout() {
     const info = await api("/about");
     el("#about-version").textContent = info.version || "?";
     el("#about-datadir").textContent = info.data_dir || "?";
-  } catch { /* hors ligne : on laisse les valeurs par defaut */ }
+  } catch { /* offline: keep the placeholders */ }
 }
 
 async function logoutAccount(id, email) {
-  if (!window.confirm(`Déconnecter ${email} ?\nLes mails téléchargés en local seront supprimés (réversible en reconnectant le compte).`)) return;
+  if (!window.confirm(tr("settings.disconnectConfirm", { email }))) return;
   try {
     const r = await fetch(`/accounts/${id}`, { method: "DELETE", headers: { Authorization: "Bearer " + TOKEN } });
-    if (!r.ok) throw new Error(r.status + " " + (await r.text()));
-    banner("Compte déconnecté : " + email);
+    if (!r.ok) throw await apiFailure(r);
+    banner(tr("toast.disconnected", { email }));
     if (state.accountId === id) { state.accountId = null; state.folder = { type: "inbox" }; }
     await loadAccounts();
     renderSettings();
     loadMessages();
-  } catch (e) { banner("Déconnexion échouée : " + e.message); }
+  } catch (e) { banner(errText("toast.disconnectFailed", e)); }
 }
 function openSettings(pane) {
   refreshAppearancePane();
@@ -1042,13 +1133,13 @@ function openSettings(pane) {
 }
 function closeSettings() { el("#settingsmodal").hidden = true; }
 
-/* ------- Densité du fond (thème Verre) : slider -> vibrancy native ------- */
+/* ------- Background density (Glassmorphism theme): slider to native vibrancy ------- */
 function applyGlassAlpha(a) {
   fetch("/glass", {
     method: "POST",
     headers: { Authorization: "Bearer " + TOKEN, "Content-Type": "application/json" },
     body: JSON.stringify({ alpha: a }),
-  }).catch(() => { /* pas de vibrancy (non-macOS) : sans effet */ });
+  }).catch(() => { /* no vibrancy (not macOS): no effect */ });
 }
 
 function initSplitter() {
@@ -1060,8 +1151,8 @@ function initSplitter() {
   if (saved) setW(saved);
   let startX = 0, startW = 0, dragging = false;
 
-  // Pointer Events + capture : on ne redimensionne QUE tant que le clic est
-  // maintenu, et le relachement est fiable meme hors de la fenetre.
+  // Pointer Events + capture: resize ONLY while the button is held, and the
+  // release is reliable even outside the window.
   sp.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     dragging = true;
@@ -1073,7 +1164,7 @@ function initSplitter() {
     e.preventDefault();
   });
   sp.addEventListener("pointermove", (e) => {
-    if (!dragging) return;                       // rien sans clic maintenu
+    if (!dragging) return;                       // nothing without a held button
     setW(Math.max(260, Math.min(720, startW + (e.clientX - startX))));
   });
   const end = (e) => {
@@ -1093,42 +1184,49 @@ async function initGlassSlider() {
   const val = el("#glass-alpha-val");
   if (!s) return;
   let a0 = 0.6;
-  try {                                    // valeur persistee cote backend (fichier)
+  try {                                    // value persisted by the backend (file)
     const r = await fetch("/glass", { headers: { Authorization: "Bearer " + TOKEN } });
     if (r.ok) a0 = Math.max(0, Math.min(1, (await r.json()).alpha));
-  } catch { /* pas de backend natif : sans effet */ }
+  } catch { /* no native backend: no effect */ }
+  const pct = () => I18N.formatNumber(s.value / 100, { style: "percent" });
   s.value = Math.round(a0 * 100);
-  if (val) val.textContent = s.value + "%";
-  // (le natif a deja applique la valeur persistee a la creation de la fenetre)
+  if (val) val.textContent = pct();
+  // (the native side already applied the persisted value when the window was created)
   s.addEventListener("input", () => {
-    if (val) val.textContent = s.value + "%";
-    applyGlassAlpha(s.value / 100);        // applique en direct ET persiste
+    if (val) val.textContent = pct();
+    applyGlassAlpha(s.value / 100);        // applies live AND persists
   });
 }
 
 function paintStaticIcons() {
   const labeled = {
-    "#settingsbtn": ["settings", "Réglages"], "#compose": ["edit", "Écrire"],
-    "#c-send": ["send", "Envoyer"], "#c-attach": ["paperclip", "Joindre"],
+    "#settingsbtn": ["settings", "top.settings"], "#compose": ["edit", "top.compose"],
+    "#c-send": ["send", "composer.send"], "#c-attach": ["paperclip", "composer.attach"],
   };
-  for (const [sel, [name, label]] of Object.entries(labeled)) {
-    const b = el(sel); if (b) b.innerHTML = `${ico(name)} ${label}`;
+  for (const [sel, [name, key]] of Object.entries(labeled)) {
+    const b = el(sel); if (b) b.innerHTML = `${ico(name)} ${esc(tr(key))}`;
   }
-  // Barre liste : icone seule + tooltip au survol (compact, responsive).
-  const iconOnly = { "#sync": ["refresh", "Synchroniser"], "#markread": ["mail_read", "Tout marquer lu"] };
-  for (const [sel, [name, tip]] of Object.entries(iconOnly)) {
+  // List bar: icon only + tooltip on hover (compact, responsive).
+  const iconOnly = { "#sync": ["refresh", "list.sync"], "#markread": ["mail_read", "list.markAllRead"] };
+  for (const [sel, [name, key]] of Object.entries(iconOnly)) {
     const b = el(sel);
-    if (b) { b.innerHTML = ico(name); b.classList.add("io"); b.dataset.tip = tip; b.title = tip; }
+    if (b) {
+      const tip = tr(key);
+      b.innerHTML = ico(name); b.classList.add("io");
+      b.dataset.tip = tip; b.title = tip; b.setAttribute("aria-label", tip);
+    }
   }
   ["#c-close", "#settings-close", "#imap-close"].forEach((sel) => { const b = el(sel); if (b) b.innerHTML = ico("x"); });
 }
 
 async function main() {
-  await loadPrefs();                       // avant tout rendu : thème, mode, images, largeur
+  await loadPrefs();                       // before any rendering: theme, mode, images, width, language
+  await I18N.setLanguage(PREFS.language || I18N.detect());
+  I18N.applyDom();
   setClassicMode(PREFS.classic_mode, false);
   setTheme(PREFS.theme, false);
   paintStaticIcons();
-  document.querySelectorAll(".theme-opt").forEach((b) => {
+  document.querySelectorAll(".theme-opt[data-theme-val]").forEach((b) => {
     b.onclick = () => setTheme(b.dataset.themeVal);
   });
   document.querySelectorAll(".seg-opt").forEach((b) => {
@@ -1137,8 +1235,8 @@ async function main() {
   document.querySelectorAll(".settings-tab").forEach((t) => {
     t.onclick = () => showSettingsPane(t.dataset.pane);
   });
-  // Clavier, motif ARIA « tablist » vertical : flèches, Début et Fin changent
-  // d'onglet et y placent le focus.
+  // Keyboard, vertical ARIA "tablist" pattern: arrows, Home and End change
+  // tab and move the focus to it.
   el(".settings-tabs").addEventListener("keydown", (e) => {
     const tabs = [...document.querySelectorAll(".settings-tab")];
     const i = tabs.indexOf(document.activeElement);
@@ -1155,7 +1253,7 @@ async function main() {
   });
   el("#remote-images").onchange = (e) => {
     savePref("remote_images", e.target.checked);
-    if (state.currentId) openMessage(state.currentId);   // re-rendu du mail ouvert
+    if (state.currentId) openMessage(state.currentId);   // re-render the open message
   };
   el("#settingsbtn").onclick = () => openSettings();
   el("#settings-close").onclick = closeSettings;
@@ -1175,7 +1273,7 @@ async function main() {
   el("#c-attach").onclick = () => el("#c-file").click();
   el("#c-file").onchange = (e) => addComposerFiles(e.target.files);
   el("#composer").addEventListener("click", (e) => { if (e.target.id === "composer") closeComposer(); });
-  // Echap ferme la fenetre modale ouverte (réglages, formulaire IMAP, composer).
+  // Escape closes the open dialog (settings, IMAP form, composer).
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     if (!el("#settingsmodal").hidden) closeSettings();
@@ -1191,7 +1289,7 @@ async function main() {
     await loadAccounts();
     await loadMessages();
   } catch (e) {
-    banner("Impossible de contacter l'API locale : " + e.message);
+    banner(errText("toast.apiUnreachable", e));
   }
 }
 
