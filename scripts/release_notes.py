@@ -3,6 +3,7 @@
 
   python3 scripts/release_notes.py version          # X.Y.Z from pyproject.toml
   python3 scripts/release_notes.py notes X.Y.Z      # the "## [X.Y.Z]" section of CHANGELOG.md
+  python3 scripts/release_notes.py assets X.Y.Z     # the files every release must carry
 
 `notes` exits with status 1 when the section is missing or empty, so that no
 release is ever published without notes. Standard library only.
@@ -21,6 +22,24 @@ def version() -> str:
     if not re.fullmatch(r"\d+\.\d+\.\d+", v):
         raise SystemExit(f"Invalid version in pyproject.toml: {v} (expected X.Y.Z).")
     return v
+
+
+# The downloadable builds of a release, each followed by its .sha256 file.
+# The release workflow publishes a release only when all of them are attached.
+ASSET_PATTERNS = (
+    "Maily-{v}-macos-arm64.dmg",
+    "Maily-{v}-windows-x64.zip",
+    "Maily-{v}-linux-x64.tar.gz",
+)
+
+
+def assets(v: str) -> list[str]:
+    """Every file of release v: each build and its checksum file."""
+    out = []
+    for pattern in ASSET_PATTERNS:
+        name = pattern.format(v=v)
+        out += [name, name + ".sha256"]
+    return out
 
 
 def notes(v: str, changelog: str | None = None) -> str:
@@ -49,6 +68,9 @@ def main(argv=None) -> int:
             print(f"CHANGELOG.md has no non-empty section for {args[1]}.", file=sys.stderr)
             return 1
         sys.stdout.write(body)
+        return 0
+    if len(args) == 2 and args[0] == "assets":
+        print("\n".join(assets(args[1])))
         return 0
     print(__doc__, file=sys.stderr)
     return 2

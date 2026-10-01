@@ -1,26 +1,28 @@
 # Every version has its GitHub release, created by the CI together with the
-# tag, with notes that say what changes, and with the macOS app attached.
+# tag, with notes that say what changes, and with the macOS, Windows and Linux
+# apps attached.
 #
 # Trigger: after a GREEN run of the "Tests" workflow on a push to main.
 #
 # 1. plan:    reads the version in pyproject.toml and its "## [X.Y.Z]" section
 #             of CHANGELOG.md (fails if it is missing or empty). If release
-#             vX.Y.Z is already published with its two macOS files, there is
-#             nothing to do and the next jobs are skipped.
-# 2. build:   builds Maily.app with PyInstaller on a macOS Apple Silicon
-#             runner, checks that it is arm64 and carries the right version,
-#             zips it and computes its SHA-256. Nothing is published here.
-# 3. publish: only once the build succeeded: creates the vX.Y.Z tag, then a
-#             DRAFT release with both files, then publishes it. A release is
-#             therefore never visible without its macOS zip.
+#             vX.Y.Z is already published with all its files
+#             (scripts/release_notes.py assets), there is nothing to do and the
+#             next jobs are skipped.
+# 2. build:   build.yml on the tested commit: the macOS disk image, the Windows
+#             zip and the Linux archive, each with its SHA-256 file, each binary
+#             checked by running it. Nothing is published here.
+# 3. publish: only once EVERY build succeeded: creates the vX.Y.Z tag, then a
+#             DRAFT release with all the files, then publishes it. A release is
+#             therefore never visible without its downloads.
 #
 # Re-running the workflow resumes safely: an existing tag on the same commit is
 # reused, an unpublished draft left by an interrupted run is replaced, and a
-# published release that lacks a file only gets the missing one. The build and
+# published release that lacks a file only gets the missing ones. The build and
 # publish jobs recompute the version themselves; they are only skipped when
 # plan says explicitly that everything is already published.
 #
-# The whole chain lives in this workflow because events created with
+# The whole chain starts from this workflow because events created with
 # GITHUB_TOKEN (the tag, the release) do not start other workflows.
 # Never create a tag or a release by hand.
 
@@ -58,12 +60,17 @@ jobs:
         run: |
           VERSION="$(python3 scripts/release_notes.py version)"
           TAG="v$VERSION"
-          ZIP="Maily-$VERSION-macos-arm64.zip"
           python3 scripts/release_notes.py notes "$VERSION"
           # Asset names of the PUBLISHED release, if there is one.
           HAVE="$(gh release view "$TAG" --json isDraft,assets --jq 'select(.isDraft | not) | .assets[].name' 2>/dev/null || true)"
-          if grep -qxF "$ZIP" <<< "$HAVE" && grep -qxF "$ZIP.sha256" <<< "$HAVE"; then
-            echo "Release $TAG is already published with its macOS files: nothing to do."
+          ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
+          [ -n "$ASSETS" ] || { echo "No release file names." >&2; exit 1; }
+          MISSING=0
+          while read -r f; do
+            grep -qxF "$f" <<< "$HAVE" || MISSING=1
+          done <<< "$ASSETS"
+          if [ "$MISSING" -eq 0 ]; then
+            echo "Release $TAG is already published with all its files: nothing to do."
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
@@ -72,70 +79,11 @@ jobs:
   build:
     needs: plan
     if: ${{ needs.plan.outputs.needed != 'false' }}
-    runs-on: macos-latest          # Apple Silicon (arm64) runner
-    timeout-minutes: 30
     permissions:
       contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Python 3.12
-        run: uv python install 3.12
-
-      - name: Dependencies and PyInstaller (uv.lock must be up to date)
-        run: uv sync --locked --group build
-
-      - name: Build Maily.app
-        run: uv run pyinstaller packaging/maily.spec --noconfirm
-
-      - name: Check the bundle (version and arm64)
-        run: |
-          VERSION="$(uv run python scripts/release_notes.py version)"
-          APP=dist/Maily.app
-          PLIST_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-          if [ "$PLIST_VERSION" != "$VERSION" ]; then
-            echo "Bundle version $PLIST_VERSION does not match $VERSION." >&2
-            exit 1
-          fi
-          # The main executable must be arm64 only, and every embedded binary
-          # (Python, extensions, libraries) must contain an arm64 slice.
-          ARCHS="$(lipo -archs "$APP/Contents/MacOS/Maily")"
-          echo "Maily executable: $ARCHS"
-          if [ "$ARCHS" != "arm64" ]; then
-            echo "The Maily executable is '$ARCHS', not arm64." >&2
-            exit 1
-          fi
-          BAD=0
-          while IFS= read -r -d '' f; do
-            if file -b "$f" | grep -q '^Mach-O'; then
-              if ! lipo -archs "$f" | tr ' ' '\n' | grep -qx arm64; then
-                echo "No arm64 slice in ${f#"$APP"/}: $(lipo -archs "$f")" >&2
-                BAD=1
-              fi
-            fi
-          done < <(find "$APP" -type f \( -name '*.so' -o -name '*.dylib' -o -perm -u+x \) -print0)
-          exit "$BAD"
-
-      - name: Zip and checksum
-        run: |
-          ZIP="Maily-$(uv run python scripts/release_notes.py version)-macos-arm64.zip"
-          mkdir -p release-assets
-          # ditto keeps the bundle's symbolic links and metadata, unlike a plain zip.
-          ditto -c -k --sequesterRsrc --keepParent dist/Maily.app "release-assets/$ZIP"
-          (cd release-assets && shasum -a 256 "$ZIP" > "$ZIP.sha256" && cat "$ZIP.sha256")
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: maily-macos-arm64
-          path: release-assets/
-          if-no-files-found: error
-          retention-days: 7
+    uses: ./.github/workflows/build.yml
+    with:
+      ref: ${{ github.event.workflow_run.head_sha }}
 
   publish:
     needs: [plan, build]
@@ -150,18 +98,27 @@ jobs:
 
       - uses: actions/download-artifact@v8
         with:
-          name: maily-macos-arm64
+          pattern: maily-*
+          merge-multiple: true
           path: release-assets
 
-      - name: Tag, draft release with the macOS files, then publish
+      - name: Tag, draft release with all the files, then publish
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           VERSION="$(python3 scripts/release_notes.py version)"
           TAG="v$VERSION"
-          ZIP="Maily-$VERSION-macos-arm64.zip"
-          (cd release-assets && shasum -a 256 -c "$ZIP.sha256")
+          # Every expected file is there, and every build matches its checksum.
+          ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
+          mapfile -t FILES <<< "$ASSETS"
+          [ "${#FILES[@]}" -ge 6 ] || { echo "Unexpected release file list: $ASSETS" >&2; exit 1; }
+          for f in "${FILES[@]}"; do
+            [ -f "release-assets/$f" ] || { echo "Missing build file: $f" >&2; exit 1; }
+            case "$f" in
+              *.sha256) (cd release-assets && shasum -a 256 -c "$f") ;;
+            esac
+          done
           python3 scripts/release_notes.py notes "$VERSION" > release-notes.md
 
           # Releases already attached to this tag (drafts are listed too: the
@@ -196,11 +153,11 @@ jobs:
           if [ -n "$PUBLISHED" ]; then
             # Published earlier without its files: add the missing ones only.
             HAVE="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
-            for f in "$ZIP" "$ZIP.sha256"; do
+            for f in "${FILES[@]}"; do
               grep -qxF "$f" <<< "$HAVE" || gh release upload "$TAG" "release-assets/$f"
             done
           else
-            gh release create "$TAG" "release-assets/$ZIP" "release-assets/$ZIP.sha256" \
+            gh release create "$TAG" "${FILES[@]/#/release-assets/}" \
               --draft --verify-tag --title "Maily $TAG" --notes-file release-notes.md
             gh release edit "$TAG" --draft=false
           fi

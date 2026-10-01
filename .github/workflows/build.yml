@@ -1,0 +1,281 @@
+# Builds the downloadable Maily apps and checks each one by running it.
+# Publishes nothing: the files are kept as workflow artifacts.
+#
+#   macos-arm64   Maily-X.Y.Z-macos-arm64.dmg     disk image: Maily.app next to an
+#                                                 Applications shortcut
+#   windows-x64   Maily-X.Y.Z-windows-x64.zip     folder Maily\ with Maily.exe
+#   linux-x64     Maily-X.Y.Z-linux-x64.tar.gz    folder Maily/ with the maily binary,
+#                                                 maily.desktop, maily.png, INSTALL.txt
+#
+# Each file comes with its .sha256. Every binary runs `--self-check --window`:
+# it opens a real window on a throwaway database (no account, no network) and
+# checks that the interface loads (app/selfcheck.py). The Linux archive is also
+# run on clean Debian and Fedora containers that only have the documented
+# system packages.
+#
+# Called by release.yml (workflow_call) on the commit to release. Also runs on
+# a push to any other branch that touches the packaging, and by hand, to check
+# a change before it reaches main.
+
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to build
+        type: string
+        required: true
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths:
+      - packaging/**
+      - scripts/build_dmg.sh
+      - scripts/release_notes.py
+      - run_maily.py
+      - app/selfcheck.py
+      - pyproject.toml
+      - uv.lock
+      - .github/workflows/build.yml
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS (arm64)
+    runs-on: macos-latest          # Apple Silicon (arm64) runner
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Dependencies, PyInstaller and dmgbuild (uv.lock must be up to date)
+        run: uv sync --locked --group build
+
+      - name: Build Maily.app
+        run: uv run pyinstaller packaging/maily.spec --noconfirm
+
+      - name: Check the bundle (version and arm64)
+        run: |
+          VERSION="$(uv run python scripts/release_notes.py version)"
+          APP=dist/Maily.app
+          PLIST_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          if [ "$PLIST_VERSION" != "$VERSION" ]; then
+            echo "Bundle version $PLIST_VERSION does not match $VERSION." >&2
+            exit 1
+          fi
+          # The main executable must be arm64 only, and every embedded binary
+          # (Python, extensions, libraries) must contain an arm64 slice.
+          ARCHS="$(lipo -archs "$APP/Contents/MacOS/Maily")"
+          echo "Maily executable: $ARCHS"
+          if [ "$ARCHS" != "arm64" ]; then
+            echo "The Maily executable is '$ARCHS', not arm64." >&2
+            exit 1
+          fi
+          BAD=0
+          while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q '^Mach-O'; then
+              if ! lipo -archs "$f" | tr ' ' '\n' | grep -qx arm64; then
+                echo "No arm64 slice in ${f#"$APP"/}: $(lipo -archs "$f")" >&2
+                BAD=1
+              fi
+            fi
+          done < <(find "$APP" -type f \( -name '*.so' -o -name '*.dylib' -o -perm -u+x \) -print0)
+          exit "$BAD"
+
+      - name: Run the app (self-check with a window)
+        run: |
+          VERSION="$(uv run python scripts/release_notes.py version)"
+          EXE=dist/Maily.app/Contents/MacOS/Maily
+          [ "$("$EXE" --version)" = "Maily $VERSION" ]
+          "$EXE" --self-check --window
+
+      - name: Disk image and checksum
+        run: scripts/build_dmg.sh dist/Maily.app release-assets
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maily-macos-arm64
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  windows:
+    name: Windows (x64)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Dependencies and PyInstaller (uv.lock must be up to date)
+        run: uv sync --locked --group build
+
+      - name: Build Maily.exe
+        run: uv run pyinstaller packaging/maily.spec --noconfirm
+
+      # Maily.exe is a windowed program: it has no console output, so the
+      # self-check writes its result to a file and returns its status.
+      - name: Run the app (self-check with a window)
+        shell: pwsh
+        run: |
+          $version = uv run python scripts/release_notes.py version
+          $p = Start-Process -FilePath dist\Maily\Maily.exe `
+                 -ArgumentList '--self-check', '--window', '--report', 'selfcheck.txt' `
+                 -Wait -PassThru
+          Get-Content selfcheck.txt
+          if ($p.ExitCode -ne 0) { throw "Self-check failed (exit code $($p.ExitCode))." }
+          if (-not (Select-String -Path selfcheck.txt -SimpleMatch "ok   version: $version")) {
+            throw "Maily.exe does not report version $version."
+          }
+
+      - name: Zip and checksum
+        shell: bash
+        run: |
+          ZIP="Maily-$(uv run python scripts/release_notes.py version)-windows-x64.zip"
+          mkdir -p release-assets
+          # The archive holds the Maily folder (Maily.exe and its _internal folder).
+          (cd dist && 7z a -tzip -mx=9 "../release-assets/$ZIP" Maily >/dev/null)
+          # "<hash>  <name>", the format of shasum and sha256sum on every system.
+          (cd release-assets && printf '%s  %s\n' "$(sha256sum "$ZIP" | cut -d' ' -f1)" "$ZIP" > "$ZIP.sha256" && cat "$ZIP.sha256")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maily-windows-x64
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  linux:
+    name: Linux (x64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      # Build: GObject introspection 2.0 and cairo to compile PyGObject.
+      # Run: GTK 3 and WebKitGTK 4.1 (used from the system, not embedded);
+      # Xvfb for a display.
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc pkg-config libgirepository-2.0-dev libcairo2-dev \
+            gir1.2-gtk-3.0 gir1.2-webkit2-4.1 xvfb xauth
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Dependencies, PyInstaller and PyGObject (uv.lock must be up to date)
+        run: uv sync --locked --group build --group linux-gui
+
+      - name: Build the maily binary
+        run: uv run pyinstaller packaging/maily.spec --noconfirm
+
+      - name: Check that GTK and WebKit are not embedded
+        run: |
+          test -x dist/Maily/maily
+          FOUND="$(find dist/Maily -name 'libwebkit2gtk*' -o -name 'libjavascriptcoregtk*' \
+                     -o -name 'libgtk-3*' -o -name 'libglib-2.0*' -o -name '*.typelib')"
+          if [ -n "$FOUND" ]; then
+            echo "System libraries were embedded:" >&2
+            echo "$FOUND" >&2
+            exit 1
+          fi
+
+      # The WebKit sandbox needs user namespaces, which CI machines restrict;
+      # it is only turned off for this check.
+      - name: Run the app (self-check with a window)
+        env:
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+        run: |
+          VERSION="$(uv run python scripts/release_notes.py version)"
+          [ "$(dist/Maily/maily --version)" = "Maily $VERSION" ]
+          xvfb-run -a dist/Maily/maily --self-check --window
+
+      - name: Archive and checksum
+        run: |
+          TGZ="Maily-$(uv run python scripts/release_notes.py version)-linux-x64.tar.gz"
+          cp packaging/linux/maily.desktop packaging/linux/INSTALL.txt dist/Maily/
+          uv run python -c "from PIL import Image; Image.open('packaging/maily.png').resize((512, 512), Image.LANCZOS).save('dist/Maily/maily.png')"
+          mkdir -p release-assets
+          tar -C dist -czf "release-assets/$TGZ" Maily
+          (cd release-assets && sha256sum "$TGZ" > "$TGZ.sha256" && cat "$TGZ.sha256")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: maily-linux-x64
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 7
+
+  # The Linux archive on clean systems that only have the packages listed in
+  # INSTALL.txt (as root in a container, hence no WebKit sandbox).
+  linux-smoke:
+    name: Linux archive on ${{ matrix.image }}
+    needs: linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: debian:trixie
+            install: >-
+              apt-get update &&
+              apt-get install -y --no-install-recommends
+              gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2 xvfb
+          - image: fedora:latest
+            install: >-
+              dnf install -y webkit2gtk4.1 gtk3 cairo-gobject xorg-x11-server-Xvfb
+    container: ${{ matrix.image }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Packages listed in INSTALL.txt, and Xvfb
+        run: ${{ matrix.install }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: maily-linux-x64
+          path: release-assets
+
+      - name: Extract and run (self-check with a window)
+        env:
+          WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+        run: |
+          cd release-assets
+          sha256sum -c ./*.tar.gz.sha256
+          tar -xzf ./*.tar.gz
+          Xvfb :99 -screen 0 1280x1024x24 &
+          export DISPLAY=:99
+          sleep 2
+          ./Maily/maily --version
+          ./Maily/maily --self-check --window
