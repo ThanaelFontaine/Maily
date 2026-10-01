@@ -1,6 +1,6 @@
 {
   "about.dataFolder": "Dados locais",
-  "about.help": "Tudo fica neste computador: o banco de dados SQLite, os anexos e os segredos criptografados estão na pasta acima. Nenhum servidor de terceiros.",
+  "about.help": "Seus e-mails continuam no seu provedor (Gmail, IMAP). O Maily mantém uma cópia sincronizada na pasta acima, para ser rápido e permitir a busca: o banco de dados SQLite e os anexos. As credenciais das suas contas ficam criptografadas, à parte dessa cópia. Nenhum servidor do Maily, nenhuma conta do Maily.",
   "about.license": "Licença",
   "about.version": "Versão",
   "add.google": "Conta do Google",

@@ -1,12 +1,12 @@
 [project]
 name = "maily"
-version = "0.7.0"
-description = "Local, multi-account email client for Gmail and IMAP: your mail stays on your computer."
+version = "0.8.0"
+description = "One local MCP bridge from all your Gmail and IMAP mailboxes to every AI assistant on your computer, with a mail window."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Thanaël Fontaine" }]
-keywords = ["email", "gmail", "imap", "desktop", "local-first", "mcp"]
+keywords = ["email", "gmail", "imap", "desktop", "mcp"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: MacOS X",
@@ -56,6 +56,15 @@ dev = [
 build = [
     "pyinstaller>=6.10",
     "pillow>=10.0",
+    # macOS disk image (scripts/build_dmg.sh): writes the Finder layout
+    # without driving Finder, so it also works on a headless CI runner. MIT.
+    "dmgbuild>=1.6.7 ; sys_platform == 'darwin'",
+]
+# Linux window (pywebview GTK backend). Built from source: needs the system
+# packages listed in docs/BUILD.md (GObject introspection 2.0, cairo, GTK 3,
+# WebKitGTK 4.1). `uv sync --group linux-gui` on Linux only.
+linux-gui = [
+    "pygobject>=3.52 ; sys_platform == 'linux'",
 ]
 
 [tool.setuptools]

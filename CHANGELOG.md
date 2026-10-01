@@ -6,6 +6,32 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-01
+
+Maily now installs like a real app on every system: a disk image on macOS that asks you to drag Maily into Applications, a ready-to-run folder on Windows and an archive with a desktop entry on Linux. Each one is built and opened by the CI before a release is published. The product page and the documentation now describe Maily as what it is: a bridge from your mailboxes to your assistants.
+
+### Added
+
+- **macOS disk image.** Releases carry `Maily-X.Y.Z-macos-arm64.dmg` instead of a zip. Opening it shows a *Maily* volume with Maily next to an *Applications* shortcut, on a background (1x and Retina 2x) with an arrow, "Drag Maily to Applications" and a line about the first launch of an unsigned app. It is built by `scripts/build_dmg.sh` with [dmgbuild](https://github.com/dmgbuild/dmgbuild) (MIT), which writes the Finder layout without driving Finder; the script checks the image, mounts it read-only to check its content, and writes the `.sha256` file. It installs nothing. It needs `uv` and the build group (`uv sync --group build`).
+- **Windows download.** `Maily-X.Y.Z-windows-x64.zip` holds a `Maily` folder with `Maily.exe` (with the Maily icon). It needs the Microsoft Edge WebView2 Runtime, part of Windows 11.
+- **Linux download.** `Maily-X.Y.Z-linux-x64.tar.gz` holds a `Maily` folder with the `maily` binary, `maily.desktop`, a 512 x 512 icon and `INSTALL.txt`. The window uses the system's GTK 3 and WebKitGTK 4.1 (not embedded, so that WebKit's helper processes always match their library); the packages to install are listed for Debian, Ubuntu, Fedora and Arch. Built on Ubuntu 24.04 (glibc 2.39 or newer).
+- **`--version` and `--self-check`.** `Maily --version` prints the version. `Maily --self-check` checks a built binary without touching the real data folder: embedded frontend and migrations, a database created from the migrations, encryption, TLS bundle, local API and window library; `--window` also opens a real window on a throwaway database and checks that the interface loads, and `--report FILE` writes the result to a file (a windowed Windows program has no console).
+- New `linux-gui` dependency group (`uv sync --group linux-gui`) with PyGObject, for running from source on Linux.
+- A new `Build` workflow (`.github/workflows/build.yml`) builds the three downloads, each with its `.sha256`, and runs every binary with `--self-check --window`: on macOS (after the `arm64` and version checks), on Windows, on Ubuntu under Xvfb, and the Linux archive again on clean Debian 13 and Fedora containers with only the documented packages. It runs for releases, on any other branch that touches the packaging, and by hand.
+- `scripts/release_notes.py assets X.Y.Z` lists the six files every release must carry.
+
+### Changed
+
+- **The release waits for all three systems.** The `Release` workflow calls the `Build` workflow and publishes the tag and the release only when the macOS, Windows and Linux builds all succeeded: the draft release gets the six files, then is published. A published release that lacks some of them only gets the missing ones when the workflow runs again.
+- **Install documentation for every system** in the README: download, checksum, first launch (Apple's *Open Anyway* steps, and Control-click > *Open* on macOS 12 to 14 only; SmartScreen's *More info* > *Run anyway* on Windows), prerequisites, updates, and from source with `uv sync` then `uv run maily`. `docs/BUILD.md` explains how each download is built, what differs between systems, and the release pipeline.
+- **Maily is described as a bridge.** The README, the documentation, the package description and the product page now say what Maily is: one app on your computer that connects to all your mailboxes and gives every assistant on that computer one local MCP access to all of them. Your mail stays with your provider; Maily keeps a synced copy for speed and search. A new FAQ entry answers "Does my mail stay on my computer?" honestly.
+- *Settings > About* says the same in the five languages: your mail stays with your provider, and the folder shown holds Maily's synced copy, the database and the attachments (instead of "Everything stays on this computer").
+- **Product page.** Sharp 2x screenshots in AVIF and WebP, with a full-size view; light animations that respect the reduced motion setting; install cards for macOS, Windows and Linux; and the bridge positioning (every assistant, every mailbox).
+
+### Fixed
+
+- A windowed binary on Windows starts with no standard output, which would have made uvicorn's log formatter fail (`sys.stdout.isatty()` on `None`) and kept the local server from starting: the launcher now points the missing streams to the null device.
+
 ## [0.7.0] - 2026-10-01
 
 Maily now speaks five languages, its hacker-style theme has an original name, everything in the repository is in English, it starts with `uv run maily`, and every release comes with a downloadable macOS app.
@@ -163,7 +189,8 @@ First open-source release: a new default look, a single settings panel, a harden
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.5.0...v0.5.1

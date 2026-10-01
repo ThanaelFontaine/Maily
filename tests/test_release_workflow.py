@@ -1,5 +1,5 @@
-"""Release pipeline: notes taken from CHANGELOG.md, and a workflow that never
-publishes a release without its macOS app."""
+"""Release pipeline: notes taken from CHANGELOG.md, builds for macOS, Windows
+and Linux, and a workflow that never publishes a release without all of them."""
 import importlib.util
 import pathlib
 import re
@@ -8,6 +8,7 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+BUILD = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
 
 
 def _rn():
@@ -17,8 +18,8 @@ def _rn():
     return mod
 
 
-def _job(name):
-    m = re.search(rf"^  {name}:\n(.*?)(?=^  [a-z][a-z-]*:\n|\Z)", WORKFLOW, re.M | re.S)
+def _job(name, text=WORKFLOW):
+    m = re.search(rf"^  {name}:\n(.*?)(?=^  [a-z][a-z-]*:\n|\Z)", text, re.M | re.S)
     assert m, f"job {name} missing"
     return m.group(1)
 
@@ -55,18 +56,63 @@ def test_jobs_run_build_before_publish():
     assert "needs: [plan, build]" in _job("publish")
 
 
-def test_build_job_publishes_nothing_and_checks_arm64():
+def test_assets_are_the_three_builds_and_their_checksums():
+    assert _rn().assets("1.2.3") == [
+        "Maily-1.2.3-macos-arm64.dmg", "Maily-1.2.3-macos-arm64.dmg.sha256",
+        "Maily-1.2.3-windows-x64.zip", "Maily-1.2.3-windows-x64.zip.sha256",
+        "Maily-1.2.3-linux-x64.tar.gz", "Maily-1.2.3-linux-x64.tar.gz.sha256",
+    ]
+
+
+def test_release_builds_with_the_build_workflow_on_the_tested_commit():
     build = _job("build")
-    assert "gh release" not in build and "git push" not in build and "git tag" not in build
-    assert "runs-on: macos-latest" in build
-    assert 'lipo -archs "$APP/Contents/MacOS/Maily"' in build and '!= "arm64"' in build
-    assert "CFBundleShortVersionString" in build
-    assert "actions/upload-artifact@" in build
+    assert "uses: ./.github/workflows/build.yml" in build
+    assert "ref: ${{ github.event.workflow_run.head_sha }}" in build
+    assert "workflow_call:" in BUILD
+
+
+def test_build_workflow_publishes_nothing():
+    for word in ("gh release", "git push", "git tag", "contents: write"):
+        assert word not in BUILD
+
+
+def test_macos_build_checks_arm64_runs_the_app_and_makes_the_dmg():
+    mac = _job("macos", BUILD)
+    assert "runs-on: macos-latest" in mac
+    assert 'lipo -archs "$APP/Contents/MacOS/Maily"' in mac and '!= "arm64"' in mac
+    assert "CFBundleShortVersionString" in mac
+    assert "--self-check --window" in mac
+    assert "scripts/build_dmg.sh dist/Maily.app release-assets" in mac
+    assert "name: maily-macos-arm64" in mac
+
+
+def test_windows_and_linux_builds_run_the_binary_before_packaging():
+    win = _job("windows", BUILD)
+    assert "runs-on: windows-latest" in win and "name: maily-windows-x64" in win
+    assert "'--self-check', '--window'" in win
+    assert win.index("--self-check") < win.index("7z a")
+    linux = _job("linux", BUILD)
+    assert "runs-on: ubuntu-latest" in linux and "name: maily-linux-x64" in linux
+    assert "xvfb-run -a dist/Maily/maily --self-check --window" in linux
+    assert linux.index("--self-check") < linux.index("tar -C dist")
+    for f in ("maily.desktop", "INSTALL.txt", "maily.png"):
+        assert f in linux
+    smoke = _job("linux-smoke", BUILD)
+    assert "needs: linux" in smoke and "--self-check --window" in smoke
+
+
+def test_every_build_is_uploaded_with_its_checksum():
+    assert BUILD.count("actions/upload-artifact@") == 3
+    assert BUILD.count("if-no-files-found: error") == 3
+    assert BUILD.count(".sha256") >= 3
 
 
 def test_publish_creates_a_draft_with_the_files_then_publishes_it():
     publish = _job("publish")
     assert "actions/download-artifact@" in publish
+    assert "pattern: maily-*" in publish and "merge-multiple: true" in publish
+    assert "scripts/release_notes.py assets" in publish
+    assert "Missing build file" in publish
     assert "shasum -a 256 -c" in publish
     create = publish.index("gh release create")
     assert "--draft --verify-tag" in publish[create:create + 300]

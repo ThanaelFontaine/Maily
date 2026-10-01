@@ -26,7 +26,7 @@ Only the latest released version receives security fixes.
 
 ### What Maily is
 
-A desktop application that runs entirely on your computer, under your user account. It stores a copy of your mail in a local SQLite database and talks only to Google's APIs (Gmail accounts) and to your IMAP server (IMAP accounts). There is no Maily server, no telemetry and no update service.
+A desktop application that runs on your computer, under your user account, and bridges your mailboxes to the AI assistants on that computer. Your mail stays with your provider; Maily stores a synced copy in a local SQLite database and talks only to Google's APIs (Gmail accounts) and to your IMAP server (IMAP accounts). There is no Maily server, no telemetry and no update service.
 
 ### Assets
 

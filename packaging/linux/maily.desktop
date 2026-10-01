@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Maily
+GenericName=Mail client
+Comment=All your mailboxes in one window, and one local MCP access for your AI assistants
+Exec=maily
+Icon=maily
+Terminal=false
+Categories=Network;Email;
+StartupWMClass=maily

@@ -1,18 +1,18 @@
 # Maily
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-1a73e8.svg)](CHANGELOG.md)
-[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#install)
+[![Version 0.8.0](https://img.shields.io/badge/version-0.8.0-1a73e8.svg)](CHANGELOG.md)
+[![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
-**Every mailbox in one app, and your AI assistant in all of them. Your mail stays on your computer.**
+**All your mailboxes, every assistant, one connection.**
 
-Maily is a free, open source desktop mail app. It brings your Gmail, Google Workspace and IMAP accounts together in one clean inbox, keeps a copy of your mail in a local database, and ships a local [MCP](https://modelcontextprotocol.io/) server so that Claude (or any local MCP client) can read, search and act across **all** your accounts, with no extra cloud in between.
+Maily is a free, open source desktop app that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
 
-[Website](https://maily.thanaelfontaine.eu) · [Download for macOS](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://maily.thanaelfontaine.eu) · [Download for macOS, Windows and Linux](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 ![Maily with the default Classic theme: accounts on the left, the message list in the middle, the open message on the right](docs/images/classic-light.png)
 
-> **Quick start.** Download `Maily-X.Y.Z-macos-arm64.zip` from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest), or run it from source:
+> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) (see [Install](#install)), or run it from source:
 >
 > ```bash
 > git clone https://github.com/ThanaelFontaine/Maily
@@ -48,13 +48,13 @@ Maily is a free, open source desktop mail app. It brings your Gmail, Google Work
 
 ## Why Maily
 
-More and more people ask an AI assistant to sort, summarize and answer their mail. The hosted connectors that make this possible come with trade-offs:
+More and more people ask an AI assistant to sort, summarize and answer their mail. Hosted connectors make it possible, one app at a time, and come with trade-offs:
 
-- **One account at a time.** Anthropic's help center says that Claude "can only access the Gmail, Calendar, and Drive data for the Google account you've connected" ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). If your mail is spread over a personal address, a work address and an IMAP provider, a Gmail connector cannot see the whole picture.
+- **Tied to the account you connected.** A hosted connector ties an assistant to the account you connected: Claude's Gmail connector, for example, reaches "the Google account you've connected" ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). With several Gmail addresses, an IMAP provider and more than one assistant, you set up a connector in each app, and none of them sees the whole picture.
 - **Another cloud reaches your mailbox.** With a hosted connector, the provider's servers fetch your mail for the assistant. Anthropic states that data retrieved through its connectors is stored on its servers ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). Check which Google permissions a hosted Gmail connection asks for on its consent screen: a scope such as `gmail.modify` lets it read, compose and send email ([Google's description](https://developers.google.com/workspace/gmail/api/auth/scopes)).
 - **Limited actions.** Connectors only do what their provider has built. Anthropic notes, for instance, that with its Gmail connector attachment content is not directly accessible (metadata only) ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)).
 
-**Maily's answer is local.** Maily syncs every mailbox you add into a database on your own computer, with your own Google credentials. Its MCP server runs on the same computer, started by your assistant as a local process over the stdio transport (the client launches the server as a subprocess and talks to it over standard input and output, see the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)). No network port is opened, and no Maily server sits between you and your mail. Your assistant sees every account at once, can read attachments, and can search all your mail instantly, even offline.
+**Maily's answer is one bridge on your computer.** Maily connects to every mailbox you add, with your own Google OAuth client and your IMAP passwords, and keeps a synced copy (a local database and search index) so that it is fast and searchable; your providers still hold your mail. Its MCP server runs on the same computer, started by your assistant as a local process over the stdio transport (the client launches the server as a subprocess and talks to it over standard input and output, see the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)). No network port is opened, and no Maily server sits between you and your providers. Every assistant you add Maily to sees every account at once, can read attachments, and can search all your mail instantly, even offline.
 
 One thing stays true with any assistant: what it reads through Maily becomes part of your conversation with it, so it is processed by whoever runs the model behind that assistant. Only connect assistants you trust (see [Security and privacy](#security-and-privacy)).
 
@@ -92,7 +92,7 @@ One thing stays true with any assistant: what it reads through Maily becomes par
 ### Privacy
 
 - **Tracking pixels blocked by default:** remote images are not loaded. A bar says how many were blocked and offers *Show images* for that message; *Settings > Privacy* can load them automatically.
-- **Local only:** no Maily server, no analytics, no telemetry.
+- **No Maily server:** no Maily account, no analytics, no telemetry.
 - **Encrypted secrets:** OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read.
 - **Optional Touch ID** at launch on macOS.
 
@@ -214,28 +214,78 @@ Its full content is described in [Where your data lives](#where-your-data-lives)
 
 ## Install
 
-Two ways: the ready-made macOS app, or from source (macOS, and Linux or Windows with less testing). The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, the source install is the one you need (the downloaded app and the source version share the same data).
+Download the ready-made app for your system, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file:
 
-### Option A: download the macOS app (Apple Silicon)
+| System | Download | What is inside |
+| --- | --- | --- |
+| macOS 12 or newer, Apple Silicon | `Maily-X.Y.Z-macos-arm64.dmg` | A disk image: drag Maily to Applications |
+| Windows 10 or 11, x64 | `Maily-X.Y.Z-windows-x64.zip` | A `Maily` folder with `Maily.exe` |
+| Linux x64 (glibc 2.39 or newer) | `Maily-X.Y.Z-linux-x64.tar.gz` | A `Maily` folder with the `maily` binary, a desktop entry and `INSTALL.txt` |
 
-1. Open the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) and download two files: `Maily-X.Y.Z-macos-arm64.zip` and `Maily-X.Y.Z-macos-arm64.zip.sha256`.
-2. Optional but recommended, check the download in Terminal, from the folder that holds both files:
+The apps are free and open source, but **not signed**: the first launch shows a warning from your system, and the steps below say how to get past it. The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, also follow [option B](#option-b-run-from-source) (the app and the source version share the same data).
 
-   ```bash
-   shasum -a 256 -c Maily-X.Y.Z-macos-arm64.zip.sha256
-   ```
+### Option A: download the app
 
-   It prints `Maily-X.Y.Z-macos-arm64.zip: OK`.
-3. Double-click the zip, then move `Maily.app` to your *Applications* folder.
-4. **Open it the first time.** The app is free and open source, but it is not signed with an Apple Developer ID nor notarized, so macOS blocks it on first launch. Apple's official steps ([Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)):
-   1. Try to open `Maily.app` once, and close the warning.
+**Check a download** (optional but recommended), from the folder that holds the file and its `.sha256`:
+
+```bash
+shasum -a 256 -c Maily-X.Y.Z-macos-arm64.dmg.sha256      # macOS
+sha256sum -c Maily-X.Y.Z-linux-x64.tar.gz.sha256         # Linux
+```
+
+A matching file prints `OK`. On Windows, in PowerShell, `Get-FileHash Maily-X.Y.Z-windows-x64.zip` prints its SHA-256 hash (in capitals): compare it with the hash at the start of the `.sha256` file.
+
+#### macOS (Apple Silicon)
+
+1. Download `Maily-X.Y.Z-macos-arm64.dmg` from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) and double-click it.
+2. In the window that opens, **drag Maily onto the Applications folder**. Then eject the *Maily* disk (in the Finder sidebar) and delete the `.dmg` if you like.
+3. **Open it the first time.** Maily is not signed with an Apple Developer ID nor notarized, so macOS blocks it on first launch. Apple's official steps ([Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)):
+   1. Open Maily from *Applications* once, and close the warning.
    2. Choose Apple menu > *System Settings*, then click *Privacy & Security* in the sidebar.
    3. Go to *Security*, then click *Open Anyway* next to the message about Maily. Apple notes that this button is available for about an hour after you try to open the app.
    4. Enter your login password, then click *OK*.
 
-   macOS remembers the exception, and Maily opens normally from then on. If you prefer not to run an unsigned binary, use option B. More details, including the command-line alternative, in [docs/BUILD.md](docs/BUILD.md#downloading-the-macos-app).
+   macOS remembers the exception, and Maily opens normally from then on. On macOS 12 to 14 you can instead Control-click (or right-click) Maily in *Applications*, choose *Open*, then *Open* again; since macOS 15 Sequoia this shortcut no longer works and *Open Anyway* is the way ([Apple developer news](https://developer.apple.com/news/?id=saqachfa)). More details, including the command-line alternative, in [docs/BUILD.md](docs/BUILD.md#macos-the-disk-image).
 
-To **update**, download the new zip from the latest release and replace `Maily.app`. Your accounts and mail stay in the data folder.
+To **update**, download the new disk image and drag Maily to Applications again, replacing the old one. Your accounts and mail stay in the data folder.
+
+#### Windows (x64)
+
+1. Download `Maily-X.Y.Z-windows-x64.zip` and extract it (right-click > *Extract All*), for example into your *Documents* folder or `%LOCALAPPDATA%\Programs`.
+2. Open the extracted `Maily` folder and run **`Maily.exe`**. Keep the whole folder: `Maily.exe` needs the `_internal` folder next to it.
+3. **Open it the first time.** The app is not signed, so Microsoft Defender SmartScreen may show *Windows protected your PC*. Click **More info**, then **Run anyway** ([Microsoft's explanation of this warning](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)).
+4. Optional: right-click `Maily.exe` > *Show more options* > *Send to* > *Desktop (create shortcut)*, or pin it to Start.
+
+**Prerequisite:** the Microsoft Edge **WebView2 Runtime**, which draws the window. Microsoft includes it in Windows 11, and says the vast majority of Windows 10 devices already have it ([WebView2 distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)). If the window stays blank or does not open, install it from [Download Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/consumer/). To update Maily, replace the `Maily` folder with the new one.
+
+#### Linux (x64)
+
+1. Install the system packages Maily's window needs (GTK 3, WebKitGTK 4.1 and GObject introspection 2.0):
+
+   | Distribution | Command |
+   | --- | --- |
+   | Debian 13, Ubuntu 24.04 or newer | `sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2` |
+   | Fedora 40 or newer | `sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject gobject-introspection` |
+   | Arch Linux | `sudo pacman -S webkit2gtk-4.1 gtk3 gobject-introspection-runtime` |
+
+2. Download `Maily-X.Y.Z-linux-x64.tar.gz`, then extract it and run Maily:
+
+   ```bash
+   tar -xzf Maily-X.Y.Z-linux-x64.tar.gz
+   ./Maily/maily
+   ```
+
+   Keep the whole `Maily` folder (move it first if you like, for example to `~/.local/opt/Maily`): `maily` needs the `_internal` folder next to it.
+3. Optional: add Maily to your applications menu. From the `Maily` folder:
+
+   ```bash
+   mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
+   ln -sf "$PWD/maily" ~/.local/bin/maily
+   cp maily.png ~/.local/share/icons/hicolor/512x512/apps/maily.png
+   cp maily.desktop ~/.local/share/applications/maily.desktop
+   ```
+
+`INSTALL.txt` in the archive repeats these steps. The binary is built on Ubuntu 24.04 and checked by the CI on clean Debian 13 and Fedora containers; older distributions (glibc older than 2.39) can run Maily from source. To update, replace the `Maily` folder.
 
 ### Option B: run from source
 
@@ -248,7 +298,8 @@ To **update**, download the new zip from the latest release and replace `Maily.a
   - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
   Open a new terminal afterwards and check with `uv --version`.
-- **Linux only:** pywebview needs GTK and WebKit2GTK; the packages are listed in [docs/BUILD.md](docs/BUILD.md#linux-x86_64).
+- **Linux only:** the window needs GTK 3 and WebKitGTK 4.1, plus the build tools of PyGObject: on Debian or Ubuntu, `sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-dev libcairo2-dev pkg-config gcc`, then use `uv sync --group linux-gui` instead of `uv sync` below. Other distributions are covered in [docs/BUILD.md](docs/BUILD.md#linux-x64).
+- **Windows only:** the WebView2 Runtime (see [Windows](#windows-x64) above).
 
 **Install and launch**
 
@@ -258,6 +309,8 @@ cd Maily
 uv sync          # creates .venv/ in the folder, with Python 3.12 and every dependency
 uv run maily     # launches Maily
 ```
+
+The same two commands work on macOS, Windows (PowerShell) and Linux.
 
 **`uv run maily` is the launch command.** Run it from the `Maily` folder each time you want to open the app (`uv run python -m app.bootstrap` does the same).
 
@@ -302,7 +355,7 @@ Open the address it prints (for example `http://127.0.0.1:53817/`) in your brows
 
 ### Build the app yourself
 
-To build a double-clickable `Maily.app` (or an executable on Linux and Windows) with PyInstaller, see [docs/BUILD.md](docs/BUILD.md).
+To build the macOS disk image, the Windows folder or the Linux archive yourself with PyInstaller, see [docs/BUILD.md](docs/BUILD.md).
 
 ## Connect your accounts
 
@@ -459,7 +512,7 @@ The folder is readable by your user only (`0700`), and the secret files are `060
 
 The short version (threat model and reporting in [SECURITY.md](SECURITY.md)):
 
-- **Local only.** No Maily server, no analytics, no telemetry. Maily talks only to Google's APIs (Gmail accounts) and to your IMAP servers. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
+- **No Maily server.** No analytics, no telemetry. Your providers keep your mail; Maily keeps a synced copy on your computer. Maily talks only to Google's APIs (Gmail accounts) and to your IMAP servers. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
 - **Encrypted secrets.** Fernet encryption in `secrets.enc`, key in `secrets.key`, both `0600`. Writes are atomic and locked across processes; an unreadable store stops Maily with a clear message instead of being silently replaced. Encryption at rest protects against casual copies, not against malware running as your user, which could read both files: full-disk encryption (FileVault, BitLocker, LUKS) is recommended.
 - **Touch ID** (macOS, optional) before the window opens. The MCP server and the scripts do not ask for it, by design.
 - **Sanitized HTML.** Messages go through [nh3](https://github.com/messense/nh3) (the Rust `ammonia` sanitizer), then a sandboxed iframe.
@@ -509,7 +562,13 @@ It can also be imported: `from scripts.claude_client import accounts, messages, 
 ## Troubleshooting
 
 **macOS says Maily cannot be opened, or that it is from an unknown developer.**
-The downloaded app is not signed nor notarized. Follow the *Open Anyway* steps in [option A](#option-a-download-the-macos-app-apple-silicon).
+The downloaded app is not signed nor notarized. Follow the *Open Anyway* steps in [macOS](#macos-apple-silicon).
+
+**Windows says "Windows protected your PC".**
+That is SmartScreen, for an unsigned app. Click *More info*, then *Run anyway* (see [Windows](#windows-x64)).
+
+**Windows: the window stays blank or does not open.**
+Install the Microsoft Edge WebView2 Runtime (see [Windows](#windows-x64)).
 
 **`uv: command not found`.**
 Install uv (see [option B](#option-b-run-from-source)), then open a new terminal.
@@ -539,7 +598,7 @@ That is the privacy default. Click *Show images* above the message, or turn on *
 The native blur needs macOS with *Reduce transparency* turned off (*System Settings > Accessibility > Display*). On Linux and Windows this theme has no native blur.
 
 **Linux: the window does not open.**
-pywebview needs GTK and WebKit2GTK (or Qt). Install the packages listed in [docs/BUILD.md](docs/BUILD.md#linux-x86_64).
+The window needs GTK 3 and WebKitGTK 4.1 from your distribution. Install the packages listed in [Linux](#linux-x64), and run `./Maily/maily` from a terminal to see the error. `./Maily/maily --self-check --window` checks the whole chain.
 
 **The `maily_*` tools do not appear in my assistant.**
 In Claude Code, type `/mcp` and approve the server. In Claude Desktop, check the path in the config file and restart the app completely. More in [docs/MCP.md](docs/MCP.md#troubleshooting).
@@ -549,8 +608,14 @@ In Claude Code, type `/mcp` and approve the server. In Claude Desktop, check the
 **Is Maily free?**
 Yes. Maily is MIT licensed, with no subscription, no paid tier and no Maily account to create. On Google's side, see [Is there a verification or a fee?](#google-accounts-gmail-and-google-workspace).
 
-**Does any data leave my computer?**
-Maily itself only talks to Google's APIs (for Gmail accounts) and to your IMAP servers. Your mail is stored in a local database. The one exception is the assistant you connect: what it reads through Maily goes into your conversation with it.
+**Does my mail stay on my computer?**
+Your mail stays where it already is: with your provider (Google or your IMAP host), which keeps holding it. Maily keeps a synced copy on your computer (a cache and a search index) so that it is fast and works offline; that copy is a technical detail, not the point. Maily itself only talks to Google's APIs and to your IMAP servers, and there is no Maily server. When an assistant reads a message through Maily, that content goes into your conversation, so it is processed by whoever runs the model behind that assistant, like anything else you share with it.
+
+**What is Maily not?**
+Not a mail host: it does not replace Gmail or your IMAP provider. Not a backup service or a cloud connector: it has no server of its own. Not a way to keep mail away from your assistant's provider: what an assistant reads, it sees. Maily is an app on your computer that connects to the mailboxes you already have and lets every local assistant use all of them.
+
+**How is it different from a hosted Gmail connector?**
+A hosted connector is set up in one app, for the account you connected, and what it retrieves goes through its provider (Anthropic, for instance, [stores connector data on its servers](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). Maily is set up once on your computer, covers every Gmail, Google Workspace and IMAP account you add, and any local MCP client can use it, with your own OAuth client. The trade-offs: it only serves assistants on that computer, and the MCP server runs from a source folder.
 
 **Why do I need my own Google Cloud project?**
 So that nobody else holds credentials to your mail, and so that the app is yours: Gmail access uses a restricted scope, and with your own client for personal use you do not depend on anyone's verification or terms.
@@ -559,7 +624,7 @@ So that nobody else holds credentials to your mail, and so that the app is yours
 Yes. Gmail and Google Workspace accounts can be mixed. Choose *External* as the user type so that all your accounts can connect.
 
 **Does it work on Windows or Linux?**
-macOS is the primary, tested platform and the only one with a ready-made download. Linux and Windows are expected to work from source (the code has fallbacks for both) but are less tested. See [docs/BUILD.md](docs/BUILD.md).
+Yes. Each release has a Windows zip and a Linux archive next to the macOS disk image, and the CI opens a real Maily window with each of them before publishing. macOS remains the platform used every day; Touch ID and the native frosted glass are macOS only. See [Install](#install).
 
 **Which assistants can use it?**
 Claude Desktop, Claude Code, and any MCP client that can start a local stdio server on your computer.
