@@ -24,9 +24,32 @@ def _tls_selftest() -> int:
         return 1
 
 
+def _ensure_std_streams() -> None:
+    """Gives a windowed binary real standard streams.
+
+    A windowed PyInstaller program on Windows starts with sys.stdout and
+    sys.stderr set to None; uvicorn's log formatter calls sys.stdout.isatty()
+    and the local server would fail to start. They are pointed to the null
+    device instead (the logs go to <data>/logs/maily.log anyway).
+    """
+    import os
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))
+
+
 def main() -> None:
+    _ensure_std_streams()
     if len(sys.argv) > 1 and sys.argv[1] == "--tls-selftest":
         raise SystemExit(_tls_selftest())
+    if len(sys.argv) > 1 and sys.argv[1] == "--version":
+        import core
+        print(f"Maily {core.__version__}")
+        raise SystemExit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "--self-check":
+        # Checks a built binary (see app/selfcheck.py); used by the CI.
+        from app import selfcheck
+        raise SystemExit(selfcheck.run(sys.argv[2:]))
     from app.bootstrap import run
     run()
 
