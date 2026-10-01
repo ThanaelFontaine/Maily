@@ -5,7 +5,7 @@ This document explains how Maily is organized, how data flows, and which interfa
 ## Principles
 
 1. **The engine is the source of truth.** Everything lives in `core/` (Python). The window, the HTTP API, the scripts and the MCP server are all clients of the same engine and the same SQLite database.
-2. **Local only.** No Maily server. Network traffic goes to Google's APIs (Gmail accounts) and to your IMAP server, nowhere else. The local API binds to `127.0.0.1`.
+2. **A bridge, not a host.** No Maily server. The providers keep the mail; Maily keeps a synced local copy (database and search index) and gives every local MCP client access to all accounts. Maily's own network traffic goes to Google's APIs (Gmail accounts) and to your IMAP server, nowhere else. The local API binds to `127.0.0.1`.
 3. **Bring your own credentials.** Each user creates their own Google OAuth client; Maily ships none.
 4. **Scriptable by design.** A stable SQL schema (`v1_*` views), a token-protected HTTP API and an MCP server.
 5. **Safe by default.** Sanitized HTML, remote images blocked, encrypted secrets, no permanent deletion on Gmail (trash is reversible there; an IMAP message moved to the server's trash cannot be restored from Maily).

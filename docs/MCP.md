@@ -1,6 +1,6 @@
 # Using Maily from an AI assistant (MCP server)
 
-Maily includes a local [Model Context Protocol](https://modelcontextprotocol.io/) server, `app/mcp_server.py`. It lets an MCP client running **on the same computer** (Claude Desktop, Claude Code, or any MCP client that speaks stdio) read and manage all your mailboxes through nine `maily_*` tools.
+Maily includes a local [Model Context Protocol](https://modelcontextprotocol.io/) server, `app/mcp_server.py`. It lets an MCP client running **on the same computer** (Claude Desktop, Claude Code, or any MCP client that speaks stdio) read and manage all your mailboxes through nine `maily_*` tools. Connect your accounts once in Maily, then add the server to each assistant you use: every one of them reaches every account.
 
 - **Transport: stdio.** No network port is opened. In the stdio transport, the client launches the server as a subprocess, and the server reads messages from its standard input and writes to its standard output ([MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)).
 - **Runs from a source folder.** The server is started with uv from a clone of the repository (see the README, [Option B: run from source](../README.md#option-b-run-from-source)). The downloaded macOS app does not include it, but both use the same data folder, so accounts added in the app are visible to the server.

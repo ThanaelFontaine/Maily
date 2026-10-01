@@ -4,9 +4,9 @@
 [![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-1a73e8.svg)](CHANGELOG.md)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#install)
 
-**Every mailbox in one app, and your AI assistant in all of them. Your mail stays on your computer.**
+**All your mailboxes, every assistant, one connection.**
 
-Maily is a free, open source desktop mail app. It brings your Gmail, Google Workspace and IMAP accounts together in one clean inbox, keeps a copy of your mail in a local database, and ships a local [MCP](https://modelcontextprotocol.io/) server so that Claude (or any local MCP client) can read, search and act across **all** your accounts, with no extra cloud in between.
+Maily is a free, open source desktop app that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
 
 [Website](https://maily.thanaelfontaine.eu) · [Download for macOS](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
@@ -48,13 +48,13 @@ Maily is a free, open source desktop mail app. It brings your Gmail, Google Work
 
 ## Why Maily
 
-More and more people ask an AI assistant to sort, summarize and answer their mail. The hosted connectors that make this possible come with trade-offs:
+More and more people ask an AI assistant to sort, summarize and answer their mail. Hosted connectors make it possible, one app at a time, and come with trade-offs:
 
-- **One account at a time.** Anthropic's help center says that Claude "can only access the Gmail, Calendar, and Drive data for the Google account you've connected" ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). If your mail is spread over a personal address, a work address and an IMAP provider, a Gmail connector cannot see the whole picture.
+- **Tied to the account you connected.** A hosted connector ties an assistant to the account you connected: Claude's Gmail connector, for example, reaches "the Google account you've connected" ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). With several Gmail addresses, an IMAP provider and more than one assistant, you set up a connector in each app, and none of them sees the whole picture.
 - **Another cloud reaches your mailbox.** With a hosted connector, the provider's servers fetch your mail for the assistant. Anthropic states that data retrieved through its connectors is stored on its servers ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). Check which Google permissions a hosted Gmail connection asks for on its consent screen: a scope such as `gmail.modify` lets it read, compose and send email ([Google's description](https://developers.google.com/workspace/gmail/api/auth/scopes)).
 - **Limited actions.** Connectors only do what their provider has built. Anthropic notes, for instance, that with its Gmail connector attachment content is not directly accessible (metadata only) ([source](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)).
 
-**Maily's answer is local.** Maily syncs every mailbox you add into a database on your own computer, with your own Google credentials. Its MCP server runs on the same computer, started by your assistant as a local process over the stdio transport (the client launches the server as a subprocess and talks to it over standard input and output, see the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)). No network port is opened, and no Maily server sits between you and your mail. Your assistant sees every account at once, can read attachments, and can search all your mail instantly, even offline.
+**Maily's answer is one bridge on your computer.** Maily connects to every mailbox you add, with your own Google OAuth client and your IMAP passwords, and keeps a synced copy (a local database and search index) so that it is fast and searchable; your providers still hold your mail. Its MCP server runs on the same computer, started by your assistant as a local process over the stdio transport (the client launches the server as a subprocess and talks to it over standard input and output, see the [MCP specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)). No network port is opened, and no Maily server sits between you and your providers. Every assistant you add Maily to sees every account at once, can read attachments, and can search all your mail instantly, even offline.
 
 One thing stays true with any assistant: what it reads through Maily becomes part of your conversation with it, so it is processed by whoever runs the model behind that assistant. Only connect assistants you trust (see [Security and privacy](#security-and-privacy)).
 
@@ -92,7 +92,7 @@ One thing stays true with any assistant: what it reads through Maily becomes par
 ### Privacy
 
 - **Tracking pixels blocked by default:** remote images are not loaded. A bar says how many were blocked and offers *Show images* for that message; *Settings > Privacy* can load them automatically.
-- **Local only:** no Maily server, no analytics, no telemetry.
+- **No Maily server:** no Maily account, no analytics, no telemetry.
 - **Encrypted secrets:** OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read.
 - **Optional Touch ID** at launch on macOS.
 
@@ -459,7 +459,7 @@ The folder is readable by your user only (`0700`), and the secret files are `060
 
 The short version (threat model and reporting in [SECURITY.md](SECURITY.md)):
 
-- **Local only.** No Maily server, no analytics, no telemetry. Maily talks only to Google's APIs (Gmail accounts) and to your IMAP servers. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
+- **No Maily server.** No analytics, no telemetry. Your providers keep your mail; Maily keeps a synced copy on your computer. Maily talks only to Google's APIs (Gmail accounts) and to your IMAP servers. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
 - **Encrypted secrets.** Fernet encryption in `secrets.enc`, key in `secrets.key`, both `0600`. Writes are atomic and locked across processes; an unreadable store stops Maily with a clear message instead of being silently replaced. Encryption at rest protects against casual copies, not against malware running as your user, which could read both files: full-disk encryption (FileVault, BitLocker, LUKS) is recommended.
 - **Touch ID** (macOS, optional) before the window opens. The MCP server and the scripts do not ask for it, by design.
 - **Sanitized HTML.** Messages go through [nh3](https://github.com/messense/nh3) (the Rust `ammonia` sanitizer), then a sandboxed iframe.
@@ -549,8 +549,14 @@ In Claude Code, type `/mcp` and approve the server. In Claude Desktop, check the
 **Is Maily free?**
 Yes. Maily is MIT licensed, with no subscription, no paid tier and no Maily account to create. On Google's side, see [Is there a verification or a fee?](#google-accounts-gmail-and-google-workspace).
 
-**Does any data leave my computer?**
-Maily itself only talks to Google's APIs (for Gmail accounts) and to your IMAP servers. Your mail is stored in a local database. The one exception is the assistant you connect: what it reads through Maily goes into your conversation with it.
+**Does my mail stay on my computer?**
+Your mail stays where it already is: with your provider (Google or your IMAP host), which keeps holding it. Maily keeps a synced copy on your computer (a cache and a search index) so that it is fast and works offline; that copy is a technical detail, not the point. Maily itself only talks to Google's APIs and to your IMAP servers, and there is no Maily server. When an assistant reads a message through Maily, that content goes into your conversation, so it is processed by whoever runs the model behind that assistant, like anything else you share with it.
+
+**What is Maily not?**
+Not a mail host: it does not replace Gmail or your IMAP provider. Not a backup service or a cloud connector: it has no server of its own. Not a way to keep mail away from your assistant's provider: what an assistant reads, it sees. Maily is an app on your computer that connects to the mailboxes you already have and lets every local assistant use all of them.
+
+**How is it different from a hosted Gmail connector?**
+A hosted connector is set up in one app, for the account you connected, and what it retrieves goes through its provider (Anthropic, for instance, [stores connector data on its servers](https://support.claude.com/en/articles/10166901-use-google-workspace-connectors)). Maily is set up once on your computer, covers every Gmail, Google Workspace and IMAP account you add, and any local MCP client can use it, with your own OAuth client. The trade-offs: it only serves assistants on that computer, and the MCP server runs from a source folder.
 
 **Why do I need my own Google Cloud project?**
 So that nobody else holds credentials to your mail, and so that the app is yours: Gmail access uses a restricted scope, and with your own client for personal use you do not depend on anyone's verification or terms.

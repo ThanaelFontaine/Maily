@@ -1,7 +1,7 @@
 [project]
 name = "maily"
 version = "0.7.0"
-description = "Local, multi-account email client for Gmail and IMAP: your mail stays on your computer."
+description = "One local MCP bridge from all your Gmail and IMAP mailboxes to every AI assistant on your computer, with a mail window."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
