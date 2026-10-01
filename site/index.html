@@ -147,14 +147,14 @@
           </article>
           <article class="card">
             <h3>Another cloud reaches your mailbox</h3>
-            <p>With a hosted connector, the provider's servers fetch your mail for the assistant. Anthropic states that data retrieved through its connectors is stored on its servers. OpenAI's Gmail connection asks for Google's <code>gmail.modify</code> scope, which Google describes as read, compose and send.</p>
+            <p>With a hosted connector, the provider's servers fetch your mail for the assistant. Anthropic states that data retrieved through its connectors is stored on its servers. Check the Google permissions a hosted Gmail connection asks for: a scope such as <code>gmail.modify</code> lets it read, compose and send email.</p>
           </article>
           <article class="card">
             <h3>Limited actions</h3>
             <p>Connectors only do what their provider has built. Anthropic notes, for instance, that its Gmail connector sees attachment metadata only, not the files themselves.</p>
           </article>
         </div>
-        <p class="sources">Sources: <a href="https://support.claude.com/en/articles/10166901-use-google-workspace-connectors">Anthropic, Google Workspace connectors</a> · <a href="https://help.openai.com/en/articles/10408842-google-app-data-controls-faq">OpenAI, Google app data controls FAQ</a> · <a href="https://developers.google.com/workspace/gmail/api/auth/scopes">Google, Gmail API scopes</a></p>
+        <p class="sources">Sources: <a href="https://support.claude.com/en/articles/10166901-use-google-workspace-connectors">Anthropic, Google Workspace connectors</a> · <a href="https://developers.google.com/workspace/gmail/api/auth/scopes">Google, Gmail API scopes</a></p>
         <div class="why-quote">
           <aside class="quote" aria-labelledby="why-built">
             <h3 id="why-built">Why I built it</h3>
@@ -189,7 +189,7 @@
         <div class="feature feature-rev">
           <div class="feature-text">
             <h3>Write, reply and forward</h3>
-            <p>A focused composer with attachments. The send button takes the color of the account you send from, so you always know which address is speaking. Sending works for Gmail accounts; IMAP accounts are read-only.</p>
+            <p>A focused composer with attachments, a From selector across your Gmail accounts, and a send button in the color of the sending account, so you always know which address is speaking. Replies and forwards always start with <code>Re:</code> and <code>Fwd:</code>, whatever the interface language, so every mail client understands them. Sending works for Gmail accounts; IMAP accounts are read-only.</p>
           </div>
           <figure class="shot">
             <img src="/assets/composer.png" width="1280" height="800" loading="lazy" alt="The message composer, with recipient, subject and body fields.">
@@ -208,7 +208,7 @@
 
         <h3 class="sub">Four themes, light and dark</h3>
         <p class="sub-lead"><strong>Classic</strong> (the default: flat and familiar, with a dark variant that follows your system), <strong>Frutiger Aero</strong>, <strong>Glassmorphism</strong> (native blurred glass on macOS) and <strong>Zero Day</strong>.</p>
-        <div class="gallery">
+        <div class="gallery gallery-2">
           <figure>
             <img src="/assets/classic-dark.png" width="1280" height="800" loading="lazy" alt="Maily with the Classic theme in dark mode.">
             <figcaption>Classic, dark</figcaption>
@@ -218,17 +218,25 @@
             <figcaption>Frutiger Aero</figcaption>
           </figure>
           <figure>
+            <img src="/assets/theme-glass.png" width="1280" height="800" loading="lazy" alt="Maily with the Glassmorphism theme: panels of blurred glass.">
+            <figcaption>Glassmorphism</figcaption>
+          </figure>
+          <figure>
             <img src="/assets/theme-zeroday.png" width="1280" height="800" loading="lazy" alt="Maily with the dark, terminal-style Zero Day theme.">
             <figcaption>Zero Day</figcaption>
           </figure>
         </div>
 
         <h3 class="sub">Five languages, one settings panel</h3>
-        <p class="sub-lead">The interface speaks <span lang="en">English</span>, <span lang="fr">Français</span>, <span lang="de">Deutsch</span>, <span lang="es">Español</span> and <span lang="pt">Português</span>. It follows your system language on first launch, and you can change it anytime. Appearance, privacy, accounts and app information live in a single Settings panel, and your choices are kept between launches.</p>
-        <div class="gallery">
+        <p class="sub-lead">The interface speaks <span lang="en">English</span>, <span lang="fr">Français</span>, <span lang="de">Deutsch</span>, <span lang="es">Español</span> and <span lang="pt">Português</span>. On first launch Maily follows your system language when it is one of these five, and English otherwise. Switch at any time in <strong>Settings › Language</strong>: the change applies at once, without restarting. One Settings panel, five tabs (Appearance, Language, Privacy, Accounts, About), and every choice is kept between launches.</p>
+        <div class="gallery gallery-2">
           <figure>
             <img src="/assets/settings-appearance.png" width="1280" height="800" loading="lazy" alt="Settings, Appearance tab: theme and light or dark mode.">
             <figcaption>Appearance</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/settings-language.png" width="1280" height="800" loading="lazy" alt="Settings, Language tab: English, Français, Deutsch, Español and Português.">
+            <figcaption>Language</figcaption>
           </figure>
           <figure>
             <img src="/assets/settings-privacy.png" width="1280" height="800" loading="lazy" alt="Settings, Privacy tab: remote images off by default.">
@@ -302,13 +310,13 @@
             <div class="choice">
               <div>
                 <h4>Download the macOS app</h4>
-                <p>Get the latest build for Apple Silicon from the GitHub releases page, unzip it and move <strong>Maily</strong> to your Applications folder.</p>
+                <p>Download <code>Maily-X.Y.Z-macos-arm64.zip</code> (Apple Silicon) from the latest release, with its <code>.sha256</code> file if you want to check it, unzip it and move <strong>Maily.app</strong> to your Applications folder.</p>
                 <p><a class="btn btn-primary" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download for macOS</a></p>
                 <p class="small">The build is not signed or notarized, so macOS blocks it the first time. Try to open it once, then go to <strong>System Settings › Privacy &amp; Security</strong>, click <strong>Open Anyway</strong> and confirm with your password (<a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac">Apple's guide</a>).</p>
               </div>
               <div>
                 <h4>Or run from source</h4>
-                <p>You need <a href="https://docs.astral.sh/uv/">uv</a> and git. Works on macOS; Linux and Windows are expected to work but are less tested.</p>
+                <p>You need <a href="https://docs.astral.sh/uv/">uv</a> and git. Works on macOS; Linux and Windows are expected to work but are less tested. <code>uv run maily</code> is the launch command, each time you open the app.</p>
 <pre><code>git clone https://github.com/ThanaelFontaine/Maily
 cd Maily
 uv sync
@@ -322,7 +330,7 @@ uv run maily</code></pre>
           </li>
           <li class="step">
             <h3>Add Maily to Claude</h3>
-            <p>The MCP server runs from a clone of the repository, with uv, and uses the same data as the app. In Claude Desktop, open <strong>Settings › Developer › Edit Config</strong>, add this with your own path, then restart Claude Desktop:</p>
+            <p>The MCP server runs from a clone of the repository, with uv, and uses the same data as the app. In Claude Desktop, choose <strong>Settings</strong> from the Claude menu in the macOS menu bar, open <strong>Developer</strong>, click <strong>Edit Config</strong>, add this with your own path, then restart Claude Desktop completely:</p>
 <pre><code>{
   "mcpServers": {
     "maily": {
@@ -378,7 +386,7 @@ uv run maily</code></pre>
         </details>
         <details>
           <summary>Which assistants can use it?</summary>
-          <p>Claude Desktop, Claude Code, and any MCP client that can start a local stdio server on your computer. ChatGPT connects to remote MCP servers, not local ones, according to <a href="https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt">OpenAI's help center</a>, so it cannot use Maily directly today.</p>
+          <p>Claude Desktop, Claude Code, and any MCP client that can start a local stdio server on your computer. Assistants that only accept remote connectors cannot start it.</p>
         </details>
         <details>
           <summary>Does it need Google verification?</summary>

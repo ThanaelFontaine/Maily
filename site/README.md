@@ -34,8 +34,6 @@ Open Graph image:
 uv run --group build python scripts/site_assets.py
 ```
 
-The script also publishes the Zero Day screenshot as `theme-zeroday.png`, whatever its current name in `docs/images/`.
-
 ## Deployment (not configured yet)
 
 The plan is to serve this folder as static assets with Cloudflare, on the `maily.thanaelfontaine.eu`

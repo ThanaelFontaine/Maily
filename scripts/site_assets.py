@@ -1,8 +1,7 @@
 """Regenerate the product page assets in site/ from the repository sources.
 
-Copies the screenshots of docs/images into site/assets (theme-dedsec.png is
-published as theme-zeroday.png until the image itself is renamed), then
-derives the favicons and the 1200x630 Open Graph image from
+Copies the screenshots of docs/images into site/assets under the same names,
+then derives the favicons and the 1200x630 Open Graph image from
 packaging/maily.png and docs/images/classic-light.png.
 
 Usage: uv run --group build python scripts/site_assets.py
@@ -18,7 +17,6 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 ASSETS = SITE / "assets"
-RENAMED = {"theme-dedsec.png": "theme-zeroday.png"}
 
 
 def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -31,7 +29,7 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.Im
 
 def copy_screenshots() -> None:
     for image in sorted((ROOT / "docs" / "images").glob("*.png")):
-        shutil.copyfile(image, ASSETS / RENAMED.get(image.name, image.name))
+        shutil.copyfile(image, ASSETS / image.name)
 
 
 def icons(source: Image.Image) -> None:
