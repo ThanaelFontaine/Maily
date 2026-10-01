@@ -106,7 +106,7 @@ With Claude Code: `claude mcp add --scope user --env MAILY_DATA_DIR=/path/to/ano
 | `maily_sync` | `profile=None` | Fetches new mail from Gmail / IMAP, for one profile or all. |
 | `maily_export_eml` | `message_id`, `dest_path=None` | Saves a message as `.eml` (default folder: `~/Downloads`). Returns the path. |
 | `maily_download_attachment` | `message_id`, `attachment_id`, `dest_path=None` | Saves an attachment to disk (default: `~/Downloads`). |
-| `maily_trash` | `message_id` | Moves a message to the trash: **reversible for Gmail** (restore from the app); for an IMAP profile the message goes to the server's trash folder and Maily cannot restore it. |
+| `maily_trash` | `message_id` | Moves a message to the trash: **reversible for Gmail** (restore from the app); for an IMAP profile the message goes to the server's trash folder (or is deleted if the server has none that Maily recognises) and Maily cannot restore it. |
 | `maily_send` | `profile`, `to`, `subject`, `body_text`, `cc=None` | Sends a plain-text email **from a Gmail profile**, without attachments. **Irreversible.** |
 
 Notes:
