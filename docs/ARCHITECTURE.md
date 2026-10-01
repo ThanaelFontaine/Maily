@@ -36,10 +36,11 @@ core/                 the engine (no UI code)
 api/app.py            FastAPI app: the local HTTP API + static frontend
 app/bootstrap.py      desktop launcher: data folder, secrets, Touch ID, API server, auto sync, pywebview window
 app/mcp_server.py     MCP server over stdio (FastMCP)
+app/selfcheck.py      `Maily --self-check [--window]`: checks a built binary (run by the CI)
 frontend/             index.html, app.js, styles.css, i18n.js + i18n/<lang>.json: plain HTML/CSS/JS, no build step
 migrations/           numbered SQL migrations (PRAGMA user_version)
-scripts/              command-line helpers (OAuth client import, connect account, API client, demo mode, contrast audit, macOS build)
-packaging/            PyInstaller spec and icons
+scripts/              command-line helpers (OAuth client import, connect account, API client, demo mode, contrast audit, macOS build and disk image)
+packaging/            PyInstaller spec, icons, disk image layout and background, Linux desktop entry
 tests/                pytest suite (network and real data never used)
 ```
 
@@ -165,4 +166,4 @@ Plain HTML, CSS and JavaScript in `frontend/`, served by the API under `/static`
 
 ## Versioning and releases
 
-The version lives in `pyproject.toml` and `core/__init__.py` (a test checks they match, and that `CHANGELOG.md` has a section for it). After every successful run of the `Tests` workflow on a push to `main`, `.github/workflows/release.yml` builds `Maily.app` with PyInstaller on a macOS (Apple Silicon) runner (version and `arm64` checked), and only then creates the tag `vX.Y.Z` and a draft GitHub release with `Maily-X.Y.Z-macos-arm64.zip`, its `.sha256` file and the matching `CHANGELOG.md` section as notes, which it publishes last. Details in [BUILD.md](BUILD.md#releases).
+The version lives in `pyproject.toml` and `core/__init__.py` (a test checks they match, and that `CHANGELOG.md` has a section for it). After every successful run of the `Tests` workflow on a push to `main`, `.github/workflows/release.yml` calls `.github/workflows/build.yml`, which builds the app with PyInstaller on macOS (Apple Silicon, version and `arm64` checked, then a disk image), Windows and Linux runners and runs each binary with `--self-check --window` (`app/selfcheck.py`), and only then creates the tag `vX.Y.Z` and a draft GitHub release with `Maily-X.Y.Z-macos-arm64.dmg`, `Maily-X.Y.Z-windows-x64.zip`, `Maily-X.Y.Z-linux-x64.tar.gz`, their `.sha256` files and the matching `CHANGELOG.md` section as notes, which it publishes last. Details in [BUILD.md](BUILD.md#releases).

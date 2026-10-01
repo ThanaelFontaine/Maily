@@ -1,18 +1,18 @@
 # Maily
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-1a73e8.svg)](CHANGELOG.md)
-[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#install)
+[![Version 0.8.0](https://img.shields.io/badge/version-0.8.0-1a73e8.svg)](CHANGELOG.md)
+[![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
 **All your mailboxes, every assistant, one connection.**
 
 Maily is a free, open source desktop app that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
 
-[Website](https://maily.thanaelfontaine.eu) · [Download for macOS](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://maily.thanaelfontaine.eu) · [Download for macOS, Windows and Linux](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 ![Maily with the default Classic theme: accounts on the left, the message list in the middle, the open message on the right](docs/images/classic-light.png)
 
-> **Quick start.** Download `Maily-X.Y.Z-macos-arm64.zip` from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest), or run it from source:
+> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) (see [Install](#install)), or run it from source:
 >
 > ```bash
 > git clone https://github.com/ThanaelFontaine/Maily
@@ -214,28 +214,78 @@ Its full content is described in [Where your data lives](#where-your-data-lives)
 
 ## Install
 
-Two ways: the ready-made macOS app, or from source (macOS, and Linux or Windows with less testing). The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, the source install is the one you need (the downloaded app and the source version share the same data).
+Download the ready-made app for your system, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file:
 
-### Option A: download the macOS app (Apple Silicon)
+| System | Download | What is inside |
+| --- | --- | --- |
+| macOS 12 or newer, Apple Silicon | `Maily-X.Y.Z-macos-arm64.dmg` | A disk image: drag Maily to Applications |
+| Windows 10 or 11, x64 | `Maily-X.Y.Z-windows-x64.zip` | A `Maily` folder with `Maily.exe` |
+| Linux x64 (glibc 2.39 or newer) | `Maily-X.Y.Z-linux-x64.tar.gz` | A `Maily` folder with the `maily` binary, a desktop entry and `INSTALL.txt` |
 
-1. Open the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) and download two files: `Maily-X.Y.Z-macos-arm64.zip` and `Maily-X.Y.Z-macos-arm64.zip.sha256`.
-2. Optional but recommended, check the download in Terminal, from the folder that holds both files:
+The apps are free and open source, but **not signed**: the first launch shows a warning from your system, and the steps below say how to get past it. The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, also follow [option B](#option-b-run-from-source) (the app and the source version share the same data).
 
-   ```bash
-   shasum -a 256 -c Maily-X.Y.Z-macos-arm64.zip.sha256
-   ```
+### Option A: download the app
 
-   It prints `Maily-X.Y.Z-macos-arm64.zip: OK`.
-3. Double-click the zip, then move `Maily.app` to your *Applications* folder.
-4. **Open it the first time.** The app is free and open source, but it is not signed with an Apple Developer ID nor notarized, so macOS blocks it on first launch. Apple's official steps ([Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)):
-   1. Try to open `Maily.app` once, and close the warning.
+**Check a download** (optional but recommended), from the folder that holds the file and its `.sha256`:
+
+```bash
+shasum -a 256 -c Maily-X.Y.Z-macos-arm64.dmg.sha256      # macOS
+sha256sum -c Maily-X.Y.Z-linux-x64.tar.gz.sha256         # Linux
+```
+
+A matching file prints `OK`. On Windows, in PowerShell, `Get-FileHash Maily-X.Y.Z-windows-x64.zip` prints its SHA-256 hash (in capitals): compare it with the hash at the start of the `.sha256` file.
+
+#### macOS (Apple Silicon)
+
+1. Download `Maily-X.Y.Z-macos-arm64.dmg` from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) and double-click it.
+2. In the window that opens, **drag Maily onto the Applications folder**. Then eject the *Maily* disk (in the Finder sidebar) and delete the `.dmg` if you like.
+3. **Open it the first time.** Maily is not signed with an Apple Developer ID nor notarized, so macOS blocks it on first launch. Apple's official steps ([Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)):
+   1. Open Maily from *Applications* once, and close the warning.
    2. Choose Apple menu > *System Settings*, then click *Privacy & Security* in the sidebar.
    3. Go to *Security*, then click *Open Anyway* next to the message about Maily. Apple notes that this button is available for about an hour after you try to open the app.
    4. Enter your login password, then click *OK*.
 
-   macOS remembers the exception, and Maily opens normally from then on. If you prefer not to run an unsigned binary, use option B. More details, including the command-line alternative, in [docs/BUILD.md](docs/BUILD.md#downloading-the-macos-app).
+   macOS remembers the exception, and Maily opens normally from then on. On macOS 12 to 14 you can instead Control-click (or right-click) Maily in *Applications*, choose *Open*, then *Open* again; since macOS 15 Sequoia this shortcut no longer works and *Open Anyway* is the way ([Apple developer news](https://developer.apple.com/news/?id=saqachfa)). More details, including the command-line alternative, in [docs/BUILD.md](docs/BUILD.md#macos-the-disk-image).
 
-To **update**, download the new zip from the latest release and replace `Maily.app`. Your accounts and mail stay in the data folder.
+To **update**, download the new disk image and drag Maily to Applications again, replacing the old one. Your accounts and mail stay in the data folder.
+
+#### Windows (x64)
+
+1. Download `Maily-X.Y.Z-windows-x64.zip` and extract it (right-click > *Extract All*), for example into your *Documents* folder or `%LOCALAPPDATA%\Programs`.
+2. Open the extracted `Maily` folder and run **`Maily.exe`**. Keep the whole folder: `Maily.exe` needs the `_internal` folder next to it.
+3. **Open it the first time.** The app is not signed, so Microsoft Defender SmartScreen may show *Windows protected your PC*. Click **More info**, then **Run anyway** ([Microsoft's explanation of this warning](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation)).
+4. Optional: right-click `Maily.exe` > *Show more options* > *Send to* > *Desktop (create shortcut)*, or pin it to Start.
+
+**Prerequisite:** the Microsoft Edge **WebView2 Runtime**, which draws the window. Microsoft includes it in Windows 11, and says the vast majority of Windows 10 devices already have it ([WebView2 distribution](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution)). If the window stays blank or does not open, install it from [Download Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/consumer/). To update Maily, replace the `Maily` folder with the new one.
+
+#### Linux (x64)
+
+1. Install the system packages Maily's window needs (GTK 3, WebKitGTK 4.1 and GObject introspection 2.0):
+
+   | Distribution | Command |
+   | --- | --- |
+   | Debian 13, Ubuntu 24.04 or newer | `sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2` |
+   | Fedora 40 or newer | `sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject` |
+   | Arch Linux | `sudo pacman -S webkit2gtk-4.1 gtk3` |
+
+2. Download `Maily-X.Y.Z-linux-x64.tar.gz`, then extract it and run Maily:
+
+   ```bash
+   tar -xzf Maily-X.Y.Z-linux-x64.tar.gz
+   ./Maily/maily
+   ```
+
+   Keep the whole `Maily` folder (move it first if you like, for example to `~/.local/opt/Maily`): `maily` needs the `_internal` folder next to it.
+3. Optional: add Maily to your applications menu. From the `Maily` folder:
+
+   ```bash
+   mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons/hicolor/512x512/apps
+   ln -sf "$PWD/maily" ~/.local/bin/maily
+   cp maily.png ~/.local/share/icons/hicolor/512x512/apps/maily.png
+   cp maily.desktop ~/.local/share/applications/maily.desktop
+   ```
+
+`INSTALL.txt` in the archive repeats these steps. The binary is built on Ubuntu 24.04 and checked by the CI on clean Debian 13 and Fedora containers; older distributions (glibc older than 2.39) can run Maily from source. To update, replace the `Maily` folder.
 
 ### Option B: run from source
 
@@ -248,7 +298,8 @@ To **update**, download the new zip from the latest release and replace `Maily.a
   - Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
   Open a new terminal afterwards and check with `uv --version`.
-- **Linux only:** pywebview needs GTK and WebKit2GTK; the packages are listed in [docs/BUILD.md](docs/BUILD.md#linux-x86_64).
+- **Linux only:** the window needs GTK 3 and WebKitGTK 4.1, plus the build tools of PyGObject: on Debian or Ubuntu, `sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-dev libcairo2-dev pkg-config gcc`, then use `uv sync --group linux-gui` instead of `uv sync` below. Other distributions are covered in [docs/BUILD.md](docs/BUILD.md#linux-x64).
+- **Windows only:** the WebView2 Runtime (see [Windows](#windows-x64) above).
 
 **Install and launch**
 
@@ -258,6 +309,8 @@ cd Maily
 uv sync          # creates .venv/ in the folder, with Python 3.12 and every dependency
 uv run maily     # launches Maily
 ```
+
+The same two commands work on macOS, Windows (PowerShell) and Linux.
 
 **`uv run maily` is the launch command.** Run it from the `Maily` folder each time you want to open the app (`uv run python -m app.bootstrap` does the same).
 
@@ -302,7 +355,7 @@ Open the address it prints (for example `http://127.0.0.1:53817/`) in your brows
 
 ### Build the app yourself
 
-To build a double-clickable `Maily.app` (or an executable on Linux and Windows) with PyInstaller, see [docs/BUILD.md](docs/BUILD.md).
+To build the macOS disk image, the Windows folder or the Linux archive yourself with PyInstaller, see [docs/BUILD.md](docs/BUILD.md).
 
 ## Connect your accounts
 
@@ -509,7 +562,13 @@ It can also be imported: `from scripts.claude_client import accounts, messages, 
 ## Troubleshooting
 
 **macOS says Maily cannot be opened, or that it is from an unknown developer.**
-The downloaded app is not signed nor notarized. Follow the *Open Anyway* steps in [option A](#option-a-download-the-macos-app-apple-silicon).
+The downloaded app is not signed nor notarized. Follow the *Open Anyway* steps in [macOS](#macos-apple-silicon).
+
+**Windows says "Windows protected your PC".**
+That is SmartScreen, for an unsigned app. Click *More info*, then *Run anyway* (see [Windows](#windows-x64)).
+
+**Windows: the window stays blank or does not open.**
+Install the Microsoft Edge WebView2 Runtime (see [Windows](#windows-x64)).
 
 **`uv: command not found`.**
 Install uv (see [option B](#option-b-run-from-source)), then open a new terminal.
@@ -539,7 +598,7 @@ That is the privacy default. Click *Show images* above the message, or turn on *
 The native blur needs macOS with *Reduce transparency* turned off (*System Settings > Accessibility > Display*). On Linux and Windows this theme has no native blur.
 
 **Linux: the window does not open.**
-pywebview needs GTK and WebKit2GTK (or Qt). Install the packages listed in [docs/BUILD.md](docs/BUILD.md#linux-x86_64).
+The window needs GTK 3 and WebKitGTK 4.1 from your distribution. Install the packages listed in [Linux](#linux-x64), and run `./Maily/maily` from a terminal to see the error. `./Maily/maily --self-check --window` checks the whole chain.
 
 **The `maily_*` tools do not appear in my assistant.**
 In Claude Code, type `/mcp` and approve the server. In Claude Desktop, check the path in the config file and restart the app completely. More in [docs/MCP.md](docs/MCP.md#troubleshooting).
@@ -565,7 +624,7 @@ So that nobody else holds credentials to your mail, and so that the app is yours
 Yes. Gmail and Google Workspace accounts can be mixed. Choose *External* as the user type so that all your accounts can connect.
 
 **Does it work on Windows or Linux?**
-macOS is the primary, tested platform and the only one with a ready-made download. Linux and Windows are expected to work from source (the code has fallbacks for both) but are less tested. See [docs/BUILD.md](docs/BUILD.md).
+Yes. Each release has a Windows zip and a Linux archive next to the macOS disk image, and the CI opens a real Maily window with each of them before publishing. macOS remains the platform used every day; Touch ID and the native frosted glass are macOS only. See [Install](#install).
 
 **Which assistants can use it?**
 Claude Desktop, Claude Code, and any MCP client that can start a local stdio server on your computer.
