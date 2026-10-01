@@ -7,18 +7,42 @@ const PALETTE = ["#1a73e8", "#188038", "#e37400", "#9334e6", "#d93025", "#007b83
 const TZ = undefined;
 const THEMES = ["classic", "aero", "glass", "dedsec"];
 const DEFAULT_THEME = "classic";
-const THEME_KEY = "maily_theme";
-const CLASSIC_MODE_KEY = "maily_classic_mode";
-const REMOTE_IMAGES_KEY = "maily_remote_images";
 
-/* localStorage peut etre indisponible (mode prive, stockage bloque) : on ne
-   plante jamais, on retombe sur les valeurs par defaut. */
-function prefGet(key, fallback) {
-  try { const v = localStorage.getItem(key); return v === null ? fallback : v; }
-  catch { return fallback; }
+/* Préférences de l'interface : rangées côté serveur (prefs.json dans le dossier
+   de données, GET/POST /prefs). Le localStorage ne convient pas : l'API locale
+   change de port à chaque lancement, donc d'origine, et son stockage repart
+   vide. Les anciennes valeurs du localStorage sont migrées une fois. */
+const PREFS = { theme: DEFAULT_THEME, classic_mode: "auto", remote_images: false, list_width: null };
+const LEGACY_PREF_KEYS = {
+  theme: "maily_theme", classic_mode: "maily_classic_mode",
+  remote_images: "maily_remote_images", list_width: "maily_list_width",
+};
+
+function legacyPref(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
 }
-function prefSet(key, value) {
-  try { localStorage.setItem(key, value); } catch { /* sans persistance */ }
+
+async function loadPrefs() {
+  let data;
+  try { data = await api("/prefs"); }
+  catch { return; }                         // API injoignable : valeurs par défaut
+  Object.assign(PREFS, data.prefs || {});
+  const stored = new Set(data.stored || []);
+  for (const [key, legacyKey] of Object.entries(LEGACY_PREF_KEYS)) {
+    if (stored.has(key)) continue;
+    const raw = legacyPref(legacyKey);
+    if (raw === null) continue;
+    let value = raw;
+    if (key === "remote_images") value = raw === "1";
+    if (key === "list_width") { value = parseInt(raw, 10); if (!value) continue; }
+    try { Object.assign(PREFS, (await postAction("/prefs", { [key]: value })).prefs); }
+    catch { /* ancienne valeur invalide : ignorée */ }
+  }
+}
+
+function savePref(key, value) {
+  PREFS[key] = value;
+  postAction("/prefs", { [key]: value }).catch(() => banner("Réglage non enregistré (API locale injoignable)."));
 }
 
 /* Icônes SVG épurées (style trait, currentColor) - cohérentes avec la DA verre. */
@@ -520,7 +544,7 @@ function buildDoc(fragment) {
     `<style>${BASE_CSS}</style></head><body>${fragment}</body></html>`;
 }
 
-function remoteImagesAllowed() { return prefGet(REMOTE_IMAGES_KEY, "0") === "1"; }
+function remoteImagesAllowed() { return PREFS.remote_images === true; }
 
 // Rend {html, blocked} : `blocked` = nombre de ressources distantes retirees
 // par le nettoyage cote serveur (en-tete X-Maily-Blocked-Remote).
@@ -903,19 +927,19 @@ async function syncAll() {
 
 /* ------------------------- Init ------------------------- */
 
-function setTheme(t) {
+function setTheme(t, persist = true) {
   if (!THEMES.includes(t)) t = DEFAULT_THEME;
   document.documentElement.dataset.theme = t;
-  prefSet(THEME_KEY, t);
+  if (persist) savePref("theme", t);
   refreshAppearancePane();
 }
 
 // Mode du theme Classic : "auto" suit le systeme, "light"/"dark" le forcent.
-function setClassicMode(mode) {
+function setClassicMode(mode, persist = true) {
   if (!["auto", "light", "dark"].includes(mode)) mode = "auto";
   if (mode === "auto") delete document.documentElement.dataset.mode;
   else document.documentElement.dataset.mode = mode;
-  prefSet(CLASSIC_MODE_KEY, mode);
+  if (persist) savePref("classic_mode", mode);
   refreshAppearancePane();
 }
 
@@ -926,7 +950,7 @@ function refreshAppearancePane() {
     b.classList.toggle("on", on);
     b.setAttribute("aria-pressed", on ? "true" : "false");
   });
-  const mode = prefGet(CLASSIC_MODE_KEY, "auto");
+  const mode = PREFS.classic_mode || "auto";
   document.querySelectorAll(".seg-opt").forEach((b) => {
     const on = b.dataset.modeVal === mode;
     b.classList.toggle("on", on);
@@ -944,6 +968,7 @@ function showSettingsPane(name) {
     const on = t.dataset.pane === name;
     t.classList.toggle("on", on);
     t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;              // tabulation itinérante (motif ARIA tablist)
   });
   document.querySelectorAll(".settings-pane").forEach((p) => { p.hidden = p.dataset.pane !== name; });
   if (name === "accounts") renderSettings();
@@ -1026,13 +1051,12 @@ function applyGlassAlpha(a) {
   }).catch(() => { /* pas de vibrancy (non-macOS) : sans effet */ });
 }
 
-const LIST_WIDTH_KEY = "maily_list_width";
 function initSplitter() {
   const sp = el("#splitter");
   const listcol = document.querySelector(".listcol");
   if (!sp || !listcol) return;
   const setW = (w) => document.documentElement.style.setProperty("--list-w", w + "px");
-  const saved = parseInt(prefGet(LIST_WIDTH_KEY, ""), 10);
+  const saved = parseInt(PREFS.list_width, 10);
   if (saved) setW(saved);
   let startX = 0, startW = 0, dragging = false;
 
@@ -1058,7 +1082,7 @@ function initSplitter() {
     try { sp.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
     sp.classList.remove("dragging");
     document.body.style.userSelect = "";
-    prefSet(LIST_WIDTH_KEY, String(listcol.offsetWidth));
+    savePref("list_width", listcol.offsetWidth);
   };
   sp.addEventListener("pointerup", end);
   sp.addEventListener("pointercancel", end);
@@ -1100,8 +1124,9 @@ function paintStaticIcons() {
 }
 
 async function main() {
-  setClassicMode(prefGet(CLASSIC_MODE_KEY, "auto"));
-  setTheme(prefGet(THEME_KEY, DEFAULT_THEME) || DEFAULT_THEME);
+  await loadPrefs();                       // avant tout rendu : thème, mode, images, largeur
+  setClassicMode(PREFS.classic_mode, false);
+  setTheme(PREFS.theme, false);
   paintStaticIcons();
   document.querySelectorAll(".theme-opt").forEach((b) => {
     b.onclick = () => setTheme(b.dataset.themeVal);
@@ -1112,8 +1137,24 @@ async function main() {
   document.querySelectorAll(".settings-tab").forEach((t) => {
     t.onclick = () => showSettingsPane(t.dataset.pane);
   });
+  // Clavier, motif ARIA « tablist » vertical : flèches, Début et Fin changent
+  // d'onglet et y placent le focus.
+  el(".settings-tabs").addEventListener("keydown", (e) => {
+    const tabs = [...document.querySelectorAll(".settings-tab")];
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    let j = null;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") j = (i + 1) % tabs.length;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") j = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") j = 0;
+    else if (e.key === "End") j = tabs.length - 1;
+    if (j === null) return;
+    e.preventDefault();
+    showSettingsPane(tabs[j].dataset.pane);
+    tabs[j].focus();
+  });
   el("#remote-images").onchange = (e) => {
-    prefSet(REMOTE_IMAGES_KEY, e.target.checked ? "1" : "0");
+    savePref("remote_images", e.target.checked);
     if (state.currentId) openMessage(state.currentId);   // re-rendu du mail ouvert
   };
   el("#settingsbtn").onclick = () => openSettings();

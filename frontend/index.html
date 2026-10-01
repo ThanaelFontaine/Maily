@@ -100,14 +100,14 @@
         <button class="icon-btn" id="settings-close" title="Fermer" aria-label="Fermer"></button>
       </div>
       <div class="settings-layout">
-        <nav class="settings-tabs" role="tablist" aria-label="Sections des réglages">
-          <button class="settings-tab on" role="tab" data-pane="appearance" aria-selected="true">Apparence</button>
-          <button class="settings-tab" role="tab" data-pane="privacy" aria-selected="false">Confidentialité</button>
-          <button class="settings-tab" role="tab" data-pane="accounts" aria-selected="false">Comptes</button>
-          <button class="settings-tab" role="tab" data-pane="about" aria-selected="false">À propos</button>
+        <nav class="settings-tabs" role="tablist" aria-label="Sections des réglages" aria-orientation="vertical">
+          <button class="settings-tab on" role="tab" id="tab-appearance" data-pane="appearance" aria-controls="pane-appearance" aria-selected="true" tabindex="0">Apparence</button>
+          <button class="settings-tab" role="tab" id="tab-privacy" data-pane="privacy" aria-controls="pane-privacy" aria-selected="false" tabindex="-1">Confidentialité</button>
+          <button class="settings-tab" role="tab" id="tab-accounts" data-pane="accounts" aria-controls="pane-accounts" aria-selected="false" tabindex="-1">Comptes</button>
+          <button class="settings-tab" role="tab" id="tab-about" data-pane="about" aria-controls="pane-about" aria-selected="false" tabindex="-1">À propos</button>
         </nav>
         <div class="settings-panes">
-          <section class="settings-pane" data-pane="appearance" role="tabpanel">
+          <section class="settings-pane" id="pane-appearance" data-pane="appearance" role="tabpanel" aria-labelledby="tab-appearance" tabindex="0">
             <h2 class="settings-h">Thème</h2>
             <div class="theme-opts">
               <button class="theme-opt" data-theme-val="classic"><span class="sw sw-classic"></span><span class="theme-opt-txt">Classic<span class="theme-opt-sub">Clair et sobre, par défaut</span></span></button>
@@ -131,7 +131,7 @@
               <p class="settings-help">Effet visible sur macOS uniquement (flou natif du bureau).</p>
             </div>
           </section>
-          <section class="settings-pane" data-pane="privacy" role="tabpanel" hidden>
+          <section class="settings-pane" id="pane-privacy" data-pane="privacy" role="tabpanel" aria-labelledby="tab-privacy" tabindex="0" hidden>
             <h2 class="settings-h">Images distantes</h2>
             <label class="toggle-row">
               <span class="toggle-txt">
@@ -142,12 +142,12 @@
             </label>
             <p class="settings-help">Quand elles sont bloquées, un bandeau « Afficher les images » permet de les charger pour un seul message.</p>
           </section>
-          <section class="settings-pane" data-pane="accounts" role="tabpanel" hidden>
+          <section class="settings-pane" id="pane-accounts" data-pane="accounts" role="tabpanel" aria-labelledby="tab-accounts" tabindex="0" hidden>
             <h2 class="settings-h">Profils</h2>
             <p class="settings-help">Nom affiché et couleur de chaque boîte. Pour en ajouter une, utilise « + Ajouter un compte » en bas de la colonne de gauche.</p>
             <div class="settings-body" id="settings-accounts"></div>
           </section>
-          <section class="settings-pane" data-pane="about" role="tabpanel" hidden>
+          <section class="settings-pane" id="pane-about" data-pane="about" role="tabpanel" aria-labelledby="tab-about" tabindex="0" hidden>
             <h2 class="settings-h">Maily</h2>
             <dl class="about-list">
               <dt>Version</dt><dd id="about-version">?</dd>

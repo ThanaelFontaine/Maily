@@ -9,7 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from core.sanitize import sanitize_html_report
 
-_LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
+# Hotes acceptes dans l'en-tete Host (protection contre le DNS rebinding).
+# Les tests ajoutent "testserver" (hote par defaut de TestClient) via
+# tests/conftest.py ; il n'est jamais accepte en production.
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 _CATEGORY_LABELS = {
     "promotions": "CATEGORY_PROMOTIONS",
     "social": "CATEGORY_SOCIAL",
@@ -72,6 +75,30 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         import core
         from core import paths
         return {"version": core.__version__, "data_dir": str(paths.runtime_dir())}
+
+    def _prefs_payload():
+        from core import prefs
+        return {"prefs": prefs.load(), "stored": sorted(prefs.stored_keys())}
+
+    @app.get("/prefs", dependencies=[Depends(guard)])
+    def prefs_get():
+        # Preferences de l'interface (theme, mode Classic, images distantes,
+        # largeur de liste), rangees dans prefs.json : le localStorage de la
+        # webview ne survit pas au changement de port d'un lancement a l'autre.
+        return _prefs_payload()
+
+    @app.post("/prefs", dependencies=[Depends(guard)])
+    async def prefs_post(request: Request):
+        from core import prefs
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="JSON invalide")
+        try:
+            prefs.update(body)
+        except prefs.InvalidPref as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return _prefs_payload()
 
     @app.get("/glass", dependencies=[Depends(guard)])
     def glass_get():

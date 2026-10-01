@@ -31,8 +31,24 @@ def test_theme_button_replaced_by_settings_panel():
 
 def test_remote_images_blocked_by_default():
     # Vie privee : images distantes bloquees tant que l'utilisateur ne les active pas.
-    assert 'prefGet(REMOTE_IMAGES_KEY, "0") === "1"' in JS
+    assert "remote_images: false" in JS
+    assert "PREFS.remote_images === true" in JS
     assert "allow_remote=true\", AUTH" not in JS
+
+
+def test_prefs_are_stored_server_side_and_migrated():
+    # Le port change a chaque lancement : le localStorage ne sert plus qu'a migrer.
+    assert 'api("/prefs")' in JS and 'postAction("/prefs"' in JS
+    assert "localStorage.setItem" not in JS
+    for legacy in ("maily_theme", "maily_classic_mode", "maily_remote_images", "maily_list_width"):
+        assert legacy in JS
+
+
+def test_settings_tabs_follow_aria_tablist_pattern():
+    for pane in ("appearance", "privacy", "accounts", "about"):
+        assert f'id="tab-{pane}"' in HTML and f'aria-controls="pane-{pane}"' in HTML
+        assert f'id="pane-{pane}"' in HTML and f'aria-labelledby="tab-{pane}"' in HTML
+    assert "ArrowDown" in JS and "ArrowUp" in JS and "t.tabIndex = on ? 0 : -1" in JS
 
 
 def test_classic_theme_has_light_and_dark_variants():

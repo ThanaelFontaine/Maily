@@ -15,6 +15,9 @@ def _isolate_user_data(monkeypatch, tmp_path_factory):
     monkeypatch.setenv("MAILY_DATA_DIR", str(data_dir))
     monkeypatch.setenv("PYTHON_KEYRING_BACKEND", "keyring.backends.null.Keyring")
     monkeypatch.setenv("MAILY_NO_BIOMETRIC", "1")
+    # TestClient envoie Host: testserver ; accepte seulement pendant les tests.
+    from api import app as api_app
+    monkeypatch.setattr(api_app, "_LOCAL_HOSTS", api_app._LOCAL_HOSTS | {"testserver"})
     yield data_dir
 
 

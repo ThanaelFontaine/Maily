@@ -51,7 +51,7 @@ tests/                pytest suite (network and real data never used)
 2. **Logs** go to `logs/maily.log` (1 MB, 3 rotations). A filter redacts tokens, passwords and long base64 strings.
 3. **Database.** `core.db.Database` opens `app.sqlite` in WAL mode and applies pending migrations.
 4. **Secrets.** A one-time migration imports old entries from the system keyring into `secrets.enc` (earlier versions used the macOS Keychain). Then, on macOS, the **Touch ID gate** runs (skipped if no biometric hardware, or with `MAILY_NO_BIOMETRIC=1`). If Touch ID fails or is cancelled, the app quits.
-5. **API token.** A random token (`secrets.token_urlsafe(32)`) is created once and kept in `secrets.enc`. If the secret store cannot be read, Maily stops with a clear message and writes nothing.
+5. **API token.** A random token (`secrets.token_urlsafe(32)`) is created once and kept in `secrets.enc`. If the secret store cannot be read, Maily stops with a clear message (on stderr and in a small window) and writes nothing.
 6. **Local API.** FastAPI is started by uvicorn in a thread, on `127.0.0.1` and a free random port. When `/health` answers, `runtime.json` is written (`0600`) with `host`, `port`, `base_url`, `schema_version` and `token`.
 7. **Auto sync.** A background thread syncs every account at startup and then every `MAILY_POLL_INTERVAL_SECONDS` (180 s, minimum 60 s). A single lock is shared with the Sync button, so two syncs never overlap. Each pass records `last_sync_at` and `last_sync_error` in `sync_state`.
 8. **Window.** pywebview opens the page served by the local API. The API injects the token into the page (`window.MAILY_TOKEN`). On macOS, the window is transparent with native vibrancy (used by the Glassmorphism theme); other themes paint an opaque background.
@@ -111,7 +111,7 @@ See [SECURITY.md](../SECURITY.md) for the threat model. Key mechanisms:
   - The key is created once with `O_CREAT | O_EXCL` and mode `0600`, never overwritten.
   - Every read-modify-write holds an exclusive lock on `secrets.lock` (`fcntl.flock` on POSIX, `msvcrt.locking` on Windows) plus a thread lock, because the app, the MCP server and scripts may run at the same time.
   - A store that cannot be decrypted, or a missing key next to existing secrets, raises `SecretStoreError`: nothing is written, so tokens are never silently erased.
-- **Local API guard:** every endpoint except `/health` requires `Authorization: Bearer <token>`, and requests whose `Host` header is not `127.0.0.1`, `localhost` or `[::1]` are rejected (DNS rebinding protection).
+- **Local API guard:** every endpoint except `/health` requires `Authorization: Bearer <token>`, and requests whose `Host` header is not `127.0.0.1`, `localhost` or `[::1]` are rejected (DNS rebinding protection). The test suite adds `testserver` (FastAPI's TestClient host) through `tests/conftest.py`; production never accepts it.
 - **HTML:** `core/sanitize.py` uses nh3 with an allow-list of tags, attributes and CSS properties (no `position`, no `background` images, no `url()`), strips `javascript:`, `vbscript:` and `data:` links, and removes every remote resource unless remote content is allowed. The frontend then renders the result in an `<iframe sandbox="">` (no scripts, no same-origin access).
 
 ## Local HTTP API
@@ -140,6 +140,7 @@ Base URL and token: `runtime.json` in the data folder. All endpoints except `/he
 | `GET /threads`, `GET /threads/{thread_id}` | Threads |
 | `GET /search?q=...` | Full-text search (`account_id`, `limit` optional) |
 | `POST /send` | `{account_id, to, subject, body_text, body_html?, cc?, in_reply_to?, thread_id?, attachments?: [{filename, mime_type, data (base64)}], idempotency_key?}` |
+| `GET /prefs`, `POST /prefs` | Interface preferences: `{prefs, stored}`; POST takes a partial object (`theme`, `classic_mode`, `remote_images`, `list_width`), 400 on unknown key or invalid value |
 | `GET /glass`, `POST /glass` | Glassmorphism blur density (macOS) |
 
 The API is an internal interface of the app first: prefer the `v1_*` views for reading and `scripts/claude_client.py` for acting, which are kept compatible.
@@ -154,7 +155,7 @@ Plain HTML, CSS and JavaScript in `frontend/`, served by the API under `/static`
 
 - `app.js` keeps a small `state` object and re-renders the rail, the list and the reading pane with DOM calls. All text coming from mail is escaped (`esc()`) or set with `textContent`.
 - Themes are CSS rules scoped by `:root[data-theme="..."]`: `classic` (default), `aero`, `glass`, `dedsec`. The Classic theme is built on `--c-*` variables; its dark variant only redefines them, either through `prefers-color-scheme: dark` (mode *Automatique*) or through `data-mode="dark"` on `<html>`.
-- Preferences (`maily_theme`, `maily_classic_mode`, `maily_remote_images`, `maily_list_width`) are kept in the webview's `localStorage`, which pywebview persists in `<data folder>/webview/`.
+- Preferences (`theme`, `classic_mode`, `remote_images`, `list_width`) are stored server-side in `prefs.json` (mode `0600`, atomic writes, validated keys) by `core/prefs.py`, read at startup with `GET /prefs` and saved with `POST /prefs`. The webview's `localStorage` cannot be used: the local API listens on a new random port at each launch, so the page origin and its storage change every time, and pywebview ignores its storage folder on macOS. Old values found in `localStorage` (`maily_theme`, `maily_classic_mode`, `maily_remote_images`, `maily_list_width`) are migrated once. The glass density uses the same idea (`glass_alpha`, `GET/POST /glass`).
 
 ## Tests
 

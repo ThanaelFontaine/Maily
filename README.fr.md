@@ -217,7 +217,7 @@ Pour construire une application à double-cliquer (`Maily.app`, ou un exécutabl
   - *À propos :* version, dossier des données, licence.
 - **Échap** ferme la fenêtre ouverte.
 
-Tes choix sont mémorisés d'un lancement à l'autre.
+Tes choix sont mémorisés d'un lancement à l'autre (ils sont rangés dans `prefs.json`, dans le dossier de données).
 
 ## Où sont tes données
 
@@ -238,9 +238,10 @@ Définis `MAILY_DATA_DIR` (ou passe `--data-dir`) pour utiliser un autre dossier
 | `secrets.enc` | Secrets chiffrés : client OAuth, jetons OAuth, mots de passe IMAP, jeton de l'API locale |
 | `secrets.key` | La clé qui déchiffre `secrets.enc` |
 | `secrets.lock` | Fichier de verrou qui sérialise les écritures concurrentes des secrets |
+| `prefs.json` | Préférences de l'interface : thème, mode Classic, images distantes, largeur de la liste |
 | `runtime.json` | Adresse, port et jeton d'API de l'app en cours (pour tes scripts) |
 | `logs/` | Journaux, jetons et mots de passe masqués |
-| `webview/` | Stockage local de la fenêtre (thème, préférences) |
+| `webview/` | Stockage de la fenêtre utilisé par pywebview sur certaines plateformes (rien d'important) |
 
 Le dossier et les fichiers secrets ne sont lisibles que par ton utilisateur (permissions `0700` / `0600` sur macOS et Linux). **Sauvegarde** ce dossier si tu veux garder ta copie locale ; attention, quiconque récupère à la fois `secrets.enc` et `secrets.key` peut lire tes jetons : traite une sauvegarde comme un mot de passe.
 

@@ -219,7 +219,7 @@ The interface is in French for now (translations welcome). Here is what each par
   - *À propos* (about): version, data folder, license.
 - **Escape** closes the open dialog.
 
-Your choices are remembered between launches.
+Your choices are remembered between launches (they are stored in `prefs.json` in the data folder).
 
 ## Where your data lives
 
@@ -240,9 +240,10 @@ Set `MAILY_DATA_DIR` (or pass `--data-dir`) to use another folder. The folder co
 | `secrets.enc` | Encrypted secrets: OAuth client, OAuth tokens, IMAP passwords, local API token |
 | `secrets.key` | The key that decrypts `secrets.enc` |
 | `secrets.lock` | Lock file that serializes concurrent writes to the secrets |
+| `prefs.json` | Interface preferences: theme, Classic mode, remote images, list width |
 | `runtime.json` | Address, port and API token of the running app (for your scripts) |
 | `logs/` | Logs, with tokens and passwords redacted |
-| `webview/` | The window's local storage (theme, preferences) |
+| `webview/` | Window storage used by pywebview on some platforms (nothing important) |
 
 The folder and the secret files are readable by your user only (permissions `0700` / `0600` on macOS and Linux). **Back up** this folder if you want to keep your local copy; note that anyone who gets both `secrets.enc` and `secrets.key` can read your tokens, so treat a backup like a password.
 
