@@ -54,6 +54,11 @@ for pkg in ("uvicorn", "webview", "keyring", "googleapiclient",
     except Exception:
         pass
 hiddenimports += collect_submodules("keyring.backends")
+if IS_LINUX:
+    # PyGObject loads its Python overrides (gi.overrides.GLib, Gtk, ...) with
+    # importlib at run time: without them GLib.idle_add has the raw C
+    # signature and pywebview's GTK window never finishes loading.
+    hiddenimports += collect_submodules("gi") + ["cairo"]
 
 a = Analysis(
     [os.path.join(ROOT, "run_maily.py")],

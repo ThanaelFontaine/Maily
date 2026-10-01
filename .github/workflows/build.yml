@@ -94,6 +94,7 @@ jobs:
           exit "$BAD"
 
       - name: Run the app (self-check with a window)
+        timeout-minutes: 5
         run: |
           VERSION="$(uv run python scripts/release_notes.py version)"
           EXE=dist/Maily.app/Contents/MacOS/Maily
@@ -135,6 +136,7 @@ jobs:
       # Maily.exe is a windowed program: it has no console output, so the
       # self-check writes its result to a file and returns its status.
       - name: Run the app (self-check with a window)
+        timeout-minutes: 5
         shell: pwsh
         run: |
           $version = uv run python scripts/release_notes.py version
@@ -210,6 +212,7 @@ jobs:
       # The WebKit sandbox needs user namespaces, which CI machines restrict;
       # it is only turned off for this check.
       - name: Run the app (self-check with a window)
+        timeout-minutes: 5
         env:
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"
@@ -267,6 +270,7 @@ jobs:
           path: release-assets
 
       - name: Extract and run (self-check with a window)
+        timeout-minutes: 5
         env:
           WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS: "1"
           WEBKIT_DISABLE_DMABUF_RENDERER: "1"

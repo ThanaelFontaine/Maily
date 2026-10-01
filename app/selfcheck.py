@@ -75,6 +75,14 @@ def _checks(data_dir: pathlib.Path) -> list[tuple[str, object]]:
 
     def window_library():
         import webview  # noqa: F401
+        if sys.platform.startswith("linux"):
+            # PyGObject's Python overrides (GLib.idle_add(function, ...), used
+            # by pywebview) are loaded dynamically: a bundle without them
+            # opens a window that never finishes loading.
+            from gi.repository import GLib
+            if "overrides" not in getattr(GLib.idle_add, "__module__", ""):
+                raise ImportError("the PyGObject overrides (gi.overrides) are missing")
+            return "pywebview imported, PyGObject overrides present"
         return "pywebview imported"
 
     return [("version", version), ("frontend", frontend), ("database", database),
@@ -82,7 +90,7 @@ def _checks(data_dir: pathlib.Path) -> list[tuple[str, object]]:
             ("local api", local_api), ("window library", window_library)]
 
 
-def _window_check(data_dir: pathlib.Path) -> str:
+def _window_check(data_dir: pathlib.Path, give_up) -> str:
     """Opens a real window on the local API and waits for the page to load."""
     import secrets
     import webview
@@ -118,6 +126,10 @@ def _window_check(data_dir: pathlib.Path) -> str:
                 win.destroy()
             except Exception:  # noqa: BLE001
                 pass
+            # If the window library cannot even close the window, stop the
+            # process rather than hang.
+            time.sleep(15)
+            give_up(result["error"])
 
     win.events.loaded += on_loaded
     threading.Thread(target=watchdog, daemon=True).start()
@@ -147,10 +159,14 @@ def run(argv: list[str]) -> int:
         data_dir = pathlib.Path(tmp)
         # Never the real data folder, whatever a check imports.
         os.environ["MAILY_DATA_DIR"] = str(data_dir)
+        def give_up(error: str) -> None:
+            _emit(lines + [f"FAIL window: {error}", "Self-check FAILED."], report_path)
+            os._exit(1)
+
         try:
             checks = _checks(data_dir)
             if "--window" in argv:
-                checks.append(("window", lambda: _window_check(data_dir)))
+                checks.append(("window", lambda: _window_check(data_dir, give_up)))
             for name, fn in checks:
                 try:
                     lines.append(f"ok   {name}: {fn()}")
@@ -164,10 +180,14 @@ def run(argv: list[str]) -> int:
             else:
                 os.environ["MAILY_DATA_DIR"] = previous
     lines.append("Self-check passed." if ok else "Self-check FAILED.")
+    _emit(lines, report_path)
+    return 0 if ok else 1
+
+
+def _emit(lines: list[str], report_path: str | None) -> None:
     text = "\n".join(lines) + "\n"
     if sys.stdout is not None:
         sys.stdout.write(text)
         sys.stdout.flush()
     if report_path:
         pathlib.Path(report_path).write_text(text, encoding="utf-8")
-    return 0 if ok else 1
