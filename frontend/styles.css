@@ -999,6 +999,7 @@ body {
 .cats::-webkit-scrollbar { display: none; }
 
 /* ---------- Language choice (Settings panel) ---------- */
+.lang-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-bottom: 4px; }
 .lang-opt { text-align: left; font: inherit; font-size: 13px; font-weight: 700; }
 .lang-code { flex: none; width: 34px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
   border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em;
