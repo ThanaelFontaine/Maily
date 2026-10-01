@@ -1,11 +1,19 @@
 """`Maily --self-check`: the check the CI runs on every built binary."""
+import importlib.util
 import os
 import subprocess
 import sys
 
+import pytest
+
 from app import selfcheck
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("linux") and importlib.util.find_spec("gi") is None,
+    reason="the GTK bindings (PyGObject) of the window library are not installed in this Linux environment; "
+    "the built Linux app bundles them and the Build workflow runs its self-check",
+)
 def test_self_check_passes_from_source_and_writes_a_report(tmp_path):
     report = tmp_path / "report.txt"
     before = os.environ.get("MAILY_DATA_DIR")
