@@ -18,19 +18,21 @@ shasum -a 256 -c Maily-X.Y.Z-macos-arm64.zip.sha256    # prints "Maily-X.Y.Z-mac
 **The app is not signed with an Apple Developer ID and not notarized.** The first time you open it, macOS shows a warning and refuses to open it, because it cannot check the app. To open it anyway ([Apple's instructions](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac)):
 
 1. Try to open `Maily.app` once, and close the warning.
-2. Open the Apple menu, *System Settings*, then *Privacy & Security* in the sidebar.
-3. Under *Security*, click *Open Anyway* next to the message about Maily.
-4. Enter your login password and click *OK*. Maily opens, and macOS remembers your choice.
+2. Choose Apple menu > *System Settings*, then click *Privacy & Security* in the sidebar.
+3. Go to *Security*, then click *Open Anyway* next to the message about Maily. Apple notes that the button is available for about an hour after you try to open the app.
+4. Enter your login password, then click *OK*. Maily opens, and macOS keeps it as an exception from then on.
 
 From a terminal, you can instead remove the quarantine flag that macOS puts on downloaded files: `xattr -dr com.apple.quarantine /Applications/Maily.app`. Only do this for a file whose checksum you checked.
 
-The downloaded app uses the same data folder as the source version (see the README), so both share accounts and mail. If you prefer not to run an unsigned binary, run Maily from source or build it yourself as explained below.
+The downloaded app uses the same data folder as the source version (see [Where your data lives](../README.md#where-your-data-lives)), so both share accounts and mail. To update it, download the new zip from the latest release and replace `Maily.app`. If you prefer not to run an unsigned binary, run Maily from source or build it yourself as explained below.
+
+## How the app is packaged
 
 Maily is packaged with **PyInstaller** (spec: [`packaging/maily.spec`](../packaging/maily.spec), entry point: [`run_maily.py`](../run_maily.py)). The `frontend/` and `migrations/` folders are embedded; paths are "frozen-aware" (`sys._MEIPASS`). The version shown in the app bundle is read from `core/__init__.py`.
 
 > **No cross-compilation.** Each platform builds on itself: a macOS binary on a Mac, a Windows binary on Windows, a Linux binary on Linux.
 
-The packaged app uses the same data folder as the source version (see the README), so both share accounts and mail.
+A self-built app also uses the same data folder as the source version. The MCP server is not part of the packaged app: it always runs from a source folder (see [docs/MCP.md](MCP.md)).
 
 ## Common prerequisite
 

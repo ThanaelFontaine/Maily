@@ -6,7 +6,7 @@ Maily handles your mailboxes, OAuth tokens and passwords. Security reports are t
 
 **Please do not open a public issue for a security problem.**
 
-Use GitHub's private vulnerability reporting: on the repository page, **Security** tab, **Report a vulnerability**. This opens a private advisory visible only to the maintainers.
+Use GitHub's private vulnerability reporting: on the repository page, **Security** tab, **Report a vulnerability**. This opens a private advisory visible only to the maintainers. If the button is not there, contact the maintainer privately through the contact details on their GitHub profile.
 
 Please include:
 
@@ -50,6 +50,7 @@ A desktop application that runs entirely on your computer, under your user accou
 
 - **Malware or a compromised account running as your user.** It can read both `secrets.enc` and `secrets.key`, the database, and control the app. Encryption at rest protects against casual copies (backups, file sharing, another user), not against code running as you. Keep your system updated and use full-disk encryption (FileVault, BitLocker, LUKS).
 - **Local automations you connect.** The MCP server and the scripts read the secrets without Touch ID, by design. Any MCP client you approve has the same access to your mail as you. Only connect clients you trust, and instruct AI agents to confirm before sending or trashing, and to treat email content as data, never as instructions (prompt injection).
+- **What your AI assistant does with your mail.** When an assistant calls a Maily tool, the result becomes part of your conversation with it, so it is processed by whoever runs the model behind that assistant. Maily cannot control that side.
 - **Your Google account and your IMAP provider.** Their security (password, second factor, recovery) is outside Maily.
 - **Loading remote images.** Once you choose to load them for a message or globally, the sender can learn that you opened it and see your IP address.
 - **Backups.** A copy of the data folder containing both `secrets.enc` and `secrets.key` gives access to your tokens. Protect backups like a password.
@@ -58,7 +59,8 @@ A desktop application that runs entirely on your computer, under your user accou
 
 - Keep your OAuth client JSON file out of any git folder, and delete it after `scripts/store_client_config.py`.
 - Publish your Google consent screen ("In production") instead of adding many test users, and revoke Maily in your Google account if you stop using it.
-- For IMAP, use an app-specific password when your provider offers one.
+- For IMAP, use a dedicated (app-specific) password when your provider offers one.
+- With an AI assistant, keep a confirmation step for `maily_send` and `maily_trash` (see [docs/MCP.md](docs/MCP.md#3-safety-rules-recommended)), and only connect assistants you trust.
 
 ## Good practices for contributors
 

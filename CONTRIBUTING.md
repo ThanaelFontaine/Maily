@@ -13,11 +13,11 @@ By contributing, you agree that your contributions are released under the [MIT L
 
 ## Development setup
 
-Requirements: [uv](https://docs.astral.sh/uv/) and git (see the README).
+Requirements: [uv](https://docs.astral.sh/uv/) and git (see [Option B: run from source](README.md#option-b-run-from-source) in the README).
 
 ```bash
-git clone https://github.com/ThanaelFontaine/Maily.git maily
-cd maily
+git clone https://github.com/ThanaelFontaine/Maily
+cd Maily
 uv sync                           # Python 3.12 + dependencies + dev tools (pytest, httpx)
 uv run pytest                     # run the tests
 uv run python scripts/demo.py     # the interface on fictitious data, no Google account needed

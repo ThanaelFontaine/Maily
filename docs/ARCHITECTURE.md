@@ -1,6 +1,6 @@
 # Maily architecture
 
-This document explains how Maily is organized, how data flows, and which interfaces are stable. It is written for contributors and for people who want to automate Maily.
+This document explains how Maily is organized, how data flows, and which interfaces are stable. It is written for contributors and for people who want to automate Maily. For a plain-words overview with a diagram, start with [How it works](../README.md#how-it-works) in the README.
 
 ## Principles
 
@@ -147,7 +147,7 @@ The API is an internal interface of the app first: prefer the `v1_*` views for r
 
 ## MCP server
 
-`app/mcp_server.py` imports the engine directly (same database, same secrets), runs over stdio and needs neither the app nor a network port. Tools and usage: [docs/MCP.md](MCP.md).
+`app/mcp_server.py` (FastMCP) imports the engine directly (same database, same secrets), runs over stdio and needs neither the app nor a network port: the MCP client starts it as a child process. It runs from a source folder (`uv --directory <folder> run python -m app.mcp_server`); the packaged app excludes the `mcp` package (`packaging/maily.spec`). Tools and usage: [docs/MCP.md](MCP.md).
 
 ## Frontend
 
