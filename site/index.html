@@ -174,7 +174,7 @@
         <div class="feature">
           <div class="feature-text">
             <h3>One inbox for every account</h3>
-            <p>Gmail, Google Workspace and IMAP mailboxes side by side. Read everything in a unified view or one account at a time, each with its own name and color. Gmail categories, labels, archive and a reversible trash are all there.</p>
+            <p>Gmail, Google Workspace and IMAP mailboxes side by side. Read everything in a unified view or one account at a time, each with its own name and color. Gmail categories, labels, archive and trash are all there; on Gmail, a trashed message can be restored in one click.</p>
             <ul class="mini">
               <li>Instant, offline full-text search across all accounts</li>
               <li>Automatic sync every 3 minutes while the app is open</li>
@@ -258,13 +258,13 @@
             </thead>
             <tbody>
               <tr><td><code>maily_list_accounts</code></td><td>Lists your accounts. The natural first call.</td></tr>
-              <tr><td><code>maily_list_messages</code></td><td>Recent messages of one account, by folder or Gmail category, unread only if you like.</td></tr>
+              <tr><td><code>maily_list_messages</code></td><td>Recent messages of one account, unread only if you like. <code>category</code> is <code>inbox</code> (default), a Gmail category, <code>archived</code> or <code>all</code>.</td></tr>
               <tr><td><code>maily_get_message</code></td><td>A full message: sender, recipients, date, body and attachment list.</td></tr>
               <tr><td><code>maily_search</code></td><td>Local full-text search in one account or all of them.</td></tr>
               <tr><td><code>maily_sync</code></td><td>Fetches new mail now.</td></tr>
               <tr><td><code>maily_export_eml</code></td><td>Saves a message as a standard <code>.eml</code> file.</td></tr>
               <tr><td><code>maily_download_attachment</code></td><td>Saves an attachment to disk.</td></tr>
-              <tr><td><code>maily_trash</code></td><td>Moves a message to the trash. Reversible.</td></tr>
+              <tr><td><code>maily_trash</code></td><td>Moves a message to the trash. Reversible for Gmail (restore from the app); not restorable from Maily for IMAP, so ask your assistant to confirm first.</td></tr>
               <tr><td><code>maily_send</code></td><td>Sends an email from a Gmail account. Irreversible, so ask your assistant to confirm first.</td></tr>
             </tbody>
           </table>
@@ -355,7 +355,7 @@ uv run maily</code></pre>
           <ul class="ticks">
             <li><strong>Local only.</strong> No Maily server, no analytics, no telemetry. The app's internal API listens on <code>127.0.0.1</code>, on a random port, behind a random token.</li>
             <li><strong>Encrypted secrets.</strong> OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read.</li>
-            <li><strong>Least privilege on Gmail.</strong> Two permissions: <code>gmail.modify</code> and <code>gmail.send</code>. Maily never deletes a message permanently.</li>
+            <li><strong>Least privilege on Gmail.</strong> Two permissions: <code>gmail.modify</code> and <code>gmail.send</code>. Maily never deletes a message permanently, on Gmail or IMAP.</li>
             <li><strong>Sanitized HTML.</strong> No scripts, no dangerous links, filtered CSS, then a sandboxed frame. Remote images are off by default.</li>
             <li><strong>Optional Touch ID</strong> before the window opens on macOS.</li>
           </ul>
@@ -394,7 +394,7 @@ uv run maily</code></pre>
         </details>
         <details>
           <summary>Can Maily or my assistant delete my mail for good?</summary>
-          <p>No. Trash is reversible, and Maily never asks Google for permanent deletion. Disconnecting an account only removes Maily's local copy and secrets; your mailbox is untouched.</p>
+          <p>Not on Gmail: trash is reversible there (<em>Restore</em>), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. Disconnecting an account only removes Maily's local copy and secrets; your mailbox is untouched.</p>
         </details>
         <details>
           <summary>Why can't I send from an IMAP account?</summary>
