@@ -1019,7 +1019,7 @@ function renderLanguagePane() {
   if (!wrap) return;
   wrap.innerHTML = I18N.LANGUAGES.map((l) => {
     const on = l.code === I18N.language;
-    return `<button class="theme-opt lang-opt${on ? " on" : ""}" role="radio" aria-checked="${on}" data-lang-val="${l.code}" lang="${l.code}">` +
+    return `<button class="theme-opt lang-opt${on ? " on" : ""}" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-lang-val="${l.code}" lang="${l.code}">` +
       `<span class="lang-code" aria-hidden="true">${l.code.toUpperCase()}</span>` +
       `<span class="theme-opt-txt">${esc(l.name)}<span class="theme-opt-sub" lang="${I18N.language}">${esc(tr("language." + l.code))}</span></span></button>`;
   }).join("");
@@ -1250,6 +1250,18 @@ async function main() {
     e.preventDefault();
     showSettingsPane(tabs[j].dataset.pane);
     tabs[j].focus();
+  });
+  // Language choice, ARIA "radiogroup" pattern: arrows move to and pick the next language.
+  el("#lang-opts").addEventListener("keydown", (e) => {
+    const opts = [...document.querySelectorAll(".lang-opt")];
+    const i = opts.indexOf(document.activeElement);
+    if (i < 0) return;
+    let j = null;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") j = (i + 1) % opts.length;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") j = (i - 1 + opts.length) % opts.length;
+    if (j === null) return;
+    e.preventDefault();
+    changeLanguage(opts[j].dataset.langVal);
   });
   el("#remote-images").onchange = (e) => {
     savePref("remote_images", e.target.checked);

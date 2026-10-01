@@ -51,7 +51,7 @@ def test_placeholders_match_english(code):
 @pytest.mark.parametrize("code", LANGS)
 def test_no_em_or_en_dash_in_translations(code):
     text = (I18N_DIR / f"{code}.json").read_text(encoding="utf-8")
-    assert "-" not in text and "-" not in text
+    assert "\u2014" not in text and "\u2013" not in text
 
 
 def _used_keys():
