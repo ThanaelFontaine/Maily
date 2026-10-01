@@ -23,7 +23,7 @@ class FakeClient:
 def test_send_success(store):
     acc = store.upsert_account("me@example.com")
     client = FakeClient()
-    res = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "Sujet", "corps")
+    res = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "Subject", "body")
     assert res["gmail_id"] == "g999"
     ob = store.get_outbox(res["outbox_id"])
     assert ob["status"] == "sent" and ob["gmail_id"] == "g999"
@@ -74,7 +74,7 @@ def test_idempotency_dedup(store):
     client = Counting()
     r1 = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "S", "b", idempotency_key="K")
     r2 = sender.send_message(store, client, acc, "me@example.com", "d@example.com", "S", "b", idempotency_key="K")
-    assert client.n == 1  # deuxieme appel dedupe, aucun re-envoi
+    assert client.n == 1  # second call deduplicated, nothing sent again
     assert r2.get("deduped") is True
     assert r1["outbox_id"] == r2["outbox_id"]
 

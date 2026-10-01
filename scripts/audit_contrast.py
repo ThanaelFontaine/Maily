@@ -1,10 +1,11 @@
-"""Audit de lisibilité : mesure le contraste WCAG réel (texte / fond) des
-éléments clés du composer et des réglages, dans chaque thème. Sort 0 si tout
-est >= seuil, 1 sinon. Sert de garde-fou visuel (peu importe le mode).
+"""Legibility audit: measures the real WCAG contrast (text / background) of
+the key elements of the composer and the settings, in every theme. Exits with
+0 if everything is >= the threshold, 1 otherwise. A visual safeguard
+(whatever the mode).
 
-Tourne sur une base de démonstration dans un dossier temporaire : jamais sur
-les vraies données ni les vrais secrets (le jeton d'API est généré en mémoire).
-Nécessite macOS et un écran (pywebview). Lancement :
+Runs on a demo database in a temporary folder: never on the real data or the
+real secrets (the API token is generated in memory). Needs macOS and a screen
+(pywebview). Run it with:
   MAILY_GUI_TESTS=1 uv run pytest tests/test_contrast.py
 """
 import os, pathlib, secrets, sys, tempfile, threading, time
@@ -28,8 +29,8 @@ PORT = 8796
 threading.Thread(target=uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=PORT, log_level="critical")).run, daemon=True).start()
 time.sleep(1.0)
 
-# Cas audites : selecteur + seuil (texte principal 4.5, secondaire 3.0).
-# base = couleur de fond assumee derriere les panneaux translucides du theme.
+# Audited cases: selector + threshold (main text 4.5, secondary 3.0).
+# base = background color assumed behind the translucent panels of the theme.
 JS = r"""
 (function(){
   function parse(c){var m=c.match(/[\d.]+/g)||[];return {r:+m[0]||0,g:+m[1]||0,b:+m[2]||0,a:m[3]==null?1:+m[3]};}
@@ -45,7 +46,7 @@ JS = r"""
     return acc;
   }
   var theme=document.documentElement.dataset.theme;
-  var bases={classic:{r:255,g:255,b:255},aero:{r:190,g:225,b:245},glass:{r:22,g:24,b:30},dedsec:{r:10,g:11,b:14}};
+  var bases={classic:{r:255,g:255,b:255},aero:{r:190,g:225,b:245},glass:{r:22,g:24,b:30},zeroday:{r:10,g:11,b:14}};
   var base=bases[theme]||{r:20,g:20,b:24};
   var cases=window.__cases||[];
   var out=[];
@@ -76,7 +77,7 @@ RESULTS = {}
 def probe(w):
     time.sleep(2.0)
     ok = True
-    for theme in ("classic", "aero", "glass", "dedsec"):
+    for theme in ("classic", "aero", "glass", "zeroday"):
         w.evaluate_js("setTheme('%s'); window.__cases=%s;" % (theme, __import__("json").dumps(CASES)))
         w.evaluate_js("document.getElementById('compose').click(); openSettings('accounts');")
         time.sleep(0.6)
@@ -85,7 +86,7 @@ def probe(w):
             status = "OK" if r["ratio"] >= r["min"] else "FAIL"
             if r["ratio"] < r["min"]:
                 ok = False
-            print(f"[{theme:6}] {r['sel']:35} ratio={r['ratio']:5}  min={r['min']}  {status}", flush=True)
+            print(f"[{theme:7}] {r['sel']:35} ratio={r['ratio']:5}  min={r['min']}  {status}", flush=True)
         w.evaluate_js("document.getElementById('c-close').click(); closeSettings();")
     print("AUDIT_RESULT:", "PASS" if ok else "FAIL", flush=True)
     import os

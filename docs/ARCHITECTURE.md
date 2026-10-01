@@ -1,6 +1,6 @@
 # Maily architecture
 
-This document explains how Maily is organized, how data flows, and which interfaces are stable. It is written for contributors and for people who want to automate Maily.
+This document explains how Maily is organized, how data flows, and which interfaces are stable. It is written for contributors and for people who want to automate Maily. For a plain-words overview with a diagram, start with [How it works](../README.md#how-it-works) in the README.
 
 ## Principles
 
@@ -8,7 +8,7 @@ This document explains how Maily is organized, how data flows, and which interfa
 2. **Local only.** No Maily server. Network traffic goes to Google's APIs (Gmail accounts) and to your IMAP server, nowhere else. The local API binds to `127.0.0.1`.
 3. **Bring your own credentials.** Each user creates their own Google OAuth client; Maily ships none.
 4. **Scriptable by design.** A stable SQL schema (`v1_*` views), a token-protected HTTP API and an MCP server.
-5. **Safe by default.** Sanitized HTML, remote images blocked, encrypted secrets, reversible actions only.
+5. **Safe by default.** Sanitized HTML, remote images blocked, encrypted secrets, no permanent deletion on Gmail (trash is reversible there; an IMAP message moved to the server's trash cannot be restored from Maily).
 
 ## Repository layout
 
@@ -32,11 +32,11 @@ core/                 the engine (no UI code)
   runtime.py          local API token and runtime.json
   biometric.py        Touch ID gate at launch (macOS, LocalAuthentication)
   logging_setup.py    rotating log file with secret redaction
-  config.py           settings from MAILY_* environment variables or .env
+  config.py           settings (poll interval, backfill, cache, log level) from MAILY_* variables or .env
 api/app.py            FastAPI app: the local HTTP API + static frontend
 app/bootstrap.py      desktop launcher: data folder, secrets, Touch ID, API server, auto sync, pywebview window
 app/mcp_server.py     MCP server over stdio (FastMCP)
-frontend/             index.html, app.js, styles.css: plain HTML/CSS/JS, no build step
+frontend/             index.html, app.js, styles.css, i18n.js + i18n/<lang>.json: plain HTML/CSS/JS, no build step
 migrations/           numbered SQL migrations (PRAGMA user_version)
 scripts/              command-line helpers (OAuth client import, connect account, API client, demo mode, contrast audit, macOS build)
 packaging/            PyInstaller spec and icons
@@ -45,7 +45,7 @@ tests/                pytest suite (network and real data never used)
 
 ## What happens at launch
 
-`uv run python -m app.bootstrap` (or the packaged app) runs `app.bootstrap.run()`:
+`uv run maily` (the console script declared in `pyproject.toml`, same as `uv run python -m app.bootstrap`) or the packaged app runs `app.bootstrap.run()`:
 
 1. **Data folder.** `core.paths.runtime_dir()` picks `--data-dir` / `MAILY_DATA_DIR` if set, else the platform folder. `ensure_runtime_dirs()` creates it with `attachments/` and `logs/`, permissions `0700` on POSIX.
 2. **Logs** go to `logs/maily.log` (1 MB, 3 rotations). A filter redacts tokens, passwords and long base64 strings.
@@ -89,7 +89,7 @@ IMAP messages reuse the Gmail-shaped schema:
 - `label_ids` = the folder name, plus `UNREAD` when `\Seen` is absent; `INBOX` keeps the `INBOX` label
 - `thread_id` = the `Message-ID` header (IMAP has no threads)
 
-Marking as read or archiving an IMAP message is applied locally only; trash moves the message on the server.
+Marking as read or archiving an IMAP message is applied locally only; trash moves the message to the server's trash folder (the folder flagged `\Trash` by IMAP special-use, else a usual name). With no trash folder, `ImapClient.move_to_trash` raises `NoTrashFolder` (API error code `no_trash_folder`) and touches nothing; it only flags and expunges after a successful `COPY`, and with `UIDPLUS` it expunges that message alone.
 
 ## Synchronization
 
@@ -140,22 +140,24 @@ Base URL and token: `runtime.json` in the data folder. All endpoints except `/he
 | `GET /threads`, `GET /threads/{thread_id}` | Threads |
 | `GET /search?q=...` | Full-text search (`account_id`, `limit` optional) |
 | `POST /send` | `{account_id, to, subject, body_text, body_html?, cc?, in_reply_to?, thread_id?, attachments?: [{filename, mime_type, data (base64)}], idempotency_key?}` |
-| `GET /prefs`, `POST /prefs` | Interface preferences: `{prefs, stored}`; POST takes a partial object (`theme`, `classic_mode`, `remote_images`, `list_width`), 400 on unknown key or invalid value |
+| `GET /prefs`, `POST /prefs` | Interface preferences: `{prefs, stored}`; POST takes a partial object (`theme`, `classic_mode`, `remote_images`, `list_width`, `language`), 400 on unknown key or invalid value |
 | `GET /glass`, `POST /glass` | Glassmorphism blur density (macOS) |
 
 The API is an internal interface of the app first: prefer the `v1_*` views for reading and `scripts/claude_client.py` for acting, which are kept compatible.
 
 ## MCP server
 
-`app/mcp_server.py` imports the engine directly (same database, same secrets), runs over stdio and needs neither the app nor a network port. Tools and usage: [docs/MCP.md](MCP.md).
+`app/mcp_server.py` (FastMCP) imports the engine directly (same database, same secrets), runs over stdio and needs neither the app nor a network port: the MCP client starts it as a child process. It runs from a source folder (`uv --directory <folder> run python -m app.mcp_server`); the packaged app excludes the `mcp` package (`packaging/maily.spec`). Tools and usage: [docs/MCP.md](MCP.md).
 
 ## Frontend
 
 Plain HTML, CSS and JavaScript in `frontend/`, served by the API under `/static`. No framework and no build step.
 
 - `app.js` keeps a small `state` object and re-renders the rail, the list and the reading pane with DOM calls. All text coming from mail is escaped (`esc()`) or set with `textContent`.
-- Themes are CSS rules scoped by `:root[data-theme="..."]`: `classic` (default), `aero`, `glass`, `dedsec`. The Classic theme is built on `--c-*` variables; its dark variant only redefines them, either through `prefers-color-scheme: dark` (mode *Automatique*) or through `data-mode="dark"` on `<html>`.
-- Preferences (`theme`, `classic_mode`, `remote_images`, `list_width`) are stored server-side in `prefs.json` (mode `0600`, atomic writes, validated keys) by `core/prefs.py`, read at startup with `GET /prefs` and saved with `POST /prefs`. The webview's `localStorage` cannot be used: the local API listens on a new random port at each launch, so the page origin and its storage change every time, and pywebview ignores its storage folder on macOS. Old values found in `localStorage` (`maily_theme`, `maily_classic_mode`, `maily_remote_images`, `maily_list_width`) are migrated once. The glass density uses the same idea (`glass_alpha`, `GET/POST /glass`).
+- Themes are CSS rules scoped by `:root[data-theme="..."]`: `classic` (default), `aero`, `glass`, `zeroday`. The Classic theme is built on `--c-*` variables; its dark variant only redefines them, either through `prefers-color-scheme: dark` (*Automatic* mode) or through `data-mode="dark"` on `<html>`. The Zero Day theme was called `dedsec` before 0.7.0: `core/prefs.py` reads a stored `dedsec` as `zeroday` and rewrites the file once.
+- **Translations.** Every user-visible string goes through `tr(key, vars)` from `frontend/i18n.js`, a small dependency-free layer. Each language is a flat JSON file, `frontend/i18n/<code>.json` (`en`, `fr`, `de`, `es`, `pt`), with English keys; English is the reference and the fallback for a missing key. Plurals use `Intl.PluralRules` (`key.one`, `key.other`), placeholders are written `{name}`, and dates and numbers are formatted with `Intl` in the active locale. Static markup carries `data-i18n`, `data-i18n-placeholder`, `data-i18n-title` and `data-i18n-aria-label` attributes. The language is the `language` preference; while it is `null` (first launch), the interface follows `navigator.languages` when the language is supported, and English otherwise. `<html lang>` follows the active language. `tests/test_i18n.py` checks that every language has exactly the keys of English, with the same placeholders.
+- **Errors.** The API never sends text meant for the screen: every error has an English `detail` (for logs and scripts) and a stable code in the `X-Maily-Error` header (`account_not_found`, `imap_login_failed`, `provider_error`, ...). The interface shows the translated `error.<code>` message.
+- Preferences (`theme`, `classic_mode`, `remote_images`, `list_width`, `language`) are stored server-side in `prefs.json` (mode `0600`, atomic writes, validated keys) by `core/prefs.py`, read at startup with `GET /prefs` and saved with `POST /prefs`. The webview's `localStorage` cannot be used: the local API listens on a new random port at each launch, so the page origin and its storage change every time, and pywebview ignores its storage folder on macOS. Old values found in `localStorage` (`maily_theme`, `maily_classic_mode`, `maily_remote_images`, `maily_list_width`) are migrated once. The glass density uses the same idea (`glass_alpha`, `GET/POST /glass`).
 
 ## Tests
 
@@ -163,4 +165,4 @@ Plain HTML, CSS and JavaScript in `frontend/`, served by the API under `/static`
 
 ## Versioning and releases
 
-The version lives in `pyproject.toml` and `core/__init__.py` (a test checks they match, and that `CHANGELOG.md` has a section for it). After every successful run of the `Tests` workflow on a push to `main`, `.github/workflows/release.yml` checks whether tag `vX.Y.Z` exists; if not, it creates the tag and a GitHub release whose notes are the matching `CHANGELOG.md` section.
+The version lives in `pyproject.toml` and `core/__init__.py` (a test checks they match, and that `CHANGELOG.md` has a section for it). After every successful run of the `Tests` workflow on a push to `main`, `.github/workflows/release.yml` builds `Maily.app` with PyInstaller on a macOS (Apple Silicon) runner (version and `arm64` checked), and only then creates the tag `vX.Y.Z` and a draft GitHub release with `Maily-X.Y.Z-macos-arm64.zip`, its `.sha256` file and the matching `CHANGELOG.md` section as notes, which it publishes last. Details in [BUILD.md](BUILD.md#releases).

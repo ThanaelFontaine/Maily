@@ -20,7 +20,7 @@ class Syncer:
         return mid
 
     def _import(self, gid) -> bool:
-        """Refetch + upsert un message. Retourne False si le message a disparu (404)."""
+        """Fetches a message again and upserts it. Returns False if the message is gone (404)."""
         try:
             raw = self.client.get_message(gid)
         except HttpError as e:
@@ -43,7 +43,7 @@ class Syncer:
         acc = self.account_id
         page_token = self.store.get_sync_state(acc, "backfill_page_token") or None
         count = 0
-        # Checkpoint fiable = historyId courant de la boite (fonctionne meme si 0 message).
+        # Reliable checkpoint = current historyId of the mailbox (works even with 0 messages).
         checkpoint = self.store.get_sync_state(acc, "last_history_id") or self._profile_history_id() or None
         while True:
             ids, next_token = self.client.list_message_ids(
@@ -71,14 +71,14 @@ class Syncer:
         page_token = None
         changed = 0
         latest = start
-        # Un message touche par plusieurs records (ajout puis libelles) n'est relu qu'une fois : chaque
-        # relecture coute du quota Gmail.
-        relus = set()
+        # A message touched by several records (added, then labels) is fetched only once: each
+        # fetch costs Gmail quota.
+        fetched = set()
         try:
             while True:
                 records, next_token, hist_id = self.client.list_history(start, page_token)
                 for rec in records:
-                    # messagesAdded + labelsAdded + labelsRemoved => refetch complet du message
+                    # messagesAdded + labelsAdded + labelsRemoved: fetch the whole message again
                     refetch = set()
                     for a in rec.get("messagesAdded", []):
                         refetch.add(a["message"]["id"])
@@ -86,17 +86,17 @@ class Syncer:
                         refetch.add(x["message"]["id"])
                     for x in rec.get("labelsRemoved", []):
                         refetch.add(x["message"]["id"])
-                    for gid in refetch - relus:
-                        relus.add(gid)
+                    for gid in refetch - fetched:
+                        fetched.add(gid)
                         if self._import(gid):
                             changed += 1
-                    # messagesDeleted = purge definitive => marquer corbeille SI le message existe
+                    # messagesDeleted = permanent deletion: mark as trashed IF the message exists
                     for d in rec.get("messagesDeleted", []):
                         if self.store.mark_trashed_by_gmail_id(acc, d["message"]["id"]):
                             changed += 1
-                # Point de reprise apres chaque page : le dernier record traite. Sans lui, une panne
-                # (quota Gmail) faisait tout reprendre au meme depart a chaque synchro, qui retombait
-                # sur le quota : la boite restait figee.
+                # Resume point after each page: the last record handled. Without it, a failure
+                # (Gmail quota) restarted everything from the same point at each sync, which hit
+                # the quota again: the mailbox stayed frozen.
                 ids = [int(r["id"]) for r in records if str(r.get("id", "")).isdigit()]
                 if ids and next_token:
                     self.store.set_sync_state(acc, "last_history_id", str(max(ids)))

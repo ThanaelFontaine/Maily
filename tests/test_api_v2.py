@@ -27,7 +27,7 @@ def _seed_categories(store):
 
 def test_search_special_chars_no_500(store):
     a = store.upsert_account("me@example.com")
-    store.upsert_message(a, "g1", subject="Bonjour", body_text="hello world", label_ids='["INBOX"]')
+    store.upsert_message(a, "g1", subject="Hello", body_text="hello world", label_ids='["INBOX"]')
     c = TestClient(create_app(store, TOKEN))
     for q in ["user@domain", '"unterminated', "a:b", "foo AND", "*", ""]:
         assert c.get("/search", params={"q": q}, headers=_auth()).status_code == 200
@@ -55,11 +55,11 @@ def test_labels_lazy_refresh(store):
 
     def labels_fn(aid):
         calls["n"] += 1
-        store.replace_labels(aid, [{"id": "L1", "name": "Perso", "type": "user"}])
+        store.replace_labels(aid, [{"id": "L1", "name": "Personal", "type": "user"}])
 
     c = TestClient(create_app(store, TOKEN, labels_fn=labels_fn))
     r = c.get(f"/accounts/{a}/labels", headers=_auth())
-    assert r.status_code == 200 and any(l["name"] == "Perso" for l in r.json()) and calls["n"] == 1
+    assert r.status_code == 200 and any(l["name"] == "Personal" for l in r.json()) and calls["n"] == 1
     c.get(f"/accounts/{a}/labels", headers=_auth())  # deja en cache
     assert calls["n"] == 1
 
@@ -85,7 +85,7 @@ def test_download_headers_rfc6266(store):
     r = c.get(f"/messages/{mid}/attachments/{att_id}/download", headers=_auth())
     cd = r.headers["content-disposition"]
     assert "\r" not in cd and "\n" not in cd and "filename*=UTF-8''" in cd and r.content == b"DATA"
-    c2 = TestClient(create_app(store, TOKEN))  # pas de download_fn
+    c2 = TestClient(create_app(store, TOKEN))  # no download_fn
     assert c2.get(f"/messages/{mid}/attachments/{att_id}/download", headers=_auth()).status_code == 501
 
 

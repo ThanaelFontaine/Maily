@@ -29,7 +29,7 @@ class Store:
             return c.execute("SELECT id FROM accounts WHERE email=?", (email,)).fetchone()[0]
 
     def update_account(self, account_id, display_name=None, color=None):
-        # display_name / color a None = inchange ; "" efface le nom (retour a l'email).
+        # display_name / color set to None = unchanged; "" clears the name (back to the address).
         with self.db.writer() as c:
             c.execute(
                 """UPDATE accounts SET
@@ -43,9 +43,9 @@ class Store:
         return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
 
     def delete_account(self, account_id):
-        # Les FK ON DELETE CASCADE (foreign_keys=ON) purgent threads/messages/
-        # labels/outbox/sync_state, et le trigger messages_ad nettoie le FTS.
-        # Les attachments ne portent pas d'account_id -> purge explicite d'abord.
+        # The ON DELETE CASCADE foreign keys (foreign_keys=ON) purge threads/messages/
+        # labels/outbox/sync_state, and the messages_ad trigger cleans the FTS index.
+        # Attachments carry no account_id, so they are purged explicitly first.
         with self.db.writer() as c:
             c.execute(
                 "DELETE FROM attachments WHERE owner_kind='message' AND owner_id IN "
@@ -80,8 +80,8 @@ class Store:
         return self.db.read().execute("SELECT * FROM messages WHERE id=?", (message_id,)).fetchone()
 
     def search_messages(self, query, account_id=None, limit=50):
-        # Rendre la requete sure pour FTS5 : chaque mot devient une phrase quotee
-        # (les caracteres speciaux comme @ : " * ne cassent plus la syntaxe MATCH).
+        # Make the query safe for FTS5: each word becomes a quoted phrase
+        # (special characters such as @ : " * no longer break the MATCH syntax).
         terms = [t for t in (query or "").split() if t]
         if not terms:
             return []
@@ -222,7 +222,7 @@ class Store:
                       (1 if trashed else 0, message_id))
 
     def mark_trashed_by_gmail_id(self, account_id, gmail_id) -> bool:
-        """Marque corbeille par gmail_id, UNIQUEMENT si la ligne existe (pas de ligne fantome)."""
+        """Marks as trashed by gmail_id, ONLY if the row exists (no ghost row)."""
         with self.db.writer() as c:
             cur = c.execute(
                 "UPDATE messages SET is_trashed=1, updated_at=datetime('now') "
@@ -240,7 +240,7 @@ class Store:
             }
             c.execute("DELETE FROM attachments WHERE owner_kind='message' AND owner_id=?", (message_id,))
             for a in attachments or []:
-                lp = existing.get(a.get("gmail_attachment_id"))  # conserve le cache disque
+                lp = existing.get(a.get("gmail_attachment_id"))  # keeps the disk cache
                 c.execute(
                     """INSERT INTO attachments(owner_kind, owner_id, content_id, filename,
                          mime_type, size, gmail_attachment_id, local_path)

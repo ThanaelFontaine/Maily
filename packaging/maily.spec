@@ -1,39 +1,39 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""Spec PyInstaller multiplateforme (macOS / Linux / Windows) pour Maily.
+"""Cross-platform PyInstaller spec (macOS / Linux / Windows) for Maily.
 
-Build :  pyinstaller packaging/maily.spec --noconfirm
-Sortie :  dist/Maily.app (macOS) ou dist/Maily/ (Linux/Windows).
+Build:   pyinstaller packaging/maily.spec --noconfirm
+Output:  dist/Maily.app (macOS) or dist/Maily/ (Linux/Windows).
 """
 import os
 import re
 import sys
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # racine du repo
+ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # repository root
 ICNS = os.path.join(ROOT, "packaging", "Maily.icns")
 ICON = ICNS if os.path.exists(ICNS) else None
 
-# Version lue dans core/__init__.py (source alignee sur pyproject.toml).
+# Version read from core/__init__.py (kept equal to pyproject.toml).
 with open(os.path.join(ROOT, "core", "__init__.py"), encoding="utf-8") as _f:
     VERSION = re.search(r'__version__ = "([^"]+)"', _f.read()).group(1)
 
 datas = [(os.path.join(ROOT, "frontend"), "frontend"),
          (os.path.join(ROOT, "migrations"), "migrations")]
 binaries = []
-# _cffi_backend : extension C requise par cryptography (Fernet) ; PyInstaller
-# ne la detecte pas seul -> import cache explicite, sinon l'app crashe au
-# demarrage (ModuleNotFoundError: No module named '_cffi_backend').
+# _cffi_backend: C extension needed by cryptography (Fernet); PyInstaller does
+# not detect it on its own, so it is an explicit hidden import, otherwise the
+# app crashes at startup (ModuleNotFoundError: No module named '_cffi_backend').
 hiddenimports = ["app", "api", "core", "_cffi_backend"]
 
-# Paquets a imports dynamiques (backends, protocoles) : on collecte tout.
-# - cffi   : backend C de cryptography (Fernet).
-# - anyio  : backend d'event-loop charge dynamiquement (anyio._backends._asyncio),
-#            sinon FastAPI/Starlette plantent au 1er appel (No module named
-#            'anyio._backends').
-# - certifi: le fichier de donnees cacert.pem (bundle CA TLS) doit etre embarque,
-#            sinon requests (echange de token OAuth) plante : "Could not find a
-#            suitable TLS CA certificate bundle" -> certifi.where() pointe dans le
-#            vide.
+# Packages with dynamic imports (backends, protocols): collect everything.
+# - cffi   : C backend of cryptography (Fernet).
+# - anyio  : event-loop backend loaded dynamically (anyio._backends._asyncio),
+#            otherwise FastAPI/Starlette crash at the first call (No module
+#            named 'anyio._backends').
+# - certifi: the cacert.pem data file (TLS CA bundle) must be embedded,
+#            otherwise requests (OAuth token exchange) crashes: "Could not find
+#            a suitable TLS CA certificate bundle", certifi.where() points to
+#            nothing.
 for pkg in ("uvicorn", "webview", "keyring", "googleapiclient",
             "google_auth_oauthlib", "google_auth_httplib2", "google.auth",
             "cryptography", "cffi", "anyio", "certifi", "LocalAuthentication"):
@@ -54,7 +54,7 @@ a = Analysis(
     hiddenimports=hiddenimports,
     hookspath=[],
     runtime_hooks=[],
-    excludes=["tkinter", "pytest", "_pytest", "mcp"],  # mcp : cote agent, pas dans l'app
+    excludes=["tkinter", "pytest", "_pytest", "mcp"],  # mcp: agent side, not in the app
     noarchive=False,
 )
 pyz = PYZ(a.pure)
@@ -66,7 +66,7 @@ exe = EXE(
     debug=False,
     strip=False,
     upx=False,
-    console=False,          # app fenetree (pas de console)
+    console=False,          # windowed app (no console)
     icon=None,
 )
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name="Maily")

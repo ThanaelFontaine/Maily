@@ -6,17 +6,17 @@ import pathlib
 APP_NAME = "Maily"
 _SLUG = "maily"
 
-# Variable d'environnement qui remplace le dossier de donnees par defaut.
-# Sert aux tests, aux captures d'ecran et a quiconque veut une base separee
-# (ex. MAILY_DATA_DIR=/tmp/maily-demo uv run python -m app.bootstrap).
+# Environment variable that replaces the default data folder. Used by the
+# tests, the screenshots and anyone who wants a separate database
+# (e.g. MAILY_DATA_DIR=/tmp/maily-demo uv run maily).
 DATA_DIR_ENV = "MAILY_DATA_DIR"
 
 
 def runtime_dir(override: str | None = None) -> pathlib.Path:
-    """Dossier des donnees locales (base, pieces jointes, secrets chiffres).
+    """Folder of the local data (database, attachments, encrypted secrets).
 
-    Priorite : argument `override`, puis la variable MAILY_DATA_DIR, puis le
-    dossier standard de la plateforme.
+    Priority: the `override` argument, then the MAILY_DATA_DIR variable, then
+    the standard folder of the platform.
     """
     if override:
         return pathlib.Path(override).expanduser()

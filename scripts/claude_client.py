@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Client pret a l'emploi pour les automatisations locales (scripts, agents).
+"""Ready-made client for local automations (scripts, agents).
 
-Lit runtime.json (ecrit par l'app au lancement) et le jeton de l'API locale
-(dans le magasin de secrets chiffre), puis parle a l'API HTTP locale de Maily.
-L'app Maily doit etre lancee.
+Reads runtime.json (written by the app at launch) and the local API token
+(in the encrypted secret store), then talks to Maily's local HTTP API. The
+Maily app must be running.
 
-Exemples (depuis la racine du repo) :
+Examples (from the repository root):
   uv run python scripts/claude_client.py accounts
   uv run python scripts/claude_client.py inbox --account 1
   uv run python scripts/claude_client.py read 42
-  uv run python scripts/claude_client.py send --account 1 --to dest@example.com --subject "Coucou" --body "Salut"
+  uv run python scripts/claude_client.py send --account 1 --to dest@example.com --subject "Hello" --body "Hi"
 
-Importable aussi : `from scripts.claude_client import accounts, messages, read_message, send, sync`.
+Also importable: `from scripts.claude_client import accounts, messages, read_message, send, sync`.
 """
 from __future__ import annotations
 import sys
@@ -30,10 +30,10 @@ def _base_and_token():
     layout = paths.ensure_runtime_dirs(paths.runtime_dir())
     rt = runtime.read_runtime_file(layout["runtime_json"])
     if not rt:
-        raise SystemExit("Maily ne semble pas lance (runtime.json absent). Lance l'app d'abord.")
+        raise SystemExit("Maily does not seem to be running (no runtime.json). Start the app first.")
     token = runtime.read_api_token()
     if not token:
-        raise SystemExit("Jeton d'API introuvable. Lance l'app au moins une fois.")
+        raise SystemExit("API token not found. Start the app at least once.")
     return rt["base_url"], token
 
 
@@ -48,7 +48,7 @@ def _req(method, path, body=None):
         with urllib.request.urlopen(req) as r:
             return json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
-        raise SystemExit(f"Erreur API {e.code} sur {path} : {e.read().decode(errors='ignore')}")
+        raise SystemExit(f"API error {e.code} on {path}: {e.read().decode(errors='ignore')}")
 
 
 def accounts():
@@ -124,7 +124,7 @@ def _cli():
             print(f'{flag} [{m["id"]}] {(m["addr_from"] or "")[:35]:35} | {(m["subject"] or "")[:50]}')
     elif args.cmd == "read":
         m = read_message(args.id)
-        print(f'De : {m["addr_from"]}\nObjet : {m["subject"]}\n\n{m.get("body_text") or "(html seulement)"}')
+        print(f'From: {m["addr_from"]}\nSubject: {m["subject"]}\n\n{m.get("body_text") or "(HTML only)"}')
     elif args.cmd == "send":
         print(send(int(args.account), args.to, args.subject, args.body))
     elif args.cmd == "sync":

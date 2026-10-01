@@ -26,7 +26,7 @@ def test_roundtrip_and_delete():
 def test_data_is_encrypted_at_rest(tmp_store):
     secret_file.set("api_token", "s3cr3t-value")
     blob = (tmp_store / "secrets.enc").read_bytes()
-    assert b"s3cr3t-value" not in blob  # jamais en clair sur le disque
+    assert b"s3cr3t-value" not in blob  # never in clear text on disk
 
 
 def test_key_file_is_owner_only(tmp_store):
@@ -40,8 +40,8 @@ def test_key_file_is_owner_only(tmp_store):
 def test_permissions_stay_owner_only_after_rewrite(tmp_store):
     secret_file.set("a", "1")
     if os.name == "posix":
-        os.chmod(tmp_store / "secrets.enc", 0o644)   # permissions relachees par un tiers
-    secret_file.set("b", "2")                        # la reecriture repart d'un fichier neuf 0600
+        os.chmod(tmp_store / "secrets.enc", 0o644)   # permissions loosened by someone else
+    secret_file.set("b", "2")                        # the rewrite starts from a fresh 0600 file
     if os.name == "posix":
         assert stat.S_IMODE((tmp_store / "secrets.enc").stat().st_mode) == 0o600
 
@@ -76,14 +76,14 @@ def test_key_creation_uses_exclusive_create(tmp_store, monkeypatch):
 
 
 def test_undecryptable_file_raises_and_is_left_intact(tmp_store):
-    secret_file.set("account:me@example.com", "jeton-precieux")
-    # Une autre cle (cle remplacee, restauration partielle...) : illisible.
+    secret_file.set("account:me@example.com", "precious-token")
+    # Another key (replaced key, partial restore...): unreadable.
     (tmp_store / "secrets.key").write_bytes(Fernet.generate_key())
     before = (tmp_store / "secrets.enc").read_bytes()
     with pytest.raises(SecretStoreError):
         secret_file.get("account:me@example.com")
     with pytest.raises(SecretStoreError):
-        secret_file.set("api_token", "nouveau")      # ne doit PAS ecraser le fichier
+        secret_file.set("api_token", "new")      # must NOT overwrite the file
     with pytest.raises(SecretStoreError):
         secret_file.delete("account:me@example.com")
     assert (tmp_store / "secrets.enc").read_bytes() == before
@@ -91,7 +91,7 @@ def test_undecryptable_file_raises_and_is_left_intact(tmp_store):
 
 def test_corrupted_file_raises(tmp_store):
     secret_file.set("k", "v")
-    (tmp_store / "secrets.enc").write_bytes(b"pas du fernet")
+    (tmp_store / "secrets.enc").write_bytes(b"not fernet at all")
     with pytest.raises(SecretStoreError):
         secret_file.get("k")
 
@@ -147,10 +147,10 @@ def _process_worker(data_dir, n, count):
         sf.set(f"p{n}-{i}", str(i))
 
 
-@pytest.mark.skipif(os.name != "posix", reason="verrou fcntl teste sur POSIX")
+@pytest.mark.skipif(os.name != "posix", reason="fcntl lock tested on POSIX")
 def test_concurrent_processes_lose_no_update(tmp_path, monkeypatch):
     # Plusieurs processus (app, serveur MCP, scripts) ecrivent en meme temps :
-    # sans verrou inter-processus, des mises a jour disparaitraient.
+    # without an inter-process lock, updates would be lost.
     data_dir = tmp_path / "shared"
     data_dir.mkdir()
     ctx = multiprocessing.get_context("spawn")
@@ -175,10 +175,10 @@ def test_migrate_from_keyring(monkeypatch):
             return fake.get((service, name))
 
     monkeypatch.setitem(__import__("sys").modules, "keyring", FakeKeyring)
-    n = secret_file.migrate_from_keyring(["api_token", "account:me@example.com", "absent"])
+    n = secret_file.migrate_from_keyring(["api_token", "account:me@example.com", "missing"])
     assert n == 2
     assert secret_file.get("api_token") == "tok"
-    # N'ecrase pas une valeur deja presente.
+    # Does not overwrite a value already present.
     secret_file.set("api_token", "kept")
     assert secret_file.migrate_from_keyring(["api_token"]) == 0
     assert secret_file.get("api_token") == "kept"
@@ -200,8 +200,8 @@ def test_migrate_from_keyring_refuses_unreadable_store(tmp_store, monkeypatch):
 
 @pytest.mark.skipif(os.name != "posix", reason="permissions POSIX")
 def test_data_dir_created_owner_only(monkeypatch, tmp_path):
-    # Le serveur MCP ou un script peut creer le dossier avant l'app : 0700, pas l'umask.
-    fresh = tmp_path / "neuf" / "Maily"
+    # The MCP server or a script may create the folder before the app: 0700, not the umask.
+    fresh = tmp_path / "fresh" / "Maily"
     monkeypatch.setattr(secret_file.paths, "runtime_dir", lambda override=None: fresh)
     secret_file.set("k", "v")
     assert stat.S_IMODE(fresh.stat().st_mode) == 0o700

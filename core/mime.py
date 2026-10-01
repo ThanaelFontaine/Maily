@@ -26,6 +26,6 @@ def build_mime(sender, to, subject, body_text, body_html=None, cc=None,
         maintype, _, subtype = mime.partition("/")
         msg.add_attachment(att["data"], maintype=maintype or "application",
                            subtype=subtype or "octet-stream",
-                           filename=att.get("filename") or "piece-jointe")
+                           filename=att.get("filename") or "attachment")
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     return raw, mid

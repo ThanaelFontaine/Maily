@@ -9,11 +9,11 @@ def store(database):
 
 def _seed(store):
     a = store.upsert_account("me@example.com")
-    b = store.upsert_account("perso@example.org")
-    store.upsert_message(a, "g1", thread_id="t1", subject="Un", internal_date=100, label_ids='["INBOX"]')
-    store.upsert_message(a, "g2", thread_id="t1", subject="Un-reponse", internal_date=200, label_ids='["INBOX"]')
-    store.upsert_message(b, "g3", thread_id="t2", subject="Deux", internal_date=300, label_ids='["INBOX","IMPORTANT"]')
-    store.upsert_message(a, "g4", thread_id="t3", subject="Corbeille", internal_date=400, is_trashed=1)
+    b = store.upsert_account("personal@example.org")
+    store.upsert_message(a, "g1", thread_id="t1", subject="One", internal_date=100, label_ids='["INBOX"]')
+    store.upsert_message(a, "g2", thread_id="t1", subject="One-reply", internal_date=200, label_ids='["INBOX"]')
+    store.upsert_message(b, "g3", thread_id="t2", subject="Two", internal_date=300, label_ids='["INBOX","IMPORTANT"]')
+    store.upsert_message(a, "g4", thread_id="t3", subject="Trashed", internal_date=400, is_trashed=1)
     return a, b
 
 
@@ -21,36 +21,36 @@ def test_list_messages_unified_excludes_trash(store):
     _seed(store)
     msgs = store.list_messages()
     subjects = [m["subject"] for m in msgs]
-    assert "Corbeille" not in subjects
-    assert subjects[0] == "Deux"
+    assert "Trashed" not in subjects
+    assert subjects[0] == "Two"
 
 
 def test_list_messages_per_account(store):
     a, b = _seed(store)
     msgs = store.list_messages(account_id=b)
-    assert {m["subject"] for m in msgs} == {"Deux"}
+    assert {m["subject"] for m in msgs} == {"Two"}
 
 
 def test_list_messages_require_label(store):
     _seed(store)
     msgs = store.list_messages(require_labels=["IMPORTANT"])
-    assert {m["subject"] for m in msgs} == {"Deux"}
+    assert {m["subject"] for m in msgs} == {"Two"}
 
 
 def test_list_messages_exclude_label(store):
     _seed(store)
     msgs = store.list_messages(require_labels=["INBOX"], exclude_labels=["IMPORTANT"])
     subjects = {m["subject"] for m in msgs}
-    assert "Deux" not in subjects and "Un" in subjects
+    assert "Two" not in subjects and "One" in subjects
 
 
 def test_labels_replace_and_list(store):
     acc = store.upsert_account("me@example.com")
-    store.replace_labels(acc, [{"id": "Label_1", "name": "Perso", "type": "user"},
+    store.replace_labels(acc, [{"id": "Label_1", "name": "Personal", "type": "user"},
                                {"id": "INBOX", "name": "INBOX", "type": "system"}])
     labs = store.list_labels(acc)
-    assert {l["name"] for l in labs} == {"Perso", "INBOX"}
-    store.replace_labels(acc, [{"id": "Label_1", "name": "Perso", "type": "user"}])
+    assert {l["name"] for l in labs} == {"Personal", "INBOX"}
+    store.replace_labels(acc, [{"id": "Label_1", "name": "Personal", "type": "user"}])
     assert len(store.list_labels(acc)) == 1
 
 

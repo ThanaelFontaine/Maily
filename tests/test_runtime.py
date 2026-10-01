@@ -28,12 +28,12 @@ def test_runtime_file_roundtrip(tmp_path):
         assert stat.S_IMODE(p.stat().st_mode) == 0o600
 
 
-def test_runtime_file_porte_la_cle_en_0600(tmp_path):
+def test_runtime_file_carries_the_token_with_0600(tmp_path):
     p = tmp_path / "runtime.json"
     data = runtime.write_runtime_file(p, "127.0.0.1", 50123, token="abc")
     assert data["token"] == "abc"
-    lu = runtime.read_runtime_file(p)
-    assert lu["token"] == "abc" and lu["port"] == 50123 and lu["host"] == "127.0.0.1"
+    loaded = runtime.read_runtime_file(p)
+    assert loaded["token"] == "abc" and loaded["port"] == 50123 and loaded["host"] == "127.0.0.1"
     assert stat.S_IMODE(p.stat().st_mode) == 0o600
 
 
@@ -48,8 +48,8 @@ def test_runtime_file_fixes_loose_permissions(tmp_path):
     assert data["token"] == "xyz"
     # Verify permissions are fixed to 0o600.
     assert stat.S_IMODE(p.stat().st_mode) == 0o600
-    lu = runtime.read_runtime_file(p)
-    assert lu["token"] == "xyz"
+    loaded = runtime.read_runtime_file(p)
+    assert loaded["token"] == "xyz"
 
 
 def test_runtime_file_no_fd_leak_on_fchmod_error(tmp_path, monkeypatch):

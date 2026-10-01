@@ -1,25 +1,26 @@
-"""Deverrouillage par Touch ID au lancement (macOS, framework LocalAuthentication).
+"""Touch ID unlock at launch (macOS, LocalAuthentication framework).
 
-`require_unlock()` renvoie True si l'utilisateur s'authentifie (empreinte, avec
-repli mot de passe de session), False s'il annule/echoue. Politique de securite :
+`require_unlock()` returns True if the user authenticates (fingerprint, with
+the session password as a fallback), False if they cancel or fail. Security
+policy:
 
-- Hors macOS, si le framework est absent, ou si aucun capteur biometrique n'est
-  configure  -> on N'IMPRIME PAS de porte (renvoie True) : on ne verrouille
-  jamais l'app hors d'un poste equipe, pour ne pas enfermer l'utilisateur.
-- Sur un Mac avec Touch ID configure -> l'authentification est REQUISE : un echec
-  ou une annulation renvoie False (l'app doit se fermer).
-- Variable d'environnement MAILY_NO_BIOMETRIC=1 -> desactive la porte (debug).
+- Outside macOS, if the framework is missing, or if no biometric sensor is set
+  up: NO gate (returns True). The app is never locked on a machine without the
+  hardware, so that the user is never locked out.
+- On a Mac with Touch ID set up: authentication is REQUIRED; a failure or a
+  cancellation returns False (the app must quit).
+- Environment variable MAILY_NO_BIOMETRIC=1: disables the gate (debugging).
 
-L'appel est bloquant et pompe la run loop du thread principal pour afficher la
-feuille systeme meme avant le demarrage de la fenetre applicative.
+The call blocks and pumps the run loop of the main thread so that the system
+sheet shows even before the application window starts.
 """
 from __future__ import annotations
 import os
 import sys
 import threading
 
-# LAPolicyDeviceOwnerAuthentication = biometrie + repli mot de passe de session.
-# (Evite un blocage si l'empreinte echoue plusieurs fois.)
+# LAPolicyDeviceOwnerAuthentication = biometrics + session password fallback.
+# (Avoids a lockout if the fingerprint fails several times.)
 _LA_POLICY = 2
 
 
@@ -27,7 +28,7 @@ def _disabled() -> bool:
     return bool(os.environ.get("MAILY_NO_BIOMETRIC"))
 
 
-def require_unlock(reason: str = "Deverrouiller Maily") -> bool:
+def require_unlock(reason: str = "Unlock Maily") -> bool:
     if sys.platform != "darwin" or _disabled():
         return True
     try:
@@ -35,16 +36,16 @@ def require_unlock(reason: str = "Deverrouiller Maily") -> bool:
         import Foundation
         import AppKit
     except Exception:
-        # Framework indisponible : on ne bloque pas.
+        # Framework unavailable: do not block.
         return True
 
     ctx = LocalAuthentication.LAContext.alloc().init()
     can, _err = ctx.canEvaluatePolicy_error_(_LA_POLICY, None)
     if not can:
-        # Aucun mecanisme d'authentification exploitable : pas de porte.
+        # No usable authentication mechanism: no gate.
         return True
 
-    # S'assure d'etre une app graphique active pour afficher la feuille Touch ID.
+    # Makes sure the process is an active GUI app, to show the Touch ID sheet.
     try:
         app = AppKit.NSApplication.sharedApplication()
         app.setActivationPolicy_(0)  # NSApplicationActivationPolicyRegular

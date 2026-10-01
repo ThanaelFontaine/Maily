@@ -10,7 +10,7 @@ TOKEN = "test-token"
 def client(database):
     store = Store(database)
     a = store.upsert_account("me@example.com")
-    store.upsert_message(a, "g1", thread_id="t1", subject="Bonjour",
+    store.upsert_message(a, "g1", thread_id="t1", subject="Hello",
                          body_html="<b>hi</b><script>x</script>",
                          internal_date=100, label_ids='["INBOX"]', is_unread=1)
     app = create_app(store, TOKEN, sync_fn=lambda account_id: 7)
@@ -42,7 +42,7 @@ def test_list_messages(client):
     c, _ = client
     r = c.get("/messages", headers=_auth())
     assert r.status_code == 200
-    assert r.json()[0]["subject"] == "Bonjour"
+    assert r.json()[0]["subject"] == "Hello"
 
 
 def test_message_html_sanitized(client):
@@ -118,14 +118,14 @@ def test_glass_invalid_alpha_is_400(database):
 
 def test_patch_account_name_and_color(client):
     c, a = client
-    r = c.patch(f"/accounts/{a}", headers=_auth(), json={"display_name": "Perso", "color": "#12ab34"})
+    r = c.patch(f"/accounts/{a}", headers=_auth(), json={"display_name": "Personal", "color": "#12ab34"})
     assert r.status_code == 200
     body = r.json()
-    assert body["display_name"] == "Perso" and body["color"] == "#12ab34"
+    assert body["display_name"] == "Personal" and body["color"] == "#12ab34"
     # persistance
     accs = c.get("/accounts", headers=_auth()).json()
     me = [x for x in accs if x["id"] == a][0]
-    assert me["display_name"] == "Perso" and me["color"] == "#12ab34"
+    assert me["display_name"] == "Personal" and me["color"] == "#12ab34"
 
 
 def test_patch_account_partial_keeps_other(client):
@@ -186,7 +186,7 @@ def test_add_google_endpoint_reauth_is_400(database):
     from core.auth import ReauthRequired
 
     def boom():
-        raise ReauthRequired("client OAuth absent")
+        raise ReauthRequired("OAuth client missing")
 
     c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
     r = c.post("/accounts/google", headers=_auth())
@@ -197,7 +197,7 @@ def test_add_google_endpoint_timeout_is_408(database):
     from core.auth import AuthTimeout
 
     def boom():
-        raise AuthTimeout("delai depasse")
+        raise AuthTimeout("timed out")
 
     c = TestClient(create_app(Store(database), TOKEN, add_google_fn=boom))
     assert c.post("/accounts/google", headers=_auth()).status_code == 408

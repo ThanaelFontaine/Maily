@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Maily: every mailbox in one app, your AI assistant in all of them</title>
+  <meta name="description" content="Maily is a free, open source mail app for your Mac. One clean inbox for your Gmail and IMAP accounts, your mail kept on your computer, and Claude working across every account through a local MCP server.">
+  <link rel="canonical" href="https://maily.thanaelfontaine.eu/">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1f1f1f" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Maily">
+  <meta property="og:title" content="Maily: every mailbox in one app, your AI assistant in all of them">
+  <meta property="og:description" content="A free, open source desktop mail app for Gmail and IMAP, with a local MCP server for Claude and other MCP clients.">
+  <meta property="og:url" content="https://maily.thanaelfontaine.eu/">
+  <meta property="og:image" content="https://maily.thanaelfontaine.eu/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Maily: every mailbox in one app. Your AI assistant in all of them.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Maily: every mailbox in one app, your AI assistant in all of them">
+  <meta name="twitter:description" content="A free, open source desktop mail app for Gmail and IMAP, with a local MCP server for Claude and other MCP clients.">
+  <meta name="twitter:image" content="https://maily.thanaelfontaine.eu/assets/og-image.png">
+  <meta name="twitter:image:alt" content="Maily: every mailbox in one app. Your AI assistant in all of them.">
+
+  <link rel="stylesheet" href="/styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Maily",
+    "description": "Free, open source desktop mail app for Gmail and IMAP that keeps your mail on your computer and exposes a local MCP server for AI assistants.",
+    "url": "https://maily.thanaelfontaine.eu/",
+    "image": "https://maily.thanaelfontaine.eu/assets/og-image.png",
+    "screenshot": "https://maily.thanaelfontaine.eu/assets/classic-light.png",
+    "applicationCategory": "CommunicationApplication",
+    "operatingSystem": "macOS",
+    "downloadUrl": "https://github.com/ThanaelFontaine/Maily/releases/latest",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Thanaël Fontaine",
+      "url": "https://thanaelfontaine.eu"
+    },
+    "codeRepository": "https://github.com/ThanaelFontaine/Maily"
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <a class="brand" href="/" aria-label="Maily, home">
+        <img src="/assets/logo-96.png" width="32" height="32" alt="">
+        <span>Maily</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#start">Quick start</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </nav>
+      <div class="topbar-cta">
+        <a class="btn btn-ghost btn-sm" href="https://github.com/ThanaelFontaine/Maily">GitHub</a>
+        <a class="btn btn-primary btn-sm" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap">
+        <img class="hero-icon" src="/assets/icon-192.png" width="88" height="88" alt="">
+        <p class="eyebrow">Maily · free mail app for macOS</p>
+        <h1 id="hero-title">Every mailbox in one app. Your AI assistant in all of them.</h1>
+        <p class="lead">Maily is a free, open source mail app for your Mac. It brings your Gmail and IMAP accounts together in one clean inbox, keeps your mail on your computer, and lets Claude work across every account, with no extra cloud in between.</p>
+        <div class="cta">
+          <a class="btn btn-primary btn-lg" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download for macOS</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/ThanaelFontaine/Maily">View on GitHub</a>
+        </div>
+        <p class="fine">Free and open source (MIT) · Apple Silicon · Prefer the terminal? <a href="#start">Run it from source</a></p>
+        <figure class="hero-shot">
+          <picture>
+            <source srcset="/assets/classic-dark.png" media="(prefers-color-scheme: dark)">
+            <img src="/assets/classic-light.png" width="1280" height="800" alt="Maily's unified inbox: accounts on the left, the message list in the middle, an open message on the right." fetchpriority="high">
+          </picture>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" id="benefits" aria-labelledby="benefits-title">
+      <div class="wrap">
+        <h2 id="benefits-title">What you get</h2>
+        <div class="benefits">
+          <article class="benefit">
+            <svg class="b-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path d="M3 7l9 6 9-6M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>One inbox for all your accounts</h3>
+            <p>Gmail, Google Workspace and IMAP mailboxes side by side, together or one at a time. Search all of them instantly, even offline.</p>
+          </article>
+          <article class="benefit">
+            <svg class="b-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>An assistant that sees every mailbox</h3>
+            <p>Claude Desktop, Claude Code or any local <a href="https://modelcontextprotocol.io/">MCP</a> client can read, search, export, trash and send across all your accounts through Maily's nine tools.</p>
+          </article>
+          <article class="benefit">
+            <svg class="b-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path d="M7 11V8a5 5 0 0 1 10 0v3M6 11h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zM12 15v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Your mail stays on your Mac</h3>
+            <p>Maily talks to Google and your IMAP server directly, with your own credentials. No Maily server, no telemetry, tokens encrypted on disk.</p>
+          </article>
+          <article class="benefit">
+            <svg class="b-icon" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <h3>Free, for good</h3>
+            <p>MIT licensed. No subscription, no paid tier, no Maily account to create. Tracking pixels blocked by default.</p>
+          </article>
+        </div>
+        <div class="cta center">
+          <a class="btn btn-primary btn-lg" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download for macOS</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/ThanaelFontaine/Maily">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="why" aria-labelledby="why-title">
+      <div class="wrap">
+        <h2 id="why-title">Why Maily exists</h2>
+        <p class="section-lead">More and more people ask an AI assistant to sort, summarize and answer their mail. The hosted connectors that make this possible come with trade-offs.</p>
+        <div class="cards">
+          <article class="card">
+            <h3>One account at a time</h3>
+            <p>Anthropic's help center says Claude's Gmail connector reaches the Google account you connected. If your mail is spread over a personal address, a work address and an IMAP provider, a Gmail connector cannot see the whole picture.</p>
+          </article>
+          <article class="card">
+            <h3>Another cloud reaches your mailbox</h3>
+            <p>With a hosted connector, the provider's servers fetch your mail for the assistant. Anthropic states that data retrieved through its connectors is stored on its servers. Check the Google permissions a hosted Gmail connection asks for: a scope such as <code>gmail.modify</code> lets it read, compose and send email.</p>
+          </article>
+          <article class="card">
+            <h3>Limited actions</h3>
+            <p>Connectors only do what their provider has built. Anthropic notes, for instance, that its Gmail connector sees attachment metadata only, not the files themselves.</p>
+          </article>
+        </div>
+        <p class="sources">Sources: <a href="https://support.claude.com/en/articles/10166901-use-google-workspace-connectors">Anthropic, Google Workspace connectors</a> · <a href="https://developers.google.com/workspace/gmail/api/auth/scopes">Google, Gmail API scopes</a></p>
+        <div class="why-quote">
+          <aside class="quote" aria-labelledby="why-built">
+            <h3 id="why-built">Why I built it</h3>
+            <blockquote>
+              <p>I wanted my assistants to work across all my mailboxes without handing extra access to yet another cloud. I wanted it simple, fast and free. So I built Maily for myself, and now it is open for everyone.</p>
+            </blockquote>
+            <p class="sig"><a href="https://thanaelfontaine.eu">Thanaël Fontaine</a>, author</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <h2 id="features-title">Features</h2>
+
+        <div class="feature">
+          <div class="feature-text">
+            <h3>One inbox for every account</h3>
+            <p>Gmail, Google Workspace and IMAP mailboxes side by side. Read everything in a unified view or one account at a time, each with its own name and color. Gmail categories, labels, archive and trash are all there; on Gmail, a trashed message can be restored in one click.</p>
+            <ul class="mini">
+              <li>Instant, offline full-text search across all accounts</li>
+              <li>Automatic sync every 3 minutes while the app is open</li>
+              <li>Open any message in its own tab, export it as <code>.eml</code></li>
+            </ul>
+          </div>
+          <figure class="shot">
+            <img src="/assets/classic-light.png" width="1280" height="800" loading="lazy" alt="The unified inbox with three accounts, each marked with its own color.">
+          </figure>
+        </div>
+
+        <div class="feature feature-rev">
+          <div class="feature-text">
+            <h3>Write, reply and forward</h3>
+            <p>A focused composer with attachments, a From selector across your Gmail accounts, and a send button in the color of the sending account, so you always know which address is speaking. Replies and forwards always start with <code>Re:</code> and <code>Fwd:</code>, whatever the interface language, so every mail client understands them. Sending works for Gmail accounts; IMAP accounts are read-only.</p>
+          </div>
+          <figure class="shot">
+            <img src="/assets/composer.png" width="1280" height="800" loading="lazy" alt="The message composer, with recipient, subject and body fields.">
+          </figure>
+        </div>
+
+        <div class="feature">
+          <div class="feature-text">
+            <h3>Tracking pixels blocked</h3>
+            <p>Remote images are not loaded unless you allow them, for one message or for all. A banner tells you how many were blocked. Messages are sanitized and shown in a sandboxed frame.</p>
+          </div>
+          <figure class="shot">
+            <img src="/assets/remote-images-blocked.png" width="1280" height="800" loading="lazy" alt="A message with a banner saying that remote images were blocked.">
+          </figure>
+        </div>
+
+        <h3 class="sub">Four themes, light and dark</h3>
+        <p class="sub-lead"><strong>Classic</strong> (the default: flat and familiar, with a dark variant that follows your system), <strong>Frutiger Aero</strong>, <strong>Glassmorphism</strong> (native blurred glass on macOS) and <strong>Zero Day</strong>.</p>
+        <div class="gallery gallery-2">
+          <figure>
+            <img src="/assets/classic-dark.png" width="1280" height="800" loading="lazy" alt="Maily with the Classic theme in dark mode.">
+            <figcaption>Classic, dark</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/theme-aero.png" width="1280" height="800" loading="lazy" alt="Maily with the glossy Frutiger Aero theme.">
+            <figcaption>Frutiger Aero</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/theme-glass.png" width="1280" height="800" loading="lazy" alt="Maily with the Glassmorphism theme: panels of blurred glass.">
+            <figcaption>Glassmorphism</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/theme-zeroday.png" width="1280" height="800" loading="lazy" alt="Maily with the dark, terminal-style Zero Day theme.">
+            <figcaption>Zero Day</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Five languages, one settings panel</h3>
+        <p class="sub-lead">The interface speaks <span lang="en">English</span>, <span lang="fr">Français</span>, <span lang="de">Deutsch</span>, <span lang="es">Español</span> and <span lang="pt">Português</span>. On first launch Maily follows your system language when it is one of these five, and English otherwise. Switch at any time in <strong>Settings › Language</strong>: the change applies at once, without restarting. One Settings panel, five tabs (Appearance, Language, Privacy, Accounts, About), and every choice is kept between launches.</p>
+        <div class="gallery gallery-2">
+          <figure>
+            <img src="/assets/settings-appearance.png" width="1280" height="800" loading="lazy" alt="Settings, Appearance tab: theme and light or dark mode.">
+            <figcaption>Appearance</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/settings-language.png" width="1280" height="800" loading="lazy" alt="Settings, Language tab: English, Français, Deutsch, Español and Português.">
+            <figcaption>Language</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/settings-privacy.png" width="1280" height="800" loading="lazy" alt="Settings, Privacy tab: remote images off by default.">
+            <figcaption>Privacy</figcaption>
+          </figure>
+          <figure>
+            <img src="/assets/settings-accounts.png" width="1280" height="800" loading="lazy" alt="Settings, Accounts tab: name, color and disconnect for each account.">
+            <figcaption>Accounts</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub" id="tools">What your assistant can do</h3>
+        <p class="sub-lead">The MCP server exposes nine tools that work across every account you added. Your assistant picks an account by its address or its name.</p>
+        <div class="table-wrap">
+          <table class="tools">
+            <caption class="sr-only">Maily MCP tools</caption>
+            <thead>
+              <tr><th scope="col">Tool</th><th scope="col">What it does</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>maily_list_accounts</code></td><td>Lists your accounts. The natural first call.</td></tr>
+              <tr><td><code>maily_list_messages</code></td><td>Recent messages of one account, unread only if you like. <code>category</code> is <code>inbox</code> (default), a Gmail category, <code>archived</code> or <code>all</code>.</td></tr>
+              <tr><td><code>maily_get_message</code></td><td>A full message: sender, recipients, date, body and attachment list.</td></tr>
+              <tr><td><code>maily_search</code></td><td>Local full-text search in one account or all of them.</td></tr>
+              <tr><td><code>maily_sync</code></td><td>Fetches new mail now.</td></tr>
+              <tr><td><code>maily_export_eml</code></td><td>Saves a message as a standard <code>.eml</code> file.</td></tr>
+              <tr><td><code>maily_download_attachment</code></td><td>Saves an attachment to disk.</td></tr>
+              <tr><td><code>maily_trash</code></td><td>Moves a message to the trash. Reversible for Gmail (restore from the app); not restorable from Maily for IMAP, so ask your assistant to confirm first.</td></tr>
+              <tr><td><code>maily_send</code></td><td>Sends an email from a Gmail account. Irreversible, so ask your assistant to confirm first.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <h2 id="how-title">How it works</h2>
+        <p class="section-lead">Three parts, two of them on your computer.</p>
+        <ol class="flow" aria-label="Data flow from your mail providers to your assistant">
+          <li class="node">
+            <span class="node-tag">Your mail providers</span>
+            <strong>Gmail API · IMAP</strong>
+            <span>Google, Orange or any IMAP server, reached with your own credentials.</span>
+          </li>
+          <li class="arrow" aria-hidden="true"><span>sync</span><svg viewBox="0 0 80 16" width="80" height="16" focusable="false"><path d="M9 8h62" stroke="currentColor" stroke-width="2" fill="none"/><path d="M10 2 2 8l8 6M70 2l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg></li>
+          <li class="node node-main">
+            <span class="node-tag">On your Mac</span>
+            <strong>Maily</strong>
+            <span>Local database with full-text search · encrypted secrets · desktop window.</span>
+          </li>
+          <li class="arrow" aria-hidden="true"><span>MCP · stdio</span><svg viewBox="0 0 80 16" width="80" height="16" focusable="false"><path d="M9 8h62" stroke="currentColor" stroke-width="2" fill="none"/><path d="M10 2 2 8l8 6M70 2l8 6-8 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg></li>
+          <li class="node">
+            <span class="node-tag">Your assistant</span>
+            <strong>Claude Desktop · Claude Code · MCP clients</strong>
+            <span>Starts Maily's MCP server as a local process. No network port is opened.</span>
+          </li>
+        </ol>
+        <p class="note">With the stdio transport of MCP, the client launches the server as a subprocess and talks to it over standard input and output (<a href="https://modelcontextprotocol.io/specification/2025-06-18/basic/transports">MCP specification</a>).</p>
+      </div>
+    </section>
+
+    <section class="band" id="start" aria-labelledby="start-title">
+      <div class="wrap">
+        <h2 id="start-title">Quick start</h2>
+        <p class="section-lead">Three steps, about fifteen minutes, most of it in the Google Cloud console.</p>
+
+        <ol class="steps">
+          <li class="step">
+            <h3>Install Maily</h3>
+            <div class="choice">
+              <div>
+                <h4>Download the macOS app</h4>
+                <p>Download <code>Maily-X.Y.Z-macos-arm64.zip</code> (Apple Silicon) from the latest release, with its <code>.sha256</code> file if you want to check it, unzip it and move <strong>Maily.app</strong> to your Applications folder.</p>
+                <p><a class="btn btn-primary" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download for macOS</a></p>
+                <p class="small">The build is not signed or notarized, so macOS blocks it the first time. Try to open it once, then go to <strong>System Settings › Privacy &amp; Security</strong>, click <strong>Open Anyway</strong> and confirm with your password (<a href="https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac">Apple's guide</a>).</p>
+              </div>
+              <div>
+                <h4>Or run from source</h4>
+                <p>You need <a href="https://docs.astral.sh/uv/">uv</a> and git. Works on macOS; Linux and Windows are expected to work but are less tested. <code>uv run maily</code> is the launch command, each time you open the app.</p>
+<pre><code>git clone https://github.com/ThanaelFontaine/Maily
+cd Maily
+uv sync
+uv run maily</code></pre>
+              </div>
+            </div>
+          </li>
+          <li class="step">
+            <h3>Connect Google</h3>
+            <p>Maily uses your own OAuth client: create a free Google Cloud project, enable the Gmail API, publish the consent screen and create a <em>Desktop app</em> client. The <a href="https://github.com/ThanaelFontaine/Maily/blob/main/docs/GOOGLE_CLOUD_SETUP.md">step-by-step guide</a> walks through every screen. Then add your accounts from the app. IMAP accounts only need the address and password.</p>
+          </li>
+          <li class="step">
+            <h3>Add Maily to Claude</h3>
+            <p>The MCP server runs from a clone of the repository, with uv, and uses the same data as the app. In Claude Desktop, choose <strong>Settings</strong> from the Claude menu in the macOS menu bar, open <strong>Developer</strong>, click <strong>Edit Config</strong>, add this with your own path, then restart Claude Desktop completely:</p>
+<pre><code>{
+  "mcpServers": {
+    "maily": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/Maily",
+               "run", "python", "-m", "app.mcp_server"]
+    }
+  }
+}</code></pre>
+            <p>In Claude Code, run:</p>
+<pre><code>claude mcp add --scope user maily -- uv --directory /absolute/path/to/Maily run python -m app.mcp_server</code></pre>
+            <p class="small">More clients, safety rules and recipes: <a href="https://github.com/ThanaelFontaine/Maily/blob/main/docs/MCP.md">docs/MCP.md</a>.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="privacy" aria-labelledby="privacy-title">
+      <div class="wrap">
+        <h2 id="privacy-title">Privacy and security</h2>
+        <div class="grid2">
+          <ul class="ticks">
+            <li><strong>Local only.</strong> No Maily server, no analytics, no telemetry. The app's internal API listens on <code>127.0.0.1</code>, on a random port, behind a random token.</li>
+            <li><strong>Encrypted secrets.</strong> OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read.</li>
+            <li><strong>Least privilege on Gmail.</strong> Two permissions: <code>gmail.modify</code> and <code>gmail.send</code>. Maily never deletes a message permanently, on Gmail or IMAP.</li>
+            <li><strong>Sanitized HTML.</strong> No scripts, no dangerous links, filtered CSS, then a sandboxed frame. Remote images are off by default.</li>
+            <li><strong>Optional Touch ID</strong> before the window opens on macOS.</li>
+          </ul>
+          <div class="callout">
+            <h3>What to keep in mind</h3>
+            <p>When your assistant calls a Maily tool, the result becomes part of your conversation, so it is processed by whoever runs the model behind that assistant. Only connect assistants you trust.</p>
+            <p>Emails can contain text written to manipulate an AI. Tell your assistant to treat mail as data, never as instructions, and to confirm before sending or trashing.</p>
+            <p>Encryption at rest protects against casual copies, not against malware running as your user. Full-disk encryption is recommended. Details in <a href="https://github.com/ThanaelFontaine/Maily/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="faq" aria-labelledby="faq-title">
+      <div class="wrap narrow">
+        <h2 id="faq-title">FAQ</h2>
+        <details>
+          <summary>Is it free?</summary>
+          <p>Yes. Maily is MIT licensed, with no subscription and no paid tier. On Google's side, standard use of the Gmail API is available at no additional cost (<a href="https://developers.google.com/workspace/gmail/api/reference/quota">Gmail API quotas</a>).</p>
+        </details>
+        <details>
+          <summary>Does any data leave my computer?</summary>
+          <p>Maily itself only talks to Google's APIs (for Gmail accounts) and to your IMAP server. Your mail is stored in a local database. The one exception is the assistant you connect: what it reads through Maily goes into your conversation with it.</p>
+        </details>
+        <details>
+          <summary>Does it work on Windows or Linux?</summary>
+          <p>macOS is the primary, tested platform and the only one with a ready-made download. Linux and Windows are expected to work from source, and the code has fallbacks for both, but they are less tested. See <a href="https://github.com/ThanaelFontaine/Maily/blob/main/docs/BUILD.md">docs/BUILD.md</a>.</p>
+        </details>
+        <details>
+          <summary>Which assistants can use it?</summary>
+          <p>Claude Desktop, Claude Code, and any MCP client that can start a local stdio server on your computer. Assistants that only accept remote connectors cannot start it.</p>
+        </details>
+        <details>
+          <summary>Does it need Google verification?</summary>
+          <p>No. The OAuth client is yours, and Google lets apps for personal use (fewer than 100 users) skip verification. You will see an "unverified app" screen the first time: that is expected, since the app is your own. Publish the consent screen rather than leaving it in "Testing", where Google makes refresh tokens expire after 7 days (<a href="https://support.google.com/cloud/answer/13464323">verification exceptions</a>, <a href="https://developers.google.com/identity/protocols/oauth2">refresh token expiration</a>).</p>
+        </details>
+        <details>
+          <summary>Can Maily or my assistant delete my mail for good?</summary>
+          <p>Not on Gmail: trash is reversible there (<em>Restore</em>), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. Disconnecting an account only removes Maily's local copy and secrets; your mailbox is untouched.</p>
+        </details>
+        <details>
+          <summary>Why can't I send from an IMAP account?</summary>
+          <p>IMAP reads mail; sending would need SMTP, which Maily does not implement yet. Contributions are welcome.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="final" id="download" aria-labelledby="final-title">
+      <div class="wrap narrow center">
+        <img src="/assets/icon-192.png" width="72" height="72" alt="" loading="lazy">
+        <h2 id="final-title">Bring every mailbox together</h2>
+        <p class="lead">Free, open source, and ready in about fifteen minutes.</p>
+        <div class="cta center">
+          <a class="btn btn-primary btn-lg" href="https://github.com/ThanaelFontaine/Maily/releases/latest">Download for macOS</a>
+          <a class="btn btn-ghost btn-lg" href="https://github.com/ThanaelFontaine/Maily">View on GitHub</a>
+        </div>
+        <p class="fine">Maily is MIT licensed. Read the code, open an issue, translate or send a pull request: the frontend is plain HTML, CSS and JavaScript, with no build step. <a href="https://github.com/ThanaelFontaine/Maily/blob/main/CONTRIBUTING.md">How to contribute</a>.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-in">
+      <p>Maily · MIT license · © 2026 <a href="https://thanaelfontaine.eu">Thanaël Fontaine</a></p>
+      <ul>
+        <li><a href="https://github.com/ThanaelFontaine/Maily">GitHub</a></li>
+        <li><a href="https://github.com/ThanaelFontaine/Maily/releases/latest">Releases</a></li>
+        <li><a href="https://github.com/ThanaelFontaine/Maily/blob/main/SECURITY.md">Security</a></li>
+        <li><a href="https://thanaelfontaine.eu">Author</a></li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>

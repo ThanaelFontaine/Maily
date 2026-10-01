@@ -67,7 +67,7 @@ def test_load_credentials_reauth_on_refresh_error(monkeypatch):
 
 def test_load_credentials_reauth_when_no_token():
     with pytest.raises(auth.ReauthRequired):
-        auth.load_credentials("absent@example.com")
+        auth.load_credentials("missing@example.com")
 
 
 def test_client_config_dict_reauth_when_absent():
@@ -141,7 +141,7 @@ def test_run_local_auth_timeout_raises(monkeypatch):
             return FakeFlow()
 
         def run_local_server(self, **kw):
-            return None  # aucun consentement recu dans le delai
+            return None  # no consent received in time
 
     monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
 
@@ -158,7 +158,7 @@ def test_run_local_auth_maps_wsgi_timeout(monkeypatch):
             return FakeFlow()
 
         def run_local_server(self, **kw):
-            raise auth.WSGITimeoutError("timed out")  # comportement reel de la lib
+            raise auth.WSGITimeoutError("timed out")  # real behavior of the library
 
     monkeypatch.setattr(auth, "InstalledAppFlow", FakeFlow)
 

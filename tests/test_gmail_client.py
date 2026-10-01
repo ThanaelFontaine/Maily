@@ -82,10 +82,10 @@ def test_modify_and_trash_build_requests():
 
 def test_execute_retries_gmail_quota_403_with_minute_scale_backoff():
     client = GmailClient(service=object())
-    attentes = []
+    waits = []
     req = FakeReq(result={"ok": 1}, errors=[_http_error(403, _QUOTA)] * 5)
-    assert client._execute(req, _sleep=attentes.append) == {"ok": 1}
-    assert sum(attentes) >= 60, "l'attente couvre la minute du quota"
+    assert client._execute(req, _sleep=waits.append) == {"ok": 1}
+    assert sum(waits) >= 60, "the wait covers the quota minute"
 
 
 def test_execute_does_not_retry_forbidden_403():
@@ -93,4 +93,4 @@ def test_execute_does_not_retry_forbidden_403():
     req = FakeReq(errors=[_http_error(403, b'{"error": {"errors": [{"reason": "insufficientPermissions"}]}}'), _http_error(403)])
     with pytest.raises(HttpError):
         client._execute(req, _sleep=lambda s: None)
-    assert len(req._errors) == 1, "un seul essai"
+    assert len(req._errors) == 1, "a single attempt"

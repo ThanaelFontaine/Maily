@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Enregistre dans la base locale les comptes deja connectes (jeton present dans le magasin chiffre).
+"""Saves in the local database the accounts already connected (token present in the encrypted store).
 
 Usage:
   uv run python scripts/register_accounts.py email1 [email2 ...]
 
-Pour chaque email : verifie qu'un jeton existe dans secrets.enc, puis cree/actualise
-la ligne compte en base (le rail de l'app liste les comptes de la base). N'ouvre
-pas de navigateur. Idempotent.
+For each address: checks that a token exists in secrets.enc, then creates or
+updates the account row in the database (the app's rail lists the accounts of
+the database). Opens no browser. Idempotent.
 """
 from __future__ import annotations
 import sys
@@ -29,11 +29,11 @@ def main():
     for e in emails:
         if secrets_store.load_account_token(e):
             store.upsert_account(e)
-            print(f"  enregistre : {e}")
+            print(f"  saved: {e}")
         else:
-            print(f"  IGNORE (aucun jeton enregistre, connecte-le d'abord) : {e}")
+            print(f"  SKIPPED (no token saved, connect it first): {e}")
     db.close()
-    print("Termine.")
+    print("Done.")
 
 
 if __name__ == "__main__":

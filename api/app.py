@@ -9,9 +9,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from core.sanitize import sanitize_html_report
 
-# Hotes acceptes dans l'en-tete Host (protection contre le DNS rebinding).
-# Les tests ajoutent "testserver" (hote par defaut de TestClient) via
-# tests/conftest.py ; il n'est jamais accepte en production.
+# Hosts accepted in the Host header (DNS rebinding protection).
+# The tests add "testserver" (TestClient's default host) through
+# tests/conftest.py; it is never accepted in production.
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 _CATEGORY_LABELS = {
     "promotions": "CATEGORY_PROMOTIONS",
@@ -39,6 +39,16 @@ class ModifyPayload(BaseModel):
     remove_labels: list[str] = []
 
 
+def _fail(status: int, code: str, detail: str) -> HTTPException:
+    """HTTP error with an English `detail` and a stable code for the interface.
+
+    The code travels in the X-Maily-Error header: the frontend translates it
+    (frontend/i18n/*.json, keys "error.<code>"), so no text from the API is
+    ever shown as is.
+    """
+    return HTTPException(status_code=status, detail=detail, headers={"X-Maily-Error": code})
+
+
 class ImapConnectPayload(BaseModel):
     email: str
     password: str
@@ -58,10 +68,10 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
 
     async def guard(request: Request):
         if not _host_ok(request):
-            raise HTTPException(status_code=403, detail="host not allowed")
+            raise _fail(403, "unauthorized", "host not allowed")
         auth = request.headers.get("authorization", "")
         if auth != f"Bearer {token}":
-            raise HTTPException(status_code=401, detail="unauthorized")
+            raise _fail(401, "unauthorized", "unauthorized")
 
     def rows(rs):
         return [dict(r) for r in rs]
@@ -82,9 +92,9 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
 
     @app.get("/prefs", dependencies=[Depends(guard)])
     def prefs_get():
-        # Preferences de l'interface (theme, mode Classic, images distantes,
-        # largeur de liste), rangees dans prefs.json : le localStorage de la
-        # webview ne survit pas au changement de port d'un lancement a l'autre.
+        # Interface preferences (theme, Classic mode, remote images, list
+        # width, language), stored in prefs.json: the webview's localStorage
+        # does not survive the port change from one launch to the next.
         return _prefs_payload()
 
     @app.post("/prefs", dependencies=[Depends(guard)])
@@ -93,11 +103,11 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         try:
             body = await request.json()
         except ValueError:
-            raise HTTPException(status_code=400, detail="JSON invalide")
+            raise _fail(400, "invalid_request", "invalid JSON")
         try:
             prefs.update(body)
         except prefs.InvalidPref as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise _fail(400, "invalid_request", str(e))
         return _prefs_payload()
 
     @app.get("/glass", dependencies=[Depends(guard)])
@@ -107,12 +117,12 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
 
     @app.post("/glass", dependencies=[Depends(guard)])
     async def glass(request: Request):
-        # Regle la densite du depoli (vibrancy) du theme Verre, en direct.
+        # Sets the frosted glass density (vibrancy) of the Glassmorphism theme, live.
         try:
             body = await request.json()
             a = float(body.get("alpha"))
         except (TypeError, ValueError, AttributeError):
-            raise HTTPException(status_code=400, detail="alpha invalide")
+            raise _fail(400, "invalid_request", "invalid alpha")
         a = max(0.0, min(1.0, a))
         if glass_fn:
             glass_fn(a)
@@ -125,59 +135,64 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.post("/accounts/google", dependencies=[Depends(guard)])
     def add_google():
         if add_google_fn is None:
-            raise HTTPException(status_code=501, detail="add account not wired")
+            raise _fail(501, "not_available", "add account not wired")
         from core.auth import ReauthRequired, AuthTimeout
         from core.accounts_service import AddAccountInProgress
         try:
             return add_google_fn()
         except ReauthRequired as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise _fail(400, "reauth_required", str(e))
         except AuthTimeout as e:
-            raise HTTPException(status_code=408, detail=str(e))
+            raise _fail(408, "auth_timeout", str(e))
         except AddAccountInProgress as e:
-            raise HTTPException(status_code=409, detail=str(e))
+            raise _fail(409, "add_in_progress", str(e))
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"ajout du compte echoue: {e}")
+            raise _fail(502, "provider_error", f"adding the account failed: {e}")
 
     @app.patch("/accounts/{account_id}", dependencies=[Depends(guard)])
     async def patch_account(account_id: int, request: Request):
-        body = await request.json()
+        try:
+            body = await request.json()
+        except ValueError:
+            raise _fail(400, "invalid_request", "invalid JSON")
+        if not isinstance(body, dict):
+            raise _fail(400, "invalid_request", "a JSON object is expected")
         dn = body.get("display_name")
         color = body.get("color")
         if dn is not None and not isinstance(dn, str):
-            raise HTTPException(status_code=400, detail="display_name invalide")
+            raise _fail(400, "invalid_display_name", "invalid display_name")
         if color is not None and not re.fullmatch(r"#[0-9a-fA-F]{6}", color or ""):
-            raise HTTPException(status_code=400, detail="color invalide")
+            raise _fail(400, "invalid_color", "invalid color")
         if store.get_account(account_id) is None:
-            raise HTTPException(status_code=404, detail="compte introuvable")
+            raise _fail(404, "account_not_found", "account not found")
         store.update_account(account_id, display_name=dn, color=color)
         return dict(store.get_account(account_id))
 
     @app.post("/accounts/imap", dependencies=[Depends(guard)])
     def add_imap(payload: ImapConnectPayload):
         if add_imap_fn is None:
-            raise HTTPException(status_code=501, detail="add imap not wired")
+            raise _fail(501, "not_available", "add imap not wired")
         from core.imap_client import ImapError
         from core.accounts_service import AddAccountInProgress
         try:
             return add_imap_fn(payload.email, payload.password, payload.host, payload.port)
         except ImapError as e:
-            raise HTTPException(status_code=400, detail=f"connexion Orange echouee: {e}")
+            raise _fail(400, "imap_login_failed", f"IMAP connection failed: {e}")
         except AddAccountInProgress as e:
-            raise HTTPException(status_code=409, detail=str(e))
+            raise _fail(409, "add_in_progress", str(e))
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"ajout du compte echoue: {e}")
+            raise _fail(502, "provider_error", f"adding the account failed: {e}")
 
     @app.delete("/accounts/{account_id}", dependencies=[Depends(guard)])
     def delete_account(account_id: int):
         if logout_fn is None:
-            raise HTTPException(status_code=501, detail="logout not wired")
+            raise _fail(501, "not_available", "logout not wired")
         if store.get_account(account_id) is None:
-            raise HTTPException(status_code=404, detail="compte introuvable")
+            raise _fail(404, "account_not_found", "account not found")
         try:
             logout_fn(account_id)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"deconnexion echouee: {e}")
+            raise _fail(502, "provider_error", f"disconnecting failed: {e}")
         return {"ok": True}
 
     @app.get("/accounts/{account_id}/labels", dependencies=[Depends(guard)])
@@ -225,14 +240,14 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     def message(message_id: int):
         m = store.get_message(message_id)
         if not m:
-            raise HTTPException(status_code=404, detail="not found")
+            raise _fail(404, "message_not_found", "not found")
         return dict(m)
 
     @app.get("/messages/{message_id}/html", dependencies=[Depends(guard)])
     def message_html(message_id: int, allow_remote: bool = False):
         m = store.get_message(message_id)
         if not m:
-            raise HTTPException(status_code=404, detail="not found")
+            raise _fail(404, "message_not_found", "not found")
         html, blocked = sanitize_html_report(m["body_html"] or "", allow_remote=allow_remote)
         if inline_fn:
             for att in store.list_attachments(message_id):
@@ -247,20 +262,20 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                         uri = None
                     if uri:
                         html = pattern.sub(lambda m: uri, html)
-        # Nombre de ressources distantes retirees (pixels espions, images web) :
-        # l'interface s'en sert pour proposer « Afficher les images ».
+        # Number of remote resources removed (tracking pixels, web images): the
+        # interface uses it to offer "Show images".
         return HTMLResponse(html, headers={"X-Maily-Blocked-Remote": str(blocked)})
 
     @app.get("/messages/{message_id}/eml", dependencies=[Depends(guard)])
     def message_eml(message_id: int):
         if eml_fn is None:
-            raise HTTPException(status_code=501, detail="eml export not wired")
+            raise _fail(501, "not_available", "eml export not wired")
         if store.get_message(message_id) is None:
-            raise HTTPException(status_code=404, detail="not found")
+            raise _fail(404, "message_not_found", "not found")
         try:
             data, filename = eml_fn(message_id)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"export .eml echoue: {e}")
+            raise _fail(502, "eml_failed", f".eml export failed: {e}")
         fname = filename or f"message-{message_id}.eml"
         ascii_fallback = re.sub(r'[\r\n"]', "", fname.encode("ascii", "ignore").decode("ascii")) or "message.eml"
         utf8_star = urllib.parse.quote(fname, safe="")
@@ -275,13 +290,13 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.get("/messages/{message_id}/attachments/{att_id}/download", dependencies=[Depends(guard)])
     def download_att(message_id: int, att_id: int):
         if download_fn is None:
-            raise HTTPException(status_code=501, detail="download not wired")
+            raise _fail(501, "not_available", "download not wired")
         try:
             data, mime, filename = download_fn(message_id, att_id)
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"telechargement echoue: {e}")
-        fname = filename or "piece-jointe"
-        ascii_fallback = re.sub(r'[\r\n"]', "", fname.encode("ascii", "ignore").decode("ascii")) or "piece-jointe"
+            raise _fail(502, "download_failed", f"download failed: {e}")
+        fname = filename or "attachment"
+        ascii_fallback = re.sub(r'[\r\n"]', "", fname.encode("ascii", "ignore").decode("ascii")) or "attachment"
         utf8_star = urllib.parse.quote(fname, safe="")
         cd = f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{utf8_star}"
         return Response(content=data, media_type="application/octet-stream",
@@ -294,25 +309,29 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     @app.post("/accounts/{account_id}/sync", dependencies=[Depends(guard)])
     def sync(account_id: int):
         if sync_fn is None:
-            raise HTTPException(status_code=501, detail="sync not wired")
+            raise _fail(501, "not_available", "sync not wired")
         return {"changed": sync_fn(account_id)}
 
     @app.post("/send", dependencies=[Depends(guard)])
     def send_endpoint(payload: SendPayload):
         if send_fn is None:
-            raise HTTPException(status_code=501, detail="send not wired")
+            raise _fail(501, "not_available", "send not wired")
         try:
             return send_fn(payload.model_dump())
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"envoi echoue: {e}")
+            raise _fail(502, "provider_error", f"sending failed: {e}")
 
     def _act(message_id, action, add=None, remove=None):
         if act_fn is None:
-            raise HTTPException(status_code=501, detail="actions not wired")
+            raise _fail(501, "not_available", "actions not wired")
+        from core.imap_client import NoTrashFolder
         try:
             return act_fn(message_id, action, add, remove)
+        except NoTrashFolder as e:
+            # Nothing was changed: the account has nowhere to put the message.
+            raise _fail(409, "no_trash_folder", str(e))
         except Exception as e:
-            raise HTTPException(status_code=502, detail=f"action echouee: {e}")
+            raise _fail(502, "provider_error", f"action failed: {e}")
 
     @app.post("/messages/{message_id}/modify", dependencies=[Depends(guard)])
     def modify_msg(message_id: int, payload: ModifyPayload):
@@ -333,7 +352,7 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         @app.get("/", response_class=HTMLResponse)
         def index(request: Request):
             if not _host_ok(request):
-                raise HTTPException(status_code=403, detail="host not allowed")
+                raise _fail(403, "unauthorized", "host not allowed")
             html = (fd / "index.html").read_text(encoding="utf-8")
             inject = f"<script>window.MAILY_TOKEN={json.dumps(token)};</script>"
             return HTMLResponse(html.replace("</head>", inject + "</head>"))

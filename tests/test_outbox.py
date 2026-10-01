@@ -10,7 +10,7 @@ def store(database):
 
 def test_add_and_mark_outbox(store):
     acc = store.upsert_account("me@example.com")
-    oid = store.add_outbox(acc, "d@example.com", "Sujet", "corps", None, "<mid1@maily>")
+    oid = store.add_outbox(acc, "d@example.com", "Subject", "body", None, "<mid1@maily>")
     row = store.get_outbox(oid)
     assert row["status"] == "queued"
     assert row["addr_to"] == "d@example.com"
