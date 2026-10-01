@@ -1,11 +1,17 @@
-# Chaque version porte sa release GitHub, creee par la CI en meme temps que le
-# tag, avec des notes qui disent ce qui change.
+# Every version has its GitHub release, created by the CI together with the
+# tag, with notes that say what changes.
 #
-# Declenchement : apres un passage VERT du workflow « Tests » sur un push de
-# main. Si la version de pyproject.toml n'a pas encore de tag vX.Y.Z, le tag et
-# la release sont crees ; les notes sont la section « ## [X.Y.Z] » de
-# CHANGELOG.md (la release echoue si cette section manque ou est vide). Une
-# version deja taguee ne fait rien. Ne jamais creer de tag ni de release a la main.
+# Trigger: after a GREEN run of the "Tests" workflow on a push to main. If the
+# version in pyproject.toml has no vX.Y.Z tag yet, the tag and the release are
+# created; the notes are the "## [X.Y.Z]" section of CHANGELOG.md (the release
+# fails if that section is missing or empty). An already tagged version does
+# nothing. Never create a tag or a release by hand.
+#
+# Once the release exists, the "macos-app" job builds Maily.app with
+# PyInstaller on a macOS (Apple Silicon) runner and attaches
+# Maily-X.Y.Z-macos-arm64.zip and its .sha256 file to the release. It runs in
+# this same workflow because events created with GITHUB_TOKEN (the tag, the
+# release) do not start other workflows.
 
 name: Release
 
@@ -27,29 +33,33 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      created: ${{ steps.publish.outputs.created }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Version et tag
+      - name: Version and tag
         id: ver
         run: |
           VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Version de pyproject.toml invalide : $VERSION (attendu X.Y.Z)." >&2
+            echo "Invalid version in pyproject.toml: $VERSION (expected X.Y.Z)." >&2
             exit 1
           fi
           TAG="v$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Le tag $TAG existe deja : rien a publier."
+            echo "Tag $TAG already exists: nothing to publish."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Notes depuis CHANGELOG.md
+      - name: Notes from CHANGELOG.md
         if: steps.ver.outputs.skip != 'true'
         run: |
           VERSION="${{ steps.ver.outputs.version }}"
@@ -60,12 +70,13 @@ jobs:
             on { print }
           ' CHANGELOG.md > release-notes.md
           if ! grep -q '[^[:space:]]' release-notes.md; then
-            echo "CHANGELOG.md n'a pas de section non vide pour $VERSION." >&2
+            echo "CHANGELOG.md has no non-empty section for $VERSION." >&2
             exit 1
           fi
           cat release-notes.md
 
-      - name: Tag et release
+      - name: Tag and release
+        id: publish
         if: steps.ver.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,3 +87,54 @@ jobs:
           git tag -a "$TAG" -m "Maily $TAG"
           git push origin "$TAG"
           gh release create "$TAG" --title "Maily $TAG" --notes-file release-notes.md --verify-tag
+          echo "created=true" >> "$GITHUB_OUTPUT"
+
+  macos-app:
+    needs: release
+    if: ${{ needs.release.outputs.created == 'true' }}
+    runs-on: macos-latest          # Apple Silicon (arm64) runner
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Dependencies and PyInstaller (uv.lock must be up to date)
+        run: uv sync --locked --group build
+
+      - name: Build Maily.app
+        run: uv run pyinstaller packaging/maily.spec --noconfirm
+
+      - name: Check the bundle
+        run: |
+          VERSION="${{ needs.release.outputs.version }}"
+          PLIST_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/Maily.app/Contents/Info.plist)"
+          if [ "$PLIST_VERSION" != "$VERSION" ]; then
+            echo "Bundle version $PLIST_VERSION does not match $VERSION." >&2
+            exit 1
+          fi
+          file dist/Maily.app/Contents/MacOS/Maily
+
+      - name: Zip and checksum
+        id: zip
+        run: |
+          ZIP="Maily-${{ needs.release.outputs.version }}-macos-arm64.zip"
+          # ditto keeps the bundle's symbolic links and metadata, unlike a plain zip.
+          ditto -c -k --sequesterRsrc --keepParent dist/Maily.app "$ZIP"
+          shasum -a 256 "$ZIP" > "$ZIP.sha256"
+          cat "$ZIP.sha256"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ZIP="${{ steps.zip.outputs.zip }}"
+          gh release upload "${{ needs.release.outputs.tag }}" "$ZIP" "$ZIP.sha256" --clobber

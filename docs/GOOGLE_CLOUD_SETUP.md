@@ -1,7 +1,5 @@
 # Google Cloud setup: your own OAuth credentials
 
-[Version française](fr/GOOGLE_CLOUD_SETUP.md)
-
 **Goal:** get a `client_id` and `client_secret` of type *Desktop app*, so that Maily can connect to your Gmail mailboxes through the Gmail API.
 **Cost:** free, no credit card, no billing account.
 **Time:** about 10 minutes, once. Afterwards, adding a mailbox takes one click.
@@ -156,4 +154,4 @@ The client was not created as **Desktop app**. Create a new client of that type 
 The app is still in *Testing*: publish it (step 5.3), then reconnect the account once.
 
 **I want to revoke Maily's access.**
-In Maily: *Réglages > Comptes > Déconnecter*. On Google's side: <https://myaccount.google.com/connections>, select Maily, remove access. To stop everything, you can also delete the OAuth client or the whole Cloud project.
+In Maily: *Settings > Accounts > Disconnect*. On Google's side: <https://myaccount.google.com/connections>, select Maily, remove access. To stop everything, you can also delete the OAuth client or the whole Cloud project.

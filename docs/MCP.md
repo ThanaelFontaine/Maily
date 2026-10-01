@@ -1,7 +1,5 @@
 # Using Maily from an AI agent (MCP server)
 
-[Version française](fr/MCP.md)
-
 Maily includes a local [Model Context Protocol](https://modelcontextprotocol.io/) server, `app/mcp_server.py`. It lets an MCP client running **on the same computer** (Claude Code, Claude Desktop, or any MCP client that speaks stdio) read and manage your mailboxes through a set of `maily_*` tools.
 
 - **Transport:** stdio. No network port is opened: the client starts the server as a child process and talks to it through its standard input and output.
@@ -113,7 +111,7 @@ The last sentence matters: an email can contain text written to manipulate an AI
 
 ## 4. Recipes
 
-- **"My unread mail in Perso":** `maily_list_messages(profile="Perso", unread_only=True)`
+- **"My unread mail in Personal":** `maily_list_messages(profile="Personal", unread_only=True)`
 - **"Find invoices everywhere":** `maily_search(query="invoice")`
 - **"Summarize this email":** `maily_get_message(message_id=123)`, then summarize.
 - **"Save this email as .eml on the Desktop":** `maily_export_eml(message_id=123, dest_path="~/Desktop")`
@@ -126,7 +124,7 @@ The last sentence matters: an email can contain text written to manipulate an AI
 ## Troubleshooting
 
 - **The `maily_*` tools do not appear.** The server is not approved: type `/mcp` in Claude Code, or check the Claude Desktop configuration and restart it.
-- **"profil introuvable" (profile not found).** Call `maily_list_accounts` and reuse an email or name exactly as listed.
+- **"profile not found".** Call `maily_list_accounts` and reuse an email or name exactly as listed.
 - **Nothing recent.** Run `maily_sync(profile="...")` first.
 - **`uv` not found.** Install uv, or put its full path in `command`.
 - **Errors about decrypting secrets.** The secret store is unreadable: see the troubleshooting section of the [README](../README.md#troubleshooting). The server never overwrites an unreadable store.

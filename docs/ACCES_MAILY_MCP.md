@@ -1,5 +1,5 @@
-# Accès à Maily via MCP (page déplacée)
+# Maily access through MCP (page moved)
 
-Ce guide a été remplacé et complété par **[docs/MCP.md](MCP.md)** (en anglais) et **[docs/fr/MCP.md](fr/MCP.md)** (en français) : activation dans Claude Code, Claude Desktop ou un autre client MCP, liste des outils `maily_*`, règles de sécurité, recettes et dépannage.
+This guide was replaced and extended by **[docs/MCP.md](MCP.md)**: setup in Claude Code, Claude Desktop or another MCP client, the list of `maily_*` tools, safety rules, recipes and troubleshooting.
 
-Cette page reste en place pour que les anciens liens fonctionnent.
+This page stays in place so that old links keep working.

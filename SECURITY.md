@@ -12,7 +12,7 @@ Please include:
 
 - what an attacker can do, and under which conditions (local user, malicious email, malicious web page, ...);
 - steps to reproduce, or a proof of concept;
-- the affected version (`Réglages > À propos`, or `core/__init__.py`) and your operating system.
+- the affected version (`Settings > About`, or `core/__init__.py`) and your operating system.
 
 Never send real tokens, passwords or email content in a report: use fictitious data.
 
