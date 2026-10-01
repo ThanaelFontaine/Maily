@@ -146,6 +146,7 @@ nav { margin-left: auto; }
 /* Hero */
 .hero { padding: 64px 0 72px; text-align: center; }
 .hero h1 { max-width: 860px; margin: 0 auto 20px; }
+.hero h1 span { display: inline-block; }
 .hero .lead { margin: 0 auto; }
 .hero .cta { justify-content: center; }
 .hero-shot { margin: 40px auto 0; max-width: 1040px; }
