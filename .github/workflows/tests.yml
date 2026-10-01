@@ -1,4 +1,5 @@
-# Tests de Maily a chaque push et a chaque pull request, sur macOS et Linux.
+# Tests de Maily sur macOS et Linux : a chaque push sur main et a chaque pull
+# request (une PR ne declenche qu'un seul run ; un tag pousse n'en declenche aucun).
 # Les tests n'utilisent ni le reseau, ni une vraie boite, ni le vrai dossier de
 # donnees : tests/conftest.py impose un dossier temporaire et un keyring nul.
 # Windows n'est pas dans la matrice : le code prevoit des replis (verrou msvcrt,
@@ -9,6 +10,7 @@ name: Tests
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

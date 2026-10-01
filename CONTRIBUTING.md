@@ -54,7 +54,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). In short: `core/` is the engin
 4. Run `uv run pytest`.
 5. Open the pull request, describing what changes, why, and how you tested it (screenshots for UI changes).
 
-The CI (`.github/workflows/tests.yml`) runs the tests on macOS and Linux for every push and pull request.
+The CI (`.github/workflows/tests.yml`) runs the tests on macOS and Linux for every push to `main` and every pull request.
 
 ## Releasing a version
 

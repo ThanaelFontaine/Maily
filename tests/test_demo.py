@@ -29,3 +29,11 @@ def test_refuses_the_real_data_dir(monkeypatch):
     real = str(demo._default_data_dir())
     with pytest.raises(SystemExit):
         demo.main(["--data-dir", real])
+
+
+def test_refuses_a_subfolder_of_the_real_data_dir(monkeypatch):
+    demo = _demo()
+    monkeypatch.delenv("MAILY_DATA_DIR", raising=False)
+    sub = str(demo._default_data_dir() / "demo")
+    with pytest.raises(SystemExit):
+        demo.main(["--data-dir", sub])

@@ -136,8 +136,11 @@ def main(argv=None) -> None:
 
     data_dir = pathlib.Path(args.data_dir).expanduser() if args.data_dir else \
         pathlib.Path(tempfile.mkdtemp(prefix="maily-demo-"))
-    if data_dir.resolve() == _default_data_dir():
-        raise SystemExit("Refus : --data-dir pointe vers le vrai dossier de Maily. Choisis un autre dossier.")
+    real = _default_data_dir()
+    target = data_dir.resolve()
+    if target == real or real in target.parents:
+        raise SystemExit("Refus : --data-dir pointe vers le vrai dossier de Maily (ou un de ses "
+                         "sous-dossiers). Choisis un autre dossier.")
     os.environ[paths.DATA_DIR_ENV] = str(data_dir)
 
     import uvicorn
