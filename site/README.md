@@ -55,3 +55,10 @@ description. The grid of cards adapts by itself.
 The plan is to serve this folder as static assets with Cloudflare, on the `maily.thanaelfontaine.eu`
 subdomain, with `404.html` as the not-found page. Nothing is deployed today: no Cloudflare project,
 DNS record or workflow exists yet for this page.
+
+## Deployment
+
+The page is served by Cloudflare Pages from this folder (project connected to the GitHub repository,
+no build command, build output directory `site`), on the custom domain `maily.thanaelfontaine.eu`.
+`_headers` sets the security headers (a strict Content Security Policy that allows the one inline
+script by its hash) and the cache rules; if that inline script changes, update its hash.
