@@ -6,9 +6,9 @@ Maily for Linux (x86_64)
    Debian 13, Ubuntu 24.04 or newer:
      sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2
    Fedora 40 or newer:
-     sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject
+     sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject gobject-introspection
    Arch Linux:
-     sudo pacman -S webkit2gtk-4.1 gtk3
+     sudo pacman -S webkit2gtk-4.1 gtk3 gobject-introspection-runtime
 
    The binary needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40).
 

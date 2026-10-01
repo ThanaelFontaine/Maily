@@ -255,7 +255,7 @@ jobs:
               gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2 xvfb
           - image: fedora:latest
             install: >-
-              dnf install -y webkit2gtk4.1 gtk3 cairo-gobject xorg-x11-server-Xvfb
+              dnf install -y webkit2gtk4.1 gtk3 cairo-gobject gobject-introspection xorg-x11-server-Xvfb
     container: ${{ matrix.image }}
     defaults:
       run:

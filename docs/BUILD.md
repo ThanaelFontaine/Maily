@@ -107,8 +107,10 @@ tar -C dist -czf Maily-X.Y.Z-linux-x64.tar.gz Maily
 | Distribution | Packages |
 | --- | --- |
 | Debian 13, Ubuntu 24.04 or newer | `gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2` |
-| Fedora 40 or newer | `webkit2gtk4.1 gtk3 cairo-gobject` |
-| Arch Linux | `webkit2gtk-4.1 gtk3` |
+| Fedora 40 or newer | `webkit2gtk4.1 gtk3 cairo-gobject gobject-introspection` |
+| Arch Linux | `webkit2gtk-4.1 gtk3 gobject-introspection-runtime` |
+
+The CI runs the archive on Ubuntu 24.04, Debian 13 and Fedora with exactly these packages; the Arch Linux list comes from the Arch package database and is not checked by the CI. `gobject-introspection` (Fedora) and `gobject-introspection-runtime` (Arch) bring the `cairo` typelib that PyGObject needs; Debian's `gir1.2-webkit2-4.1` already pulls it in.
 
 **To run from source** on Linux, install the build packages above, then `uv sync --group linux-gui` and `uv run maily`. Without GTK, you can install `pyside6` and run with `PYWEBVIEW_GUI=qt` (not tested by the CI). On KDE, pywebview tries Qt first, then GTK.
 

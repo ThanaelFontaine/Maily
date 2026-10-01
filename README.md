@@ -265,8 +265,8 @@ To **update**, download the new disk image and drag Maily to Applications again,
    | Distribution | Command |
    | --- | --- |
    | Debian 13, Ubuntu 24.04 or newer | `sudo apt install gir1.2-webkit2-4.1 libgirepository-2.0-0 libcairo-gobject2` |
-   | Fedora 40 or newer | `sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject` |
-   | Arch Linux | `sudo pacman -S webkit2gtk-4.1 gtk3` |
+   | Fedora 40 or newer | `sudo dnf install webkit2gtk4.1 gtk3 cairo-gobject gobject-introspection` |
+   | Arch Linux | `sudo pacman -S webkit2gtk-4.1 gtk3 gobject-introspection-runtime` |
 
 2. Download `Maily-X.Y.Z-linux-x64.tar.gz`, then extract it and run Maily:
 
