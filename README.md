@@ -645,6 +645,8 @@ Yes, it is a welcome contribution: add a file in `frontend/i18n/` (see [CONTRIBU
 
 Bug reports, ideas, translations, documentation and code are all welcome. The frontend is plain HTML, CSS and JavaScript, with no build step. Start with [CONTRIBUTING.md](CONTRIBUTING.md) (setup, rules, pull requests) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (how the code is organized). Please follow the [code of conduct](CODE_OF_CONDUCT.md), and report security issues privately ([SECURITY.md](SECURITY.md)).
 
+The [website](https://maily.thanaelfontaine.eu) is maintained in a separate, private repository (`maily.thanaelfontaine.eu`); this repository holds only the app. Its screenshots come from `scripts/site_assets.py`, which captures the app in demo mode.
+
 ```bash
 uv sync                           # dependencies, including the dev tools (pytest, httpx)
 uv run pytest                     # the whole test suite

@@ -1,15 +1,21 @@
-"""Regenerate the product page assets in site/ from the repository sources.
+"""Regenerate the product page assets from the repository sources.
+
+The product page lives in its own repository, ThanaelFontaine/maily.thanaelfontaine.eu
+(https://maily.thanaelfontaine.eu). This script writes into the site/ folder of
+a checkout of it, by default ../maily.thanaelfontaine.eu/site next to this
+repository, or the folder given with --site.
 
 1. Captures the screenshots of the app at 2x (2560x1600 pixels for a 1280x800
    window) on the fictitious data of scripts/demo.py, in a temporary folder, with
    headless Chromium. The real data folder and the real secrets are never used.
-2. Encodes each screenshot for the page in site/assets/shots/: WebP and AVIF at
+2. Encodes each screenshot for the page in <site>/assets/shots/: WebP and AVIF at
    640, 1280 and 2560 pixels wide (plus 1920 for the hero images), so the browser
    picks a sharp 1x or 2x file for the space it has.
 3. Derives the favicons from packaging/maily.png and the 1200x630 Open Graph image.
 
 Usage, from the repository root:
   uv run --group build --with playwright python scripts/site_assets.py
+  uv run --group build --with playwright python scripts/site_assets.py --site PATH/TO/site
   uv run --group build python scripts/site_assets.py --from DIR   # reuse 2560x1600 captures
 
 The first run may need the browser: uv run --with playwright playwright install chromium
@@ -30,9 +36,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-SITE = ROOT / "site"
-ASSETS = SITE / "assets"
-SHOTS = ASSETS / "shots"
+# The site/ folder of a checkout of ThanaelFontaine/maily.thanaelfontaine.eu.
+DEFAULT_SITE = ROOT.parent / "maily.thanaelfontaine.eu" / "site"
 
 VIEWPORT = {"width": 1280, "height": 800}
 SCALE = 2
@@ -176,9 +181,9 @@ def capture(out: Path) -> None:
 # Encoding --------------------------------------------------------------------
 
 
-def encode(source_dir: Path) -> None:
-    SHOTS.mkdir(parents=True, exist_ok=True)
-    for old in SHOTS.glob("*"):
+def encode(source_dir: Path, shots: Path) -> None:
+    shots.mkdir(parents=True, exist_ok=True)
+    for old in shots.glob("*"):
         old.unlink()
     for name in NAMES:
         master = Image.open(source_dir / f"{name}.png").convert("RGB")
@@ -188,11 +193,11 @@ def encode(source_dir: Path) -> None:
         for width in HERO_WIDTHS if name in HERO else WIDTHS:
             height = round(master.height * width / master.width)
             image = master if width == master.width else master.resize((width, height), Image.LANCZOS)
-            image.save(SHOTS / f"{name}-{width}.webp", quality=WEBP_QUALITY, method=6)
-            image.save(SHOTS / f"{name}-{width}.avif", quality=AVIF_QUALITY, speed=4)
+            image.save(shots / f"{name}-{width}.webp", quality=WEBP_QUALITY, method=6)
+            image.save(shots / f"{name}-{width}.avif", quality=AVIF_QUALITY, speed=4)
 
 
-def icons(source: Image.Image) -> None:
+def icons(source: Image.Image, site: Path) -> None:
     for size, name in [
         (32, "assets/favicon-32.png"),
         (96, "assets/logo-96.png"),
@@ -200,13 +205,13 @@ def icons(source: Image.Image) -> None:
         (192, "assets/icon-192.png"),
         (512, "assets/icon-512.png"),
     ]:
-        source.resize((size, size), Image.LANCZOS).save(SITE / name, optimize=True)
+        source.resize((size, size), Image.LANCZOS).save(site / name, optimize=True)
     source.resize((64, 64), Image.LANCZOS).save(
-        SITE / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)]
+        site / "favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)]
     )
 
 
-def og_image(source: Image.Image, screenshot: Path) -> None:
+def og_image(source: Image.Image, screenshot: Path, assets: Path) -> None:
     width, height = 1200, 630
     og = Image.new("RGB", (width, height), "#f6f8fc")
     draw = ImageDraw.Draw(og)
@@ -229,25 +234,35 @@ def og_image(source: Image.Image, screenshot: Path) -> None:
     draw.rounded_rectangle((x0 - 1, y0 - 1, x0 + shot_w, y0 + shot_h), radius=15, outline="#e1e3e1", width=2)
     og.paste(shot, (x0, y0), mask)
     draw.rectangle((0, height - 10, width, height), fill="#1a73e8")
-    og.save(ASSETS / "og-image.png", optimize=True)
+    og.save(assets / "og-image.png", optimize=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Regenerate the product page assets.")
+    parser.add_argument("--site", type=Path, default=DEFAULT_SITE,
+                        help="site/ folder of a checkout of ThanaelFontaine/maily.thanaelfontaine.eu "
+                             f"(default: {DEFAULT_SITE})")
     parser.add_argument("--from", dest="source", type=Path,
                         help="folder of existing 2560x1600 captures (default: capture them now)")
     args = parser.parse_args()
-    ASSETS.mkdir(parents=True, exist_ok=True)
+    site = args.site.resolve()
+    if not (site / "index.html").is_file():
+        raise SystemExit(f"{site} is not the product page folder (no index.html). Clone "
+                         "ThanaelFontaine/maily.thanaelfontaine.eu next to this repository, "
+                         "or pass --site PATH/TO/site.")
+    assets = site / "assets"
+    shots = assets / "shots"
+    assets.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="maily-site-shots-") as tmp:
         source_dir = args.source or Path(tmp)
         if args.source is None:
             capture(source_dir)
-        encode(source_dir)
+        encode(source_dir, shots)
         logo = Image.open(ROOT / "packaging" / "maily.png").convert("RGBA")
-        icons(logo)
-        og_image(logo, source_dir / "classic-light.png")
-    total = sum(f.stat().st_size for f in SHOTS.iterdir())
-    print(f"Assets written to {ASSETS.relative_to(ROOT)} ({total // 1024} KB of screenshots)")
+        icons(logo, site)
+        og_image(logo, source_dir / "classic-light.png", assets)
+    total = sum(f.stat().st_size for f in shots.iterdir())
+    print(f"Assets written to {assets} ({total // 1024} KB of screenshots)")
 
 
 if __name__ == "__main__":
