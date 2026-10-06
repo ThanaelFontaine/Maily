@@ -15,6 +15,7 @@ touching the real data folder or the real secrets:
 Usage (from the repository root):
   uv run python scripts/demo.py                    # temporary folder, free port
   uv run python scripts/demo.py --port 8765 --data-dir /tmp/maily-demo
+  uv run python scripts/demo.py --lang fr                # the same mailbox in French
 
 Then open the printed URL in a browser. Ctrl+C to stop.
 """
@@ -101,20 +102,89 @@ MESSAGES = [
 ]
 
 
-def seed(store) -> None:
+# The same mailbox in French, for the French screenshots of the product page (--lang fr).
+ACCOUNTS_FR = [
+    {**ACCOUNTS[0], "display_name": "Personnel"},
+    {**ACCOUNTS[1], "display_name": "Travail"},
+    {**ACCOUNTS[2], "display_name": "Ancienne adresse"},
+]
+
+LABELS_FR = [
+    {"id": "INBOX", "name": "INBOX", "type": "system"},
+    {"id": "Label_1", "name": "Factures", "type": "user"},
+    {"id": "Label_2", "name": "Voyages", "type": "user"},
+]
+
+_SIGNATURE_FR = "<p style=\"color:#5e6368\">Camille<br>Équipe projet</p>"
+
+MESSAGES_FR = [
+    (0, "Camille Durand <camille@example.com>", "Point d'avancement de jeudi",
+     "Voici le compte rendu de la réunion et les prochaines étapes.",
+     "<p>Bonjour Alex,</p><p>Voici le compte rendu de notre réunion de jeudi :</p>"
+     "<ul><li>la maquette de la page d'accueil est validée ;</li>"
+     "<li>le lancement est prévu pour la fin du mois ;</li>"
+     "<li>les textes de la FAQ doivent encore être relus.</li></ul>"
+     "<p>Le document complet est en pièce jointe. Bonne journée !</p>" + _SIGNATURE_FR,
+     1 * _HOUR, ["INBOX", "UNREAD"], True, True),
+    (0, "La Lettre du dimanche <lettre@news.example.com>", "Cinq balades d'automne à tester",
+     "Forêts, côtes et villages : notre sélection de la semaine.",
+     "<p><img src=\"https://news.example.com/banner.png\" alt=\"Bannière\" width=\"600\"></p>"
+     "<h2>Cinq balades d'automne à tester</h2>"
+     "<p>Forêts, côtes et villages : notre sélection de la semaine, avec cartes et temps de marche.</p>"
+     "<p><img src=\"https://news.example.com/pixel.gif\" width=\"1\" height=\"1\" alt=\"\"></p>",
+     3 * _HOUR, ["INBOX", "UNREAD", "CATEGORY_PROMOTIONS"], True, False),
+    (0, "Banque Exemple <no-reply@bank.example.com>", "Votre relevé de septembre est disponible",
+     "Votre relevé de compte est disponible dans votre espace client.",
+     "<p>Bonjour,</p><p>Votre relevé de compte de septembre est disponible dans votre espace client.</p>"
+     "<p>Ceci est un message automatique, merci de ne pas y répondre.</p>",
+     20 * _HOUR, ["INBOX", "CATEGORY_UPDATES", "Label_1"], False, False),
+    (0, "Jordan Petit <jordan@example.org>", "Photos du week-end",
+     "Voici le lien vers l'album, dis-moi si tu arrives à l'ouvrir.",
+     "<p>Salut !</p><p>Voici le lien vers l'album du week-end. Dis-moi si tu arrives à l'ouvrir.</p><p>Jordan</p>",
+     2 * _DAY, ["INBOX"], False, False),
+    (0, "Rail Exemple <billets@rail.example.com>", "Votre billet pour Lyon",
+     "Départ 8 h 12, voiture 14, place 62.",
+     "<p>Votre billet est confirmé.</p><table cellpadding=\"6\"><tr><td><b>Départ</b></td><td>8 h 12</td></tr>"
+     "<tr><td><b>Voiture</b></td><td>14</td></tr><tr><td><b>Place</b></td><td>62</td></tr></table>",
+     4 * _DAY, ["INBOX", "CATEGORY_UPDATES", "Label_2"], False, True),
+    (0, "Réseau social <notification@social.example.com>", "Vous avez 3 nouvelles notifications",
+     "Sam et 2 autres personnes ont réagi à votre publication.",
+     "<p>Sam et 2 autres personnes ont réagi à votre publication.</p>",
+     5 * _DAY, ["INBOX", "CATEGORY_SOCIAL"], True, False),
+    (1, "Morgan Leroy <morgan@example.org>", "Relecture du contrat",
+     "J'ai ajouté mes remarques en commentaires, rien de bloquant.",
+     "<p>Bonjour Alex,</p><p>J'ai ajouté mes remarques en commentaires dans le document, rien de bloquant.</p>"
+     "<p>On en parle demain ?</p><p>Morgan</p>",
+     5 * _HOUR, ["INBOX", "UNREAD"], True, False),
+    (1, "Outil de tickets <support@tickets.example.org>", "[#4821] Problème de connexion résolu",
+     "Le ticket a été clos par l'équipe support.",
+     "<p>Le ticket <b>#4821</b> a été clos par l'équipe support.</p>",
+     1 * _DAY, ["INBOX", "CATEGORY_UPDATES"], False, False),
+    (2, "Association Exemple <contact@asso.example.net>", "Assemblée générale du 12 octobre",
+     "Ordre du jour et pouvoir.",
+     "<p>Chers membres,</p><p>L'assemblée générale aura lieu le 12 octobre à 18 h. L'ordre du jour est ci-dessous.</p>",
+     3 * _DAY, ["INBOX", "UNREAD"], True, False),
+]
+
+
+def seed(store, lang: str = "en") -> None:
+    accounts, labels_, messages = (ACCOUNTS_FR, LABELS_FR, MESSAGES_FR) if lang == "fr" else \
+        (ACCOUNTS, LABELS, MESSAGES)
+    first_file = "compte-rendu.pdf" if lang == "fr" else "meeting-minutes.pdf"
+    other_file = "billet.pdf" if lang == "fr" else "ticket.pdf"
     ids = [store.upsert_account(a["email"], display_name=a["display_name"], color=a["color"],
-                                provider=a["provider"]) for a in ACCOUNTS]
+                                provider=a["provider"]) for a in accounts]
     for aid in ids[:2]:
-        store.replace_labels(aid, LABELS)
-    for n, (acc, frm, subject, snippet, html, age, labels, unread, att) in enumerate(MESSAGES):
+        store.replace_labels(aid, labels_)
+    for n, (acc, frm, subject, snippet, html, age, labels, unread, att) in enumerate(messages):
         aid = ids[acc]
         mid = store.upsert_message(
-            aid, f"demo-{n}", thread_id=f"t-{n}", addr_from=frm, addr_to=ACCOUNTS[acc]["email"],
+            aid, f"demo-{n}", thread_id=f"t-{n}", addr_from=frm, addr_to=accounts[acc]["email"],
             subject=subject, snippet=snippet, body_html=html,
             body_text=snippet, internal_date=_NOW_MS - age, label_ids=json.dumps(labels),
             is_unread=1 if unread else 0, has_attachments=1 if att else 0)
         if att:
-            store.replace_attachments(mid, [{"filename": "meeting-minutes.pdf" if n == 0 else "ticket.pdf",
+            store.replace_attachments(mid, [{"filename": first_file if n == 0 else other_file,
                                              "mime_type": "application/pdf", "size": 48213,
                                              "gmail_attachment_id": f"att-{n}"}])
 
@@ -132,6 +202,8 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="The Maily interface on fictitious data.")
     ap.add_argument("--data-dir", help="folder of the demo database (default: a temporary folder)")
     ap.add_argument("--port", type=int, default=0, help="local port (default: a free port)")
+    ap.add_argument("--lang", choices=("en", "fr"), default="en",
+                    help="language of the fictitious mail (default: en)")
     args = ap.parse_args(argv)
 
     data_dir = pathlib.Path(args.data_dir).expanduser() if args.data_dir else \
@@ -152,7 +224,7 @@ def main(argv=None) -> None:
     layout = paths.ensure_runtime_dirs(data_dir)
     store = Store(Database(layout["db"]))
     if not store.list_accounts():
-        seed(store)
+        seed(store, args.lang)
 
     def act_fn(message_id, action, add=None, remove=None):
         if action == "modify":
