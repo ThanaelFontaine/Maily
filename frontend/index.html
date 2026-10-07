@@ -24,6 +24,12 @@
 
     <div class="zeroday-term" aria-hidden="true">root@zeroday:~$ mail --status <span class="ok">// ONLINE</span><span class="caret"></span></div>
 
+    <div class="update-bar" id="update-bar" role="status" hidden>
+      <span class="update-msg" id="update-msg"></span>
+      <button class="ghost" id="update-act"></button>
+      <button class="ghost" id="update-later" data-i18n="update.later">Later</button>
+    </div>
+
     <div class="body" id="appbody">
       <nav class="rail-wrap" aria-label="Accounts and folders" data-i18n-aria-label="rail.label">
         <div class="rail" id="rail"></div>
@@ -148,6 +154,14 @@
               <input type="checkbox" id="remote-images" class="toggle">
             </label>
             <p class="settings-help" data-i18n="settings.remoteImagesNote">When they are blocked, a "Show images" bar lets you load them for a single message.</p>
+            <h2 class="settings-h" data-i18n="settings.updates">Updates</h2>
+            <label class="toggle-row">
+              <span class="toggle-txt">
+                <span class="toggle-title" data-i18n="settings.checkUpdatesToggle">Check for updates</span>
+                <span class="settings-help" data-i18n="settings.checkUpdatesHelp">Once a day, Maily asks GitHub for the number of the latest version. GitHub sees your IP address, as for any visit; nothing about your mail or your accounts is sent.</span>
+              </span>
+              <input type="checkbox" id="check-updates" class="toggle">
+            </label>
           </section>
           <section class="settings-pane" id="pane-accounts" data-pane="accounts" role="tabpanel" aria-labelledby="tab-accounts" tabindex="0" hidden>
             <h2 class="settings-h" data-i18n="settings.profiles">Profiles</h2>
@@ -158,6 +172,12 @@
             <h2 class="settings-h">Maily</h2>
             <dl class="about-list">
               <dt data-i18n="about.version">Version</dt><dd id="about-version">?</dd>
+              <dt data-i18n="about.updates">Updates</dt>
+              <dd class="about-update">
+                <span id="about-update-status"></span>
+                <button class="ghost" id="about-update-act" hidden></button>
+                <button class="ghost" id="about-update-check" data-i18n="about.checkNow">Check now</button>
+              </dd>
               <dt data-i18n="about.dataFolder">Local data</dt><dd id="about-datadir" class="about-path">?</dd>
               <dt data-i18n="about.license">License</dt><dd>MIT</dd>
             </dl>

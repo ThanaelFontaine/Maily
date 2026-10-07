@@ -3,8 +3,8 @@
 Why not the webview's localStorage: the local API listens on a random port, so
 the page origin (http://127.0.0.1:<port>) changes at every launch and its
 localStorage starts empty; on top of that, pywebview ignores `storage_path` on
-macOS. The choices (theme, Classic mode, remote images, list width, language)
-therefore live in the data folder, like the glass density.
+macOS. The choices (theme, Classic mode, remote images, update check, list
+width, language) therefore live in the data folder, like the glass density.
 
 The file is created with mode 0600 and rewritten atomically. Only known keys
 are accepted, with validated values: an unexpected value or a damaged file
@@ -34,6 +34,7 @@ DEFAULTS = {
     "theme": "classic",
     "classic_mode": "auto",
     "remote_images": False,
+    "check_updates": True,
     "list_width": None,
     "language": None,
 }
@@ -60,6 +61,10 @@ def _validate(key, value):
     if key == "remote_images":
         if not isinstance(value, bool):
             raise InvalidPref("remote_images must be a boolean")
+        return value
+    if key == "check_updates":
+        if not isinstance(value, bool):
+            raise InvalidPref("check_updates must be a boolean")
         return value
     if key == "list_width":
         if value is None:
@@ -120,12 +125,16 @@ def stored_keys() -> set:
 
 
 def _write(data: dict) -> None:
-    p = _path()
+    write_private_json(_path(), data)
+
+
+def write_private_json(p, data: dict) -> None:
+    """Atomic write of `data` to `p` (folder 0700, file 0600), also used by core/updates.py."""
     if not p.parent.exists():
         p.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         if os.name == "posix":
             os.chmod(p.parent, 0o700)
-    fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=".prefs.json.", suffix=".tmp")
+    fd, tmp = tempfile.mkstemp(dir=str(p.parent), prefix=f".{p.name}.", suffix=".tmp")
     try:
         if os.name == "posix":
             os.fchmod(fd, 0o600)

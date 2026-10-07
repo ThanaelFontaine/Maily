@@ -16,7 +16,7 @@ const DEFAULT_THEME = "classic";
    a new port at each launch, hence a new origin, and its storage starts empty.
    Old localStorage values are migrated once. `language` is null until the
    user picks one: the interface then follows the system language. */
-const PREFS = { theme: DEFAULT_THEME, classic_mode: "auto", remote_images: false, list_width: null, language: null };
+const PREFS = { theme: DEFAULT_THEME, classic_mode: "auto", remote_images: false, check_updates: true, list_width: null, language: null };
 const LEGACY_PREF_KEYS = {
   theme: "maily_theme", classic_mode: "maily_classic_mode",
   remote_images: "maily_remote_images", list_width: "maily_list_width",
@@ -89,6 +89,7 @@ const state = {
   folder: { type: "inbox" }, category: "primary", accounts: [], currentMsgs: [],
   composerAtts: [], pendingReads: [], composerKey: null, openSeq: 0, listSeq: 0,
   remoteShownFor: null, readNotice: null, langSeq: 0,
+  update: undefined, updateLater: null, updateBusy: false,
 };
 const accountColors = {};
 const el = (sel) => document.querySelector(sel);
@@ -1093,11 +1094,79 @@ function refreshTexts() {
   ["#c-status", "#imap-status"].forEach((sel) => { const n = el(sel); if (n._spec) n.textContent = specText(n._spec); });
   const b = el(".banner");
   if (b && b._spec) renderBanner(b);
+  renderUpdate();
   if (!el("#pane-accounts").hidden) renderSettings();
   if (!state.currentId) el("#read").innerHTML = readEmpty(state.readNotice ? specText(state.readNotice) : tr("read.empty"));
   loadAccounts().catch(() => {});
   if (state.currentId) openMessage(state.currentId);
   else loadMessages();
+}
+
+/* ------- Update check: GET /update a few seconds after launch, then every 6 h ------- */
+const UPDATE_FIRST_DELAY_MS = 5000;
+const UPDATE_EVERY_MS = 6 * 60 * 60 * 1000;
+
+// Asks the API (null when it cannot be reached), then redraws the bar and the About line.
+async function loadUpdate(force) {
+  try { state.update = force ? await postAction("/update/check") : await api("/update"); }
+  catch { state.update = null; }
+  renderUpdate();
+}
+
+function updateActionKey(u) { return u.kind === "app" ? "update.download" : "update.whatsNew"; }
+
+function openUpdatePage() {
+  postAction("/update/open").catch((e) => banner(errSpec("toast.updateOpenFailed", e)));
+}
+
+function renderUpdate() {
+  const u = state.update;
+  const available = !!(u && u.enabled && u.available);
+  const bar = el("#update-bar");
+  bar.hidden = !(available && state.updateLater !== u.latest);
+  if (available) {
+    const msgKey = u.kind === "app" ? "update.available" : "update.availableSource";
+    el("#update-msg").textContent = tr(msgKey, { version: u.latest });
+    el("#update-act").textContent = tr(updateActionKey(u));
+  }
+  // Settings > About
+  let status = "";
+  if (state.updateBusy) status = tr("about.checking");
+  else if (u === null) status = tr("about.updateFailed");
+  else if (u) {
+    if (!u.enabled) status = tr("about.updatesOff");
+    else if (available) status = tr("about.updateAvailable", { version: u.latest });
+    else status = tr(u.failed ? "about.updateFailed" : "about.upToDate");
+  }
+  el("#about-update-status").textContent = status;
+  const act = el("#about-update-act");
+  act.hidden = !available || state.updateBusy;
+  if (available) act.textContent = tr(updateActionKey(u));
+  const check = el("#about-update-check");
+  check.hidden = !!(u && !u.enabled);
+  check.disabled = state.updateBusy;
+}
+
+async function checkUpdateNow() {
+  state.updateBusy = true;
+  renderUpdate();
+  try { await loadUpdate(true); }
+  finally { state.updateBusy = false; renderUpdate(); }
+}
+
+function initUpdates() {
+  el("#update-act").onclick = openUpdatePage;
+  el("#about-update-act").onclick = openUpdatePage;
+  el("#update-later").onclick = () => { state.updateLater = state.update && state.update.latest; renderUpdate(); };
+  el("#about-update-check").onclick = checkUpdateNow;
+  el("#check-updates").onchange = (e) => {
+    PREFS.check_updates = e.target.checked;
+    postAction("/prefs", { check_updates: e.target.checked })
+      .then(() => loadUpdate(false))
+      .catch(() => banner(msgSpec("toast.prefNotSaved")));
+  };
+  setTimeout(() => loadUpdate(false), UPDATE_FIRST_DELAY_MS);
+  setInterval(() => loadUpdate(false), UPDATE_EVERY_MS);
 }
 
 /* ------- Settings panel: appearance, language, privacy, accounts, about ------- */
@@ -1174,6 +1243,9 @@ async function logoutAccount(id, email) {
 function openSettings(pane) {
   refreshAppearancePane();
   el("#remote-images").checked = remoteImagesAllowed();
+  el("#check-updates").checked = PREFS.check_updates !== false;
+  if (state.update === undefined) loadUpdate(false);   // the first check may not have run yet
+  renderUpdate();
   showSettingsPane(pane || "appearance");
   el("#settingsmodal").hidden = false;
   const first = document.querySelector(".settings-tab.on");
@@ -1349,6 +1421,7 @@ async function main() {
   initSearch();
   initGlassSlider();
   initSplitter();
+  initUpdates();
   updateLayout();
   renderCats();
   try {

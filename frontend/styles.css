@@ -203,6 +203,11 @@ body {
 .banner-x { flex: none; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
   border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 16px; line-height: 1; cursor: pointer; opacity: .7; }
 .banner-x:hover { opacity: 1; background: rgba(0,0,0,.08); }
+/* "A new version is available" bar, under the top bar */
+.update-bar { padding: 6px 20px; font-size: 12.5px; background: rgba(255,233,168,.5); color: #6b4e00;
+  border-bottom: 1px solid rgba(0,0,0,.06); display: flex; align-items: center; gap: 10px; }
+.update-msg { flex: 1; min-width: 0; }
+.update-bar .ghost { flex: none; padding: 4px 12px; font-size: 12px; }
 
 /* ---------- Composer (dialog) ---------- */
 .modal-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
@@ -293,6 +298,7 @@ body {
 :root[data-theme="zeroday"] .att-chip { background: #0f1315; border: 1px solid #2c3a3b; color: #cdd3d0; border-radius: 0; box-shadow: none; }
 :root[data-theme="zeroday"] .att-size { color: #5b616a; }
 :root[data-theme="zeroday"] .banner { background: #12191b; color: #22E6DC; border-bottom: 1px solid #202b2c; }
+:root[data-theme="zeroday"] .update-bar { background: #12191b; color: #22E6DC; border-bottom: 1px solid #202b2c; }
 :root[data-theme="zeroday"] .modal-backdrop { background: rgba(0,0,0,.6); }
 :root[data-theme="zeroday"] .composer { background: #0d0f12; border: 1px solid #202b2c; -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-theme="zeroday"] .composer-head { background: #0f1315; color: #fff; border-bottom: 1px solid #202b2c; }
@@ -596,7 +602,7 @@ body {
 .settings-tab:hover { background: rgba(0,0,0,.05); }
 .settings-tab.on { background: rgba(31,167,199,.16); color: #0b5d7e; }
 .settings-panes { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 20px 22px; }
-.settings-pane[hidden], .settings-block[hidden], .img-bar[hidden] { display: none !important; }
+.settings-pane[hidden], .settings-block[hidden], .img-bar[hidden], .update-bar[hidden] { display: none !important; }
 .settings-h { margin: 0 0 10px; font-size: 13.5px; font-weight: 700; }
 .settings-block { margin-top: 20px; }
 .settings-help { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: #4d5b63; }
@@ -622,6 +628,9 @@ body {
 .about-list { display: grid; grid-template-columns: max-content 1fr; gap: 8px 18px; margin: 0; font-size: 13px; }
 .about-list dt { color: #4d5b63; }
 .about-list dd { margin: 0; }
+.settings-help + .settings-h { margin-top: 22px; }
+.about-update { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.about-update .ghost { padding: 4px 12px; font-size: 12px; }
 .about-path { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; }
 /* "Remote images blocked" bar in the reading pane */
 .img-bar { display: flex; align-items: center; gap: 12px; margin: 10px 20px 0; padding: 8px 12px; font-size: 12.5px;
@@ -919,6 +928,7 @@ body {
   border-radius: 8px 8px 0 0; color: var(--c-soft); }
 :root[data-theme="classic"] .mailtab.on { background: var(--c-selected); color: var(--c-selected-ink); }
 :root[data-theme="classic"] .banner { background: var(--c-banner-bg); color: var(--c-banner-ink); border-bottom: 1px solid var(--c-line); }
+:root[data-theme="classic"] .update-bar { background: var(--c-banner-bg); color: var(--c-banner-ink); border-bottom: 1px solid var(--c-line); }
 :root[data-theme="classic"] .banner-x:hover { background: rgba(127, 127, 127, .18); }
 
 /* --- Windows (composer, settings, IMAP) and floating menus --- */

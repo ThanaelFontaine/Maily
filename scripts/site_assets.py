@@ -17,6 +17,9 @@ Usage, from the repository root:
   uv run --group build --with playwright python scripts/site_assets.py
   uv run --group build --with playwright python scripts/site_assets.py --site PATH/TO/site
   uv run --group build python scripts/site_assets.py --from DIR   # reuse 2560x1600 captures
+  uv run --group build --with playwright python scripts/site_assets.py --lang fr
+      # French interface on French demo mail, into <site>/assets/shots/fr/ (icons and
+      # Open Graph image untouched)
 
 The first run may need the browser: uv run --with playwright playwright install chromium
 """
@@ -81,6 +84,9 @@ def free_port() -> int:
 class Demo:
     """scripts/demo.py on a fresh temporary data folder."""
 
+    def __init__(self, lang: str = "en") -> None:
+        self.lang = lang
+
     def __enter__(self) -> "Demo":
         self.dir = tempfile.mkdtemp(prefix="maily-site-demo-")
         port = free_port()
@@ -88,7 +94,8 @@ class Demo:
                "PYTHON_KEYRING_BACKEND": "keyring.backends.null.Keyring"}
         env.pop("MAILY_DATA_DIR", None)
         self.proc = subprocess.Popen(
-            [sys.executable, "scripts/demo.py", "--port", str(port), "--data-dir", self.dir],
+            [sys.executable, "scripts/demo.py", "--port", str(port), "--data-dir", self.dir,
+             "--lang", self.lang],
             cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.url = f"http://127.0.0.1:{port}/"
         for _ in range(150):
@@ -108,19 +115,25 @@ class Demo:
             self.proc.kill()
 
 
-def capture(out: Path) -> None:
+COMPOSER = {
+    "en": ("Re: Thursday's progress meeting", "Thanks Camille, I will review the FAQ tomorrow."),
+    "fr": ("Re: Point d'avancement de jeudi", "Merci Camille, je relis la FAQ demain."),
+}
+
+
+def capture(out: Path, lang: str = "en") -> None:
     from playwright.sync_api import sync_playwright
 
     def page_for(browser, demo, scheme="light", prefs=None):
         ctx = browser.new_context(viewport=VIEWPORT, device_scale_factor=SCALE,
-                                  locale="en-US", color_scheme=scheme)
+                                  locale="fr-FR" if lang == "fr" else "en-US", color_scheme=scheme)
         page = ctx.new_page()
         page.goto(demo.url)
         page.wait_for_selector(".li")
         page.evaluate("""async (p) => {
           await fetch('/prefs', {method: 'POST', headers: {Authorization: 'Bearer ' + window.MAILY_TOKEN,
             'Content-Type': 'application/json'}, body: JSON.stringify(p)});
-        }""", {"language": "en", **(prefs or {})})
+        }""", {"language": lang, **(prefs or {})})
         page.reload()
         page.wait_for_selector(".li")
         page.wait_for_timeout(300)
@@ -139,13 +152,13 @@ def capture(out: Path) -> None:
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         for scheme, name in (("light", "classic-light"), ("dark", "classic-dark")):
-            with Demo() as demo:
+            with Demo(lang) as demo:
                 ctx, page = page_for(browser, demo, scheme)
                 open_first(page)
                 shot(page, name)
                 ctx.close()
         for theme in ("aero", "glass", "zeroday"):
-            with Demo() as demo:
+            with Demo(lang) as demo:
                 ctx, page = page_for(browser, demo, "dark" if theme == "glass" else "light",
                                      {"theme": theme})
                 if theme == "glass":
@@ -153,7 +166,7 @@ def capture(out: Path) -> None:
                 open_first(page)
                 shot(page, f"theme-{theme}")
                 ctx.close()
-        with Demo() as demo:
+        with Demo(lang) as demo:
             ctx, page = page_for(browser, demo)
             page.click(".cat >> nth=1")  # Promotions: the newsletter with remote images
             page.wait_for_timeout(400)
@@ -162,8 +175,8 @@ def capture(out: Path) -> None:
             page.click("#replybtn")
             page.wait_for_timeout(200)
             page.fill("#c-to", "camille@example.com")
-            page.fill("#c-subject", "Re: Thursday's progress meeting")
-            page.fill("#c-body", "Thanks Camille, I will review the FAQ tomorrow.")
+            page.fill("#c-subject", COMPOSER[lang][0])
+            page.fill("#c-body", COMPOSER[lang][1])
             shot(page, "composer")
             page.click("#c-cancel")
             page.click(".cat >> nth=0")
@@ -184,7 +197,8 @@ def capture(out: Path) -> None:
 def encode(source_dir: Path, shots: Path) -> None:
     shots.mkdir(parents=True, exist_ok=True)
     for old in shots.glob("*"):
-        old.unlink()
+        if old.is_file():
+            old.unlink()
     for name in NAMES:
         master = Image.open(source_dir / f"{name}.png").convert("RGB")
         expected = (VIEWPORT["width"] * SCALE, VIEWPORT["height"] * SCALE)
@@ -244,6 +258,9 @@ def main() -> None:
                              f"(default: {DEFAULT_SITE})")
     parser.add_argument("--from", dest="source", type=Path,
                         help="folder of existing 2560x1600 captures (default: capture them now)")
+    parser.add_argument("--lang", choices=("en", "fr"), default="en",
+                        help="interface and demo mail language; fr writes into assets/shots/fr/ "
+                             "and leaves the icons and the Open Graph image alone (default: en)")
     args = parser.parse_args()
     site = args.site.resolve()
     if not (site / "index.html").is_file():
@@ -251,17 +268,21 @@ def main() -> None:
                          "ThanaelFontaine/maily.thanaelfontaine.eu next to this repository, "
                          "or pass --site PATH/TO/site.")
     assets = site / "assets"
-    shots = assets / "shots"
+    shots = assets / "shots" / "fr" if args.lang == "fr" else assets / "shots"
     assets.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="maily-site-shots-") as tmp:
         source_dir = args.source or Path(tmp)
         if args.source is None:
-            capture(source_dir)
+            capture(source_dir, args.lang)
         encode(source_dir, shots)
+        if args.lang == "fr":
+            total = sum(f.stat().st_size for f in shots.iterdir() if f.is_file())
+            print(f"French screenshots written to {shots} ({total // 1024} KB)")
+            return
         logo = Image.open(ROOT / "packaging" / "maily.png").convert("RGBA")
         icons(logo, site)
         og_image(logo, source_dir / "classic-light.png", assets)
-    total = sum(f.stat().st_size for f in shots.iterdir())
+    total = sum(f.stat().st_size for f in shots.iterdir() if f.is_file())
     print(f"Assets written to {assets} ({total // 1024} KB of screenshots)")
 
 

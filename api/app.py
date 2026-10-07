@@ -3,6 +3,7 @@ import json
 import re
 import pathlib
 import urllib.parse
+import webbrowser
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -13,6 +14,12 @@ from core.sanitize import sanitize_html_report
 # The tests add "testserver" (TestClient's default host) through
 # tests/conftest.py; it is never accepted in production.
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
+# Pages opened by POST /update/open. Fixed here, never taken from a request.
+_DOWNLOAD_URLS = {
+    "fr": "https://maily.thanaelfontaine.eu/fr/telecharger/",
+    None: "https://maily.thanaelfontaine.eu/download/",
+}
+_RELEASES_URL = "https://github.com/ThanaelFontaine/Maily/releases/latest"
 _CATEGORY_LABELS = {
     "promotions": "CATEGORY_PROMOTIONS",
     "social": "CATEGORY_SOCIAL",
@@ -59,7 +66,8 @@ class ImapConnectPayload(BaseModel):
 def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                download_fn=None, inline_fn=None, labels_fn=None, frontend_dir=None,
                glass_fn=None, glass_get_fn=None, add_google_fn=None,
-               logout_fn=None, eml_fn=None, add_imap_fn=None) -> FastAPI:
+               logout_fn=None, eml_fn=None, add_imap_fn=None, offline=False) -> FastAPI:
+    # offline=True (demo mode): the update check never touches the network.
     app = FastAPI(title="Maily API")
 
     def _host_ok(request: Request) -> bool:
@@ -109,6 +117,28 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         except prefs.InvalidPref as e:
             raise _fail(400, "invalid_request", str(e))
         return _prefs_payload()
+
+    @app.get("/update", dependencies=[Depends(guard)])
+    def update_get():
+        from core import updates
+        return updates.check(offline=offline)
+
+    @app.post("/update/check", dependencies=[Depends(guard)])
+    def update_check():
+        from core import updates
+        return updates.check(force=True, offline=offline)
+
+    @app.post("/update/open", dependencies=[Depends(guard)])
+    def update_open():
+        from core import prefs, updates
+        if offline:
+            raise _fail(403, "invalid_request", "updates are disabled")
+        if updates.kind() == "app":
+            url = _DOWNLOAD_URLS["fr" if prefs.load()["language"] == "fr" else None]
+        else:
+            url = _RELEASES_URL
+        webbrowser.open(url)
+        return {"ok": True}
 
     @app.get("/glass", dependencies=[Depends(guard)])
     def glass_get():

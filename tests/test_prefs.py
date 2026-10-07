@@ -16,7 +16,7 @@ def _auth():
 
 def test_defaults_without_file():
     assert prefs.load() == {"theme": "classic", "classic_mode": "auto", "remote_images": False,
-                            "list_width": None, "language": None}
+                            "check_updates": True, "list_width": None, "language": None}
     assert prefs.stored_keys() == set()
 
 
@@ -33,7 +33,7 @@ def test_update_persists_in_data_dir_with_owner_only_perms():
 
 
 @pytest.mark.parametrize("bad", [
-    {"theme": "pink"}, {"classic_mode": "night"}, {"remote_images": "yes"},
+    {"theme": "pink"}, {"classic_mode": "night"}, {"remote_images": "yes"}, {"check_updates": "yes"},
     {"list_width": "wide"}, {"unknown": 1}, ["theme"], {"language": "it"}, {"language": "EN"},
 ])
 def test_invalid_updates_are_rejected_without_writing(bad):

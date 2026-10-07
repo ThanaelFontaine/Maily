@@ -1,18 +1,18 @@
 # Maily
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version 0.8.0](https://img.shields.io/badge/version-0.8.0-1a73e8.svg)](CHANGELOG.md)
+[![Version 0.9.0](https://img.shields.io/badge/version-0.9.0-1a73e8.svg)](CHANGELOG.md)
 [![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
 **All your mailboxes, every assistant, one connection.**
 
 Maily is a free, open source desktop app that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
 
-[Website](https://maily.thanaelfontaine.eu) · [Download for macOS, Windows and Linux](https://github.com/ThanaelFontaine/Maily/releases/latest) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
+[Website](https://maily.thanaelfontaine.eu) · [Download for macOS, Windows and Linux](https://maily.thanaelfontaine.eu/download/) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
 ![Maily with the default Classic theme: accounts on the left, the message list in the middle, the open message on the right](docs/images/classic-light.png)
 
-> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [latest release](https://github.com/ThanaelFontaine/Maily/releases/latest) (see [Install](#install)), or run it from source:
+> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [download page](https://maily.thanaelfontaine.eu/download/), install it with one line (`curl -fsSL https://maily.thanaelfontaine.eu/install.sh | sh` on macOS and Linux, `irm https://maily.thanaelfontaine.eu/install.ps1 | iex` in Windows PowerShell; see [Install](#install)), or run it from source:
 >
 > ```bash
 > git clone https://github.com/ThanaelFontaine/Maily
@@ -93,6 +93,7 @@ One thing stays true with any assistant: what it reads through Maily becomes par
 
 - **Tracking pixels blocked by default:** remote images are not loaded. A bar says how many were blocked and offers *Show images* for that message; *Settings > Privacy* can load them automatically.
 - **No Maily server:** no Maily account, no analytics, no telemetry.
+- **Update notice:** once a day, Maily asks GitHub for the number of the latest release and shows a bar in the window when a newer one is out. GitHub sees your IP address, as for any visit; nothing about your mail or accounts is sent. Turn it off in *Settings > Privacy*.
 - **Encrypted secrets:** OAuth tokens and IMAP passwords are encrypted at rest, in files only your user can read.
 - **Optional Touch ID** at launch on macOS.
 
@@ -214,7 +215,7 @@ Its full content is described in [Where your data lives](#where-your-data-lives)
 
 ## Install
 
-Download the ready-made app for your system, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file:
+Download the ready-made app for your system on the [download page](https://maily.thanaelfontaine.eu/download/), install it with one command, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file, and the same three under a name without the version (`Maily-macos-arm64.dmg`, `Maily-windows-x64.zip`, `Maily-linux-x64.tar.gz`), so that `https://github.com/ThanaelFontaine/Maily/releases/latest/download/<name>` always serves the latest one:
 
 | System | Download | What is inside |
 | --- | --- | --- |
@@ -223,6 +224,27 @@ Download the ready-made app for your system, or run Maily from source. Every [re
 | Linux x64 (glibc 2.39 or newer) | `Maily-X.Y.Z-linux-x64.tar.gz` | A `Maily` folder with the `maily` binary, a desktop entry and `INSTALL.txt` |
 
 The apps are free and open source, but **not signed**: the first launch shows a warning from your system, and the steps below say how to get past it. The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, also follow [option B](#option-b-run-from-source) (the app and the source version share the same data).
+
+### One-line install
+
+The fastest way, without git or uv. The script downloads the latest release from GitHub, checks it against its `.sha256` file, installs it and tells you what to do next. Run the same line again to update. It needs no administrator password.
+
+```bash
+# macOS (Apple Silicon) and Linux (x64): Maily.app in /Applications (or ~/Applications),
+# or on Linux ~/.local/opt/Maily with the maily command and an app menu entry
+curl -fsSL https://maily.thanaelfontaine.eu/install.sh | sh
+```
+
+```powershell
+# Windows (x64), in PowerShell: %LOCALAPPDATA%\Programs\Maily and a Start menu entry
+irm https://maily.thanaelfontaine.eu/install.ps1 | iex
+```
+
+Read them first if you like: [install.sh](https://maily.thanaelfontaine.eu/install.sh), [install.ps1](https://maily.thanaelfontaine.eu/install.ps1) (their source lives in the [site repository](https://github.com/ThanaelFontaine/maily.thanaelfontaine.eu/tree/main/site)). `MAILY_VERSION=0.9.0` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.
+
+### Updates
+
+Maily checks once a day whether a newer release is out (the GitHub API, see [Security and privacy](#security-and-privacy)) and shows a bar at the top of the window with a *Download* button, which opens the download page. *Settings > About* shows the result and has a *Check now* button; *Settings > Privacy* turns the check off. To update, run the one-line install again, or download the app again and replace the old one: your accounts and mail stay in the data folder. A source install shows the commands instead (`git pull`, then `uv sync`). Versions before 0.9.0 do not check.
 
 ### Option A: download the app
 
@@ -512,7 +534,7 @@ The folder is readable by your user only (`0700`), and the secret files are `060
 
 The short version (threat model and reporting in [SECURITY.md](SECURITY.md)):
 
-- **No Maily server.** No analytics, no telemetry. Your providers keep your mail; Maily keeps a synced copy on your computer. Maily talks only to Google's APIs (Gmail accounts) and to your IMAP servers. The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
+- **No Maily server.** No analytics, no telemetry. Your providers keep your mail; Maily keeps a synced copy on your computer. Maily talks only to Google's APIs (Gmail accounts), to your IMAP servers and, once a day unless you turn it off in *Settings > Privacy*, to the GitHub API to learn the number of the latest release (`GET /repos/ThanaelFontaine/Maily/releases/latest`, nothing else sent). The local API listens on `127.0.0.1` only, on a random port, requires a random token, and rejects requests whose `Host` is not local (protection against DNS rebinding).
 - **Encrypted secrets.** Fernet encryption in `secrets.enc`, key in `secrets.key`, both `0600`. Writes are atomic and locked across processes; an unreadable store stops Maily with a clear message instead of being silently replaced. Encryption at rest protects against casual copies, not against malware running as your user, which could read both files: full-disk encryption (FileVault, BitLocker, LUKS) is recommended.
 - **Touch ID** (macOS, optional) before the window opens. The MCP server and the scripts do not ask for it, by design.
 - **Sanitized HTML.** Messages go through [nh3](https://github.com/messense/nh3) (the Rust `ammonia` sanitizer), then a sandboxed iframe.
