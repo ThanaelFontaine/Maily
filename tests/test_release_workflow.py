@@ -61,7 +61,19 @@ def test_assets_are_the_three_builds_and_their_checksums():
         "Maily-1.2.3-macos-arm64.dmg", "Maily-1.2.3-macos-arm64.dmg.sha256",
         "Maily-1.2.3-windows-x64.zip", "Maily-1.2.3-windows-x64.zip.sha256",
         "Maily-1.2.3-linux-x64.tar.gz", "Maily-1.2.3-linux-x64.tar.gz.sha256",
+        "Maily-macos-arm64.dmg", "Maily-windows-x64.zip", "Maily-linux-x64.tar.gz",
     ]
+
+
+def test_aliases_copy_each_build_under_a_fixed_name():
+    assert _rn().aliases("1.2.3") == [
+        ("Maily-macos-arm64.dmg", "Maily-1.2.3-macos-arm64.dmg"),
+        ("Maily-windows-x64.zip", "Maily-1.2.3-windows-x64.zip"),
+        ("Maily-linux-x64.tar.gz", "Maily-1.2.3-linux-x64.tar.gz"),
+    ]
+    publish = _job("publish")
+    assert "scripts/release_notes.py aliases" in publish
+    assert publish.index("release_notes.py aliases") < publish.index("Missing build file")
 
 
 def test_release_builds_with_the_build_workflow_on_the_tested_commit():

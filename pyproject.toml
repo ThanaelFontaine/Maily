@@ -1,6 +1,6 @@
 [project]
 name = "maily"
-version = "0.8.0"
+version = "0.9.0"
 description = "One local MCP bridge from all your Gmail and IMAP mailboxes to every AI assistant on your computer, with a mail window."
 readme = "README.md"
 license = "MIT"

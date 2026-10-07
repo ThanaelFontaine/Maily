@@ -6,13 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-### Changed
+## [0.9.0] - 2026-10-07
 
-- **The product page has its own repository.** The source of <https://maily.thanaelfontaine.eu> (the `site/` folder and `wrangler.jsonc`) moved to `ThanaelFontaine/maily.thanaelfontaine.eu`, which deploys it to the same Cloudflare Worker; this repository keeps only the app. `scripts/site_assets.py` still captures the app here and writes the page assets into a checkout of that repository (`../maily.thanaelfontaine.eu/site` by default, or `--site PATH`). The `maily-site` preview configuration of `.claude/launch.json` moved with the page.
+Maily can now be installed and kept up to date without going through GitHub: a download page on the website, a one-line install for each system, and a notice in the window when a new version is out.
 
 ### Added
 
+- **Update notice.** Once a day, Maily asks the GitHub API for the number of the latest release; when it is newer than the running version, a bar at the top of the window says so, with *Download* (opens the download page of the website, in French when the interface is in French) and *Later*. A source install shows `git pull, then uv sync` and *What's new* instead. *Settings > About* shows the state (up to date, new version, could not check) with a *Check now* button. Nothing about your mail or accounts is sent, the answer is remembered for 24 hours in `update.json` (mode 0600), failures stay silent, and demo mode never checks. Turn it off in *Settings > Privacy > Check for updates*. In the five languages.
+- **Fixed-name downloads.** Each release also carries `Maily-macos-arm64.dmg`, `Maily-windows-x64.zip` and `Maily-linux-x64.tar.gz`, copies of that version's builds, so that `releases/latest/download/<name>` always serves the latest version. `scripts/release_notes.py aliases X.Y.Z` lists them; the release workflow creates them before checking the files.
+- **One-line install** (documented in the README, scripts served by the website): `curl -fsSL https://maily.thanaelfontaine.eu/install.sh | sh` on macOS and Linux, `irm https://maily.thanaelfontaine.eu/install.ps1 | iex` on Windows. It downloads the latest release, checks its SHA-256, installs it for the current user without administrator rights, and updates Maily when run again.
+- `scripts/demo.py --lang fr` seeds the demo with French mailboxes, and `scripts/site_assets.py --lang fr` captures the French screenshots of the website.
 - **Release announcements on Discord.** Once a release is published, the `Release` workflow posts its title, link and the first lines of its notes to Discord through the `DISCORD_RELEASES_WEBHOOK_URL` secret, with no mention. It is skipped when the secret is not set and never fails the release.
+
+### Changed
+
+- **The product page has its own repository.** The source of <https://maily.thanaelfontaine.eu> (the `site/` folder and `wrangler.jsonc`) moved to `ThanaelFontaine/maily.thanaelfontaine.eu`, which deploys it to the same Cloudflare Worker; this repository keeps only the app. `scripts/site_assets.py` still captures the app here and writes the page assets into a checkout of that repository (`../maily.thanaelfontaine.eu/site` by default, or `--site PATH`). The `maily-site` preview configuration of `.claude/launch.json` moved with the page.
 
 ## [0.8.0] - 2026-10-01
 
@@ -197,7 +205,8 @@ First open-source release: a new default look, a single settings panel, a harden
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.5.1...v0.6.0

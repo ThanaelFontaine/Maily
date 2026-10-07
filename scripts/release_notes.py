@@ -4,6 +4,7 @@
   python3 scripts/release_notes.py version          # X.Y.Z from pyproject.toml
   python3 scripts/release_notes.py notes X.Y.Z      # the "## [X.Y.Z]" section of CHANGELOG.md
   python3 scripts/release_notes.py assets X.Y.Z     # the files every release must carry
+  python3 scripts/release_notes.py aliases X.Y.Z    # "<alias> <build>": the same builds under a fixed name
 
 `notes` exits with status 1 when the section is missing or empty, so that no
 release is ever published without notes. Standard library only.
@@ -33,13 +34,29 @@ ASSET_PATTERNS = (
 )
 
 
+# Each build is also attached under a name without the version, so that
+# https://github.com/ThanaelFontaine/Maily/releases/latest/download/<alias>
+# always serves the latest one (GitHub, "Linking to releases"). The download
+# page of maily.thanaelfontaine.eu links there.
+ALIASES = (
+    "Maily-macos-arm64.dmg",
+    "Maily-windows-x64.zip",
+    "Maily-linux-x64.tar.gz",
+)
+
+
+def aliases(v: str) -> list[tuple[str, str]]:
+    """(alias, versioned build) pairs of release v."""
+    return [(alias, pattern.format(v=v)) for alias, pattern in zip(ALIASES, ASSET_PATTERNS)]
+
+
 def assets(v: str) -> list[str]:
-    """Every file of release v: each build and its checksum file."""
+    """Every file of release v: each build and its checksum file, then the aliases."""
     out = []
     for pattern in ASSET_PATTERNS:
         name = pattern.format(v=v)
         out += [name, name + ".sha256"]
-    return out
+    return out + list(ALIASES)
 
 
 def notes(v: str, changelog: str | None = None) -> str:
@@ -71,6 +88,9 @@ def main(argv=None) -> int:
         return 0
     if len(args) == 2 and args[0] == "assets":
         print("\n".join(assets(args[1])))
+        return 0
+    if len(args) == 2 and args[0] == "aliases":
+        print("\n".join(f"{alias} {build}" for alias, build in aliases(args[1])))
         return 0
     print(__doc__, file=sys.stderr)
     return 2

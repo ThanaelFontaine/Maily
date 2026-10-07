@@ -242,7 +242,8 @@ def main(argv=None) -> None:
 
     token = secrets.token_urlsafe(24)   # in memory only, never written to disk
     app = create_app(store, token, sync_fn=lambda account_id: 0, send_fn=send_fn, act_fn=act_fn,
-                     download_fn=download_fn, frontend_dir=_frontend_dir())
+                     download_fn=download_fn, frontend_dir=_frontend_dir(),
+                     offline=True)   # demo: no network, so no update check
     port = args.port or free_port()
     print(f"Maily (demo): http://127.0.0.1:{port}/")
     print(f"Fictitious data in: {data_dir}")

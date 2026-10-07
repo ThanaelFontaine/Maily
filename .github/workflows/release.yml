@@ -110,10 +110,14 @@ jobs:
         run: |
           VERSION="$(python3 scripts/release_notes.py version)"
           TAG="v$VERSION"
+          # The same builds under a name without the version (latest/download links).
+          while read -r ALIAS BUILD; do
+            [ -f "release-assets/$BUILD" ] && cp "release-assets/$BUILD" "release-assets/$ALIAS"
+          done < <(python3 scripts/release_notes.py aliases "$VERSION")
           # Every expected file is there, and every build matches its checksum.
           ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
           mapfile -t FILES <<< "$ASSETS"
-          [ "${#FILES[@]}" -ge 6 ] || { echo "Unexpected release file list: $ASSETS" >&2; exit 1; }
+          [ "${#FILES[@]}" -ge 9 ] || { echo "Unexpected release file list: $ASSETS" >&2; exit 1; }
           for f in "${FILES[@]}"; do
             [ -f "release-assets/$f" ] || { echo "Missing build file: $f" >&2; exit 1; }
             case "$f" in
