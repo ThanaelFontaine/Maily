@@ -1,12 +1,12 @@
 # Maily
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue.svg)](LICENSE)
 [![Version 0.9.0](https://img.shields.io/badge/version-0.9.0-1a73e8.svg)](CHANGELOG.md)
 [![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
 **All your mailboxes, every assistant, one connection.**
 
-Maily is a free, open source desktop app that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
+Maily is a free desktop app with public source code that bridges your mailboxes and your AI assistants. Your mail stays with your provider (Gmail, Google Workspace, or an IMAP host such as Orange). Maily connects to all of those accounts once, with your own Google OAuth client, and ships a local [MCP](https://modelcontextprotocol.io/) server: every assistant on that computer (Claude Desktop, Claude Code, any MCP client) gets one access to **all** your accounts, instead of one connector per app, tied to one account. It is also a clean mail app for reading them yourself. No Maily server, no Maily account.
 
 [Website](https://maily.thanaelfontaine.eu) · [Download for macOS, Windows and Linux](https://maily.thanaelfontaine.eu/download/) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
@@ -223,7 +223,7 @@ Download the ready-made app for your system on the [download page](https://maily
 | Windows 10 or 11, x64 | `Maily-X.Y.Z-windows-x64.zip` | A `Maily` folder with `Maily.exe` |
 | Linux x64 (glibc 2.39 or newer) | `Maily-X.Y.Z-linux-x64.tar.gz` | A `Maily` folder with the `maily` binary, a desktop entry and `INSTALL.txt` |
 
-The apps are free and open source, but **not signed**: the first launch shows a warning from your system, and the steps below say how to get past it. The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, also follow [option B](#option-b-run-from-source) (the app and the source version share the same data).
+The apps are free, with public source code, but **not signed**: the first launch shows a warning from your system, and the steps below say how to get past it. The MCP server for your assistant always runs from a source folder, so if you plan to use Maily with Claude, also follow [option B](#option-b-run-from-source) (the app and the source version share the same data).
 
 ### One-line install
 
@@ -628,7 +628,7 @@ In Claude Code, type `/mcp` and approve the server. In Claude Desktop, check the
 ## FAQ
 
 **Is Maily free?**
-Yes. Maily is MIT licensed, with no subscription, no paid tier and no Maily account to create. On Google's side, see [Is there a verification or a fee?](#google-accounts-gmail-and-google-workspace).
+Yes. Maily is free, with public source code under the PolyForm Shield 1.0.0 license, with no subscription, no paid tier and no Maily account to create. On Google's side, see [Is there a verification or a fee?](#google-accounts-gmail-and-google-workspace).
 
 **Does my mail stay on my computer?**
 Your mail stays where it already is: with your provider (Google or your IMAP host), which keeps holding it. Maily keeps a synced copy on your computer (a cache and a search index) so that it is fast and works offline; that copy is a technical detail, not the point. Maily itself only talks to Google's APIs and to your IMAP servers, and there is no Maily server. When an assistant reads a message through Maily, that content goes into your conversation, so it is processed by whoever runs the model behind that assistant, like anything else you share with it.
@@ -677,4 +677,4 @@ uv run python scripts/demo.py     # the interface on fictitious data
 
 ## License
 
-[MIT](LICENSE), © 2026 Thanaël Fontaine.
+Maily is source available, not open source in the OSI sense: [PolyForm Shield 1.0.0](LICENSE), © 2026 Thanaël Fontaine. Anyone may use, modify and share it, at work too, or to sell their own products and services; nobody may provide a product that competes with Maily (reselling it, offering it as a hosted service). The author keeps every right, including selling his own hosted version. The versions published before this change (up to 0.9.0) stay under the MIT license for whoever received them.

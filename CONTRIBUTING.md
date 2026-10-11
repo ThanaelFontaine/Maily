@@ -2,7 +2,7 @@
 
 Thank you for your interest in Maily! Bug reports, ideas, documentation fixes, translations and code are all welcome. This guide explains how to get started.
 
-By contributing, you agree that your contributions are released under the [MIT License](LICENSE), and you agree to follow the [code of conduct](CODE_OF_CONDUCT.md).
+Maily is released under the [PolyForm Shield 1.0.0](LICENSE) license. By contributing, you license your contribution under that license and also under the MIT license to Thanaël Fontaine, so that he can use it in his own products too, paid ones included. You confirm that you have the right to contribute it. You also agree to follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Ways to help
 
