@@ -3,7 +3,7 @@ name = "maily"
 version = "0.9.0"
 description = "One local MCP bridge from all your Gmail and IMAP mailboxes to every AI assistant on your computer, with a mail window."
 readme = "README.md"
-license = "MIT"
+license = "LicenseRef-PolyForm-Shield-1.0.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Thanaël Fontaine" }]
 keywords = ["email", "gmail", "imap", "desktop", "mcp"]
