@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- **License: PolyForm Shield 1.0.0 replaces MIT.** Anyone may still use, modify and share Maily, at work too, or to sell their own products and services; nobody may provide a competing product (reselling it, offering it as a hosted service). The code is public but no longer "open source" in the OSI sense, so the documentation says "public source code". Versions published up to 0.9.0 stay under the MIT license for whoever received them. Contributions are licensed to the author under MIT as well, see `CONTRIBUTING.md`.
+- **License: PolyForm Shield 1.0.0 replaces MIT.** Anyone may still use, modify and share Maily, at work too, or to sell their own products and services; nobody may provide a competing product, even for free (reselling it, offering it as a hosted service). The code is public but no longer "open source" in the OSI sense, so the documentation says "public source code". Versions published up to 0.9.0 were released under the MIT license and remain available under it. Contributions are licensed to the author under MIT as well, see `CONTRIBUTING.md`.
 
 ## [0.9.0] - 2026-10-07
 

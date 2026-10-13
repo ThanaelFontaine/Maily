@@ -677,4 +677,4 @@ uv run python scripts/demo.py     # the interface on fictitious data
 
 ## License
 
-Maily is source available, not open source in the OSI sense: [PolyForm Shield 1.0.0](LICENSE), © 2026 Thanaël Fontaine. Anyone may use, modify and share it, at work too, or to sell their own products and services; nobody may provide a product that competes with Maily (reselling it, offering it as a hosted service). The author keeps every right, including selling his own hosted version. The versions published before this change (up to 0.9.0) stay under the MIT license for whoever received them.
+Maily's source code is public, but it is not open source in the OSI sense: [PolyForm Shield 1.0.0](LICENSE), © 2026 Thanaël Fontaine. Anyone may use, modify and share it, at work too, or to sell their own products and services; nobody may provide a product that competes with Maily, even for free (reselling it, offering it as a hosted service). The author keeps every right, including selling his own hosted version. The versions published before this change (up to 0.9.0) were released under the MIT license and remain available under it.
