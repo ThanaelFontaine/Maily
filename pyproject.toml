@@ -34,7 +34,7 @@ dependencies = [
     # group) to avoid the install back-and-forth that broke the environment
     # when an MCP client ran `uv run` (jsonschema is a dependency of mcp,
     # pinned explicitly to make the resolution reliable).
-    "mcp>=1.2,<2",
+    "mcp>=1.2,<3",
     "jsonschema>=4.20",
 ]
 
