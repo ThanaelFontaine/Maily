@@ -16,6 +16,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **License: PolyForm Shield 1.0.0 replaces MIT.** Anyone may still use, modify and share Maily, at work too, or to sell their own products and services; nobody may provide a competing product, even for free (reselling it, offering it as a hosted service). The code is public but no longer "open source" in the OSI sense, so the documentation says "public source code". Versions published up to 0.9.0 were released under the MIT license and remain available under it. Contributions are licensed to the author under MIT as well, see `CONTRIBUTING.md`.
 
+### Fixed
+
+- **Linux archive on Debian 13.** The archive was built on `ubuntu-latest`, which became Ubuntu 26.04 (GObject introspection 2.88) in October 2026: the PyGObject compiled there needs `gi_repository_dup_default`, missing from Debian 13 (2.84), and the window did not open (`undefined symbol`). The Linux build is now pinned to Ubuntu 24.04 (glibc 2.39, GObject introspection 2.80, the oldest system the archive supports, as `INSTALL.txt` says), and the CI also runs the archive on a clean `ubuntu:24.04` container, next to Debian 13 and Fedora.
+
 ## [0.9.0] - 2026-10-07
 
 Maily can now be installed and kept up to date without going through GitHub: a download page on the website, a one-line install for each system, and a notice in the window when a new version is out.
