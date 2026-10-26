@@ -1,7 +1,7 @@
 # Maily
 
 [![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue.svg)](LICENSE)
-[![Version 0.9.0](https://img.shields.io/badge/version-0.9.0-1a73e8.svg)](CHANGELOG.md)
+[![Version 0.9.1](https://img.shields.io/badge/version-0.9.1-1a73e8.svg)](CHANGELOG.md)
 [![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
 **All your mailboxes, every assistant, one connection.**
