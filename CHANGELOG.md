@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- **Safer CI.** Every action of the workflows is pinned to a commit (the version stays in a comment, and Dependabot keeps both up to date), checkouts keep no credentials unless they push, and the `Release` workflow can write only in the job that publishes. `.github/dependabot.yml` opens at most one monthly pull request per group for the Python dependencies and the actions, nothing merges by itself.
+- **Text check.** A `check-text` job (`python3 scripts/check_text.py`) fails the CI on an em or en dash or on a personal path or address in any tracked file.
+
 ### Changed
 
 - **License: PolyForm Shield 1.0.0 replaces MIT.** Anyone may still use, modify and share Maily, at work too, or to sell their own products and services; nobody may provide a competing product, even for free (reselling it, offering it as a hosted service). The code is public but no longer "open source" in the OSI sense, so the documentation says "public source code". Versions published up to 0.9.0 were released under the MIT license and remain available under it. Contributions are licensed to the author under MIT as well, see `CONTRIBUTING.md`.

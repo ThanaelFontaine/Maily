@@ -1,4 +1,5 @@
-# Maily tests on macOS and Linux: on every push to main and every pull request
+# Maily tests on macOS and Linux, and the text check (scripts/check_text.py):
+# on every push to main and every pull request
 # (a PR triggers a single run; a pushed tag triggers none).
 # The tests use no network, no real mailbox and not the real data folder:
 # tests/conftest.py imposes a temporary folder and a null keyring.
@@ -30,9 +31,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           enable-cache: true
 
@@ -44,3 +47,15 @@ jobs:
 
       - name: Tests
         run: uv run pytest
+
+  text:
+    name: check-text
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: No em or en dash, no private path or address
+        run: python3 scripts/check_text.py
