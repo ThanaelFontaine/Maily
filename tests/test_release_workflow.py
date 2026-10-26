@@ -115,6 +115,7 @@ def test_windows_and_linux_builds_run_the_binary_before_packaging():
     assert "needs: linux" in smoke and "--self-check --window" in smoke
     for image in ("ubuntu:24.04", "debian:trixie", "fedora:latest"):
         assert f"image: {image}" in smoke
+    assert smoke.index("--self-check --window") < smoke.index("./Maily/maily --tls-selftest")
 
 
 def test_every_build_is_uploaded_with_its_checksum():

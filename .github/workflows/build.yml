@@ -298,3 +298,6 @@ jobs:
           sleep 2
           ./Maily/maily --version
           ./Maily/maily --self-check --window
+          # A real TLS connection to Google through the bundled certifi
+          # (requests), on each system: the self-check itself stays offline.
+          ./Maily/maily --tls-selftest
