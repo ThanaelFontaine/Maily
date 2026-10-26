@@ -20,6 +20,7 @@ git clone https://github.com/ThanaelFontaine/Maily
 cd Maily
 uv sync                           # Python 3.12 + dependencies + dev tools (pytest, httpx)
 uv run pytest                     # run the tests
+python3 scripts/check_text.py     # text check (no em or en dash, no personal path or address)
 uv run python scripts/demo.py     # the interface on fictitious data, no Google account needed
 ```
 

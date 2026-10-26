@@ -35,7 +35,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release
@@ -49,9 +49,10 @@ jobs:
     outputs:
       needed: ${{ steps.plan.outputs.needed }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
 
       - name: Version, notes and release state
         id: plan
@@ -90,13 +91,16 @@ jobs:
     if: ${{ needs.plan.outputs.needed != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The only job that writes: it pushes the tag and creates the release.
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: maily-*
           merge-multiple: true
@@ -177,7 +181,7 @@ jobs:
       # (content up to 2000 characters, allowed_mentions with an empty parse
       # list so that nothing pings, flags 4 = SUPPRESS_EMBEDS so that links show
       # no preview, wait=true to get 200 and the message back). The message is one
-      # embed, like the other Mini Ultron announcements.
+      # embed, like the other release announcements.
       - name: Announce the release on Discord
         if: ${{ steps.publish.outputs.announce == 'true' }}
         continue-on-error: true
@@ -198,7 +202,7 @@ jobs:
           release = json.load(open("release.json"))
           if release["isDraft"]:
               raise SystemExit("The release is still a draft: no announcement.")
-          # Same embed as the other "Mini Ultron" production announcements.
+          # Same embed as the other release announcements.
           lines, size = [], 0
           for line in open("release-notes.md", encoding="utf-8").read().splitlines():
               if not line.strip():
