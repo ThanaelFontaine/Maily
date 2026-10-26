@@ -307,7 +307,7 @@ To **update**, download the new disk image and drag Maily to Applications again,
    cp maily.desktop ~/.local/share/applications/maily.desktop
    ```
 
-`INSTALL.txt` in the archive repeats these steps. The binary is built on Ubuntu 24.04 and checked by the CI on clean Debian 13 and Fedora containers; older distributions (glibc older than 2.39) can run Maily from source. To update, replace the `Maily` folder.
+`INSTALL.txt` in the archive repeats these steps. The binary is built on Ubuntu 24.04 and checked by the CI on clean Ubuntu 24.04, Debian 13 and Fedora containers; older distributions (glibc older than 2.39) can run Maily from source. To update, replace the `Maily` folder.
 
 ### Option B: run from source
 
