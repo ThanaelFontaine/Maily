@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-26
+
+A security release: update to it. The apps of 0.9.0 embed an outdated certificate bundle and outdated libraries, and the Linux archive could not open its window on Debian 13.
+
 ### Security
 
 - **Safer CI.** Every action of the workflows is pinned to a commit (the version stays in a comment, and Dependabot keeps both up to date), checkouts keep no credentials unless they push, and the `Release` workflow can write only in the job that publishes. `.github/dependabot.yml` opens at most one monthly pull request per group for the Python dependencies and the actions, nothing merges by itself.
@@ -219,7 +223,8 @@ First open-source release: a new default look, a single settings panel, a harden
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.6.0...v0.7.0
