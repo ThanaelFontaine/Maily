@@ -8,13 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [0.9.1] - 2026-10-26
 
-A security release: update to it. The apps of 0.9.0 embed an outdated certificate bundle and outdated libraries, and the Linux archive could not open its window on Debian 13.
+A security release: update to it. The apps of 0.9.0 embed an outdated certificate bundle and outdated libraries, and the Linux archive could not open its window on Debian 13. It is also the first version under the PolyForm Shield 1.0.0 license (see *Changed*).
 
 ### Security
 
 - **Safer CI.** Every action of the workflows is pinned to a commit (the version stays in a comment, and Dependabot keeps both up to date), checkouts keep no credentials unless they push, and the `Release` workflow can write only in the job that publishes. `.github/dependabot.yml` opens at most one monthly pull request per group for the Python dependencies and the actions, nothing merges by itself.
 - **Text check.** A `check-text` job (`python3 scripts/check_text.py`) fails the CI on an em or en dash or on a personal path or address in any tracked file.
-- **Dependencies updated for security advisories.** `certifi` 2026.10.23 (the CA bundle embedded in the apps no longer trusts the compromised emSign root, GHSA-6q48-6c7w-9gw2), `urllib3` 2.8.0 (three advisories, one in the TLS configuration through an HTTPS proxy), `PyJWT` 2.15.1, `mcp` 1.30.0 (still 1.x), `oauthlib` 4.0.0, `Pillow` 13.0.0 (build scripts only) and `setuptools` 84.2.1 (build only). The advisories on `PyJWT`, `mcp`, `oauthlib` and `Pillow` concern code Maily does not run (the app and its MCP server use no JWT decoding, no HTTP transport of `mcp`, no OAuth server and no image decoding of untrusted files); they are updated anyway so that no advisory stays open. The 0.9.0 apps carry the old certifi bundle: update to the next version.
+- **Dependencies updated for security advisories.** `certifi` 2026.10.23 (the CA bundle embedded in the apps no longer trusts the compromised emSign root, GHSA-6q48-6c7w-9gw2), `urllib3` 2.8.0 (three advisories, one in the TLS configuration through an HTTPS proxy), `PyJWT` 2.15.1, `mcp` 1.30.0 (still 1.x), `oauthlib` 4.0.0, `Pillow` 13.0.0 (build scripts only) and `setuptools` 84.2.1 (build only). The advisories on `PyJWT`, `mcp`, `oauthlib` and `Pillow` concern code Maily does not run (the app and its MCP server use no JWT decoding, no HTTP transport of `mcp`, no OAuth server and no image decoding of untrusted files); they are updated anyway so that no advisory stays open. The 0.9.0 apps carry the old certifi bundle: update to 0.9.1.
 
 ### Changed
 
