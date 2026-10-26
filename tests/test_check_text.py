@@ -42,6 +42,8 @@ def test_personal_path_and_address_are_found():
     assert ct.find_patterns("README.md", "ok\nsee /home/bob", ct.GENERIC_PATTERNS)[0][0] == 2
     assert ct.find_patterns("README.md", "write alice@gmail.com", ct.GENERIC_PATTERNS)
     assert ct.find_patterns("README.md", "write bob@icloud.com", ct.GENERIC_PATTERNS)
+    assert ct.find_patterns("README.md", "write carol@outlook.com", ct.GENERIC_PATTERNS)
+    assert ct.find_patterns("README.md", "write carol@outlook.fr", ct.GENERIC_PATTERNS)
 
 
 def test_a_bare_provider_domain_is_fine():
