@@ -104,13 +104,18 @@ def test_windows_and_linux_builds_run_the_binary_before_packaging():
     assert "'--self-check', '--window'" in win
     assert win.index("--self-check") < win.index("7z a")
     linux = _job("linux", BUILD)
-    assert "runs-on: ubuntu-latest" in linux and "name: maily-linux-x64" in linux
+    # Pinned: PyGObject is compiled against the girepository of the build
+    # machine, so ubuntu-latest (26.04) made the archive fail on Debian 13.
+    assert "runs-on: ubuntu-24.04" in linux and "name: maily-linux-x64" in linux
     assert "xvfb-run -a dist/Maily/maily --self-check --window" in linux
     assert linux.index("--self-check") < linux.index("tar -C dist")
     for f in ("maily.desktop", "INSTALL.txt", "maily.png"):
         assert f in linux
     smoke = _job("linux-smoke", BUILD)
     assert "needs: linux" in smoke and "--self-check --window" in smoke
+    for image in ("ubuntu:24.04", "debian:trixie", "fedora:latest"):
+        assert f"image: {image}" in smoke
+    assert smoke.index("--self-check --window") < smoke.index("./Maily/maily --tls-selftest")
 
 
 def test_every_build_is_uploaded_with_its_checksum():
