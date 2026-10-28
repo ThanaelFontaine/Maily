@@ -88,9 +88,9 @@ The journeys that must keep working for a person using Maily (local app, local A
 ## P10. Build the downloadable apps
 
 - **Proves:** PyInstaller builds the macOS, Windows and Linux apps, and each built binary passes its self-check.
-- **Run:** `uv sync --group build` then the steps of `docs/BUILD.md`; or push a branch so that `.github/workflows/build.yml` runs.
+- **Run:** `uv sync --group build` then the steps of `docs/BUILD.md`; or push a branch that touches the packaging (the paths listed in `.github/workflows/build.yml`), or run the Build workflow by hand (`workflow_dispatch`).
 - **Expected:** `Maily.app` and the `.dmg`, the Windows zip, the Linux archive, with their `.sha256` files.
-- **Automated:** `.github/workflows/build.yml` (on a pushed branch and from `release.yml`), `tests/test_release_workflow.py`.
+- **Automated:** `.github/workflows/build.yml` (on a pushed branch that touches the packaging, by hand, and from `release.yml`), `tests/test_release_workflow.py`.
 - **Result 2026-10-28:** not verifiable locally: the `build` dependency group (PyInstaller) is not installed in this environment, and the three platforms are built on their own CI runners. The apps are unsigned, so no secret is needed in CI; the local build was simply not attempted.
 
 ## How to add a journey
