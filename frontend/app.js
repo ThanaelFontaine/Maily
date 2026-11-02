@@ -3,7 +3,26 @@
 /* Every user-visible string goes through tr() (frontend/i18n.js) with a key of
    frontend/i18n/en.json. Never write interface text directly in this file. */
 
-const TOKEN = window.MAILY_TOKEN || "";
+/* The API token is handed to the window in the launch address (#k=...), never
+   served by the page. It is kept in sessionStorage for reloads and removed
+   from the address bar. Without a token (page opened by hand in a browser),
+   main() shows a notice and makes no request. */
+const TOKEN_KEY = "maily.token";
+function takeToken() {
+  let tok = "";
+  const m = /^#k=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  try {
+    if (m) {
+      tok = m[1];
+      sessionStorage.setItem(TOKEN_KEY, tok);
+      history.replaceState(null, "", location.pathname + location.search);
+    } else {
+      tok = sessionStorage.getItem(TOKEN_KEY) || "";
+    }
+  } catch { /* storage unavailable: the token of the address alone is used */ }
+  return tok;
+}
+const TOKEN = takeToken();
 const AUTH = { headers: { Authorization: "Bearer " + TOKEN } };
 const PALETTE = ["#1a73e8", "#188038", "#e37400", "#9334e6", "#d93025", "#007b83"];
 // Time zone: the system one (undefined = local time zone of the browser).
@@ -1346,6 +1365,14 @@ function paintStaticIcons() {
 }
 
 async function main() {
+  if (!TOKEN) {
+    await I18N.setLanguage(I18N.detect());
+    const note = document.createElement("p");
+    note.textContent = tr("app.openFromApp");
+    note.style.cssText = "padding:2em;text-align:center";
+    el(".win").replaceChildren(note);
+    return;
+  }
   await loadPrefs();                       // before any rendering: theme, mode, images, width, language
   await I18N.setLanguage(PREFS.language || I18N.detect());
   I18N.applyDom();

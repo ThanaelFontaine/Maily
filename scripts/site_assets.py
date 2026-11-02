@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import secrets
 import socket
 import subprocess
 import sys
@@ -95,12 +96,14 @@ class Demo:
         env.pop("MAILY_DATA_DIR", None)
         self.proc = subprocess.Popen(
             [sys.executable, "scripts/demo.py", "--port", str(port), "--data-dir", self.dir,
-             "--lang", self.lang],
+             "--lang", self.lang, "--token", self.token],
             cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        self.url = f"http://127.0.0.1:{port}/"
+        self.token = secrets.token_urlsafe(16)
+        base = f"http://127.0.0.1:{port}/"
+        self.url = base + "#k=" + self.token
         for _ in range(150):
             try:
-                urllib.request.urlopen(self.url + "health", timeout=1)
+                urllib.request.urlopen(base + "health", timeout=1)
                 return self
             except OSError:
                 time.sleep(0.2)
@@ -130,10 +133,10 @@ def capture(out: Path, lang: str = "en") -> None:
         page = ctx.new_page()
         page.goto(demo.url)
         page.wait_for_selector(".li")
-        page.evaluate("""async (p) => {
-          await fetch('/prefs', {method: 'POST', headers: {Authorization: 'Bearer ' + window.MAILY_TOKEN,
+        page.evaluate("""async ({token, ...p}) => {
+          await fetch('/prefs', {method: 'POST', headers: {Authorization: 'Bearer ' + token,
             'Content-Type': 'application/json'}, body: JSON.stringify(p)});
-        }""", {"language": lang, **(prefs or {})})
+        }""", {"token": demo.token, "language": lang, **(prefs or {})})
         page.reload()
         page.wait_for_selector(".li")
         page.wait_for_timeout(300)

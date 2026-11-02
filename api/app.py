@@ -1,6 +1,6 @@
 from __future__ import annotations
-import json
 import re
+import secrets
 import pathlib
 import urllib.parse
 import webbrowser
@@ -78,7 +78,7 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         if not _host_ok(request):
             raise _fail(403, "unauthorized", "host not allowed")
         auth = request.headers.get("authorization", "")
-        if auth != f"Bearer {token}":
+        if not secrets.compare_digest(auth.encode(), f"Bearer {token}".encode()):
             raise _fail(401, "unauthorized", "unauthorized")
 
     def rows(rs):
@@ -385,8 +385,8 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         def index(request: Request):
             if not _host_ok(request):
                 raise _fail(403, "unauthorized", "host not allowed")
-            html = (fd / "index.html").read_text(encoding="utf-8")
-            inject = f"<script>window.MAILY_TOKEN={json.dumps(token)};</script>"
-            return HTMLResponse(html.replace("</head>", inject + "</head>"))
+            # The token is never served: the app hands it to its own window
+            # in the launch address (see app/bootstrap.py).
+            return HTMLResponse((fd / "index.html").read_text(encoding="utf-8"))
 
     return app

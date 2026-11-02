@@ -31,9 +31,9 @@ def _base_and_token():
     rt = runtime.read_runtime_file(layout["runtime_json"])
     if not rt:
         raise SystemExit("Maily does not seem to be running (no runtime.json). Start the app first.")
-    token = runtime.read_api_token()
+    token = rt.get("token")
     if not token:
-        raise SystemExit("API token not found. Start the app at least once.")
+        raise SystemExit("API token not found in runtime.json. Start the app first.")
     return rt["base_url"], token
 
 

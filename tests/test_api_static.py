@@ -17,11 +17,17 @@ def client(database, tmp_path):
     return TestClient(app)
 
 
-def test_index_injects_token(client):
-    r = client.get("/")
+@pytest.mark.parametrize("url", ["/", "/?k=" + TOKEN, "/?launch=x"])
+def test_index_never_serves_the_token(client, url):
+    r = client.get(url)
     assert r.status_code == 200
-    assert "window.MAILY_TOKEN" in r.text
-    assert TOKEN in r.text
+    assert "Maily" in r.text
+    assert "MAILY_TOKEN" not in r.text
+    assert TOKEN not in r.text
+
+
+def test_index_refuses_foreign_host(client):
+    assert client.get("/", headers={"host": "evil.example"}).status_code == 403
 
 
 def test_static_served(client):

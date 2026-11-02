@@ -10,10 +10,19 @@ def tmp_secret_store(monkeypatch, tmp_path):
     return tmp_path
 
 
-def test_token_is_stable():
-    t1 = runtime.get_or_create_api_token()
-    t2 = runtime.get_or_create_api_token()
-    assert t1 == t2 and len(t1) >= 20
+def test_token_is_new_at_each_launch_and_not_stored():
+    from core import secret_file
+    t1, t2 = runtime.new_api_token(), runtime.new_api_token()
+    assert t1 != t2 and len(t1) >= 20
+    assert secret_file.get("api_token") is None
+
+
+def test_old_stored_token_is_removed():
+    from core import secret_file
+    secret_file.set("api_token", "old")
+    secret_file.set("other", "keep")
+    runtime.new_api_token()
+    assert secret_file.get("api_token") is None and secret_file.get("other") == "keep"
 
 
 def test_runtime_file_roundtrip(tmp_path):

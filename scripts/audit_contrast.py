@@ -93,5 +93,5 @@ def probe(w):
     os._exit(0 if ok else 1)
 
 
-win = webview.create_window("Maily", f"http://127.0.0.1:{PORT}/", **window_kwargs("darwin"))
+win = webview.create_window("Maily", f"http://127.0.0.1:{PORT}/#k={token}", **window_kwargs("darwin"))
 webview.start(probe, win)
