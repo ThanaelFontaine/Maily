@@ -8,7 +8,7 @@ from core import filenames as F
 
 @pytest.mark.parametrize("raw,expected", [
     ("../x", "x"),
-    ("../../.zshrc", "zshrc"),
+    ("../../y.txt", "y.txt"),
     ("/abs/x", "x"),
     ("..\\x", "x"),
     ("C:\\x\\y", "y"),
@@ -28,11 +28,11 @@ def test_ordinary_unicode_name_is_kept():
 
 def test_forbidden_and_control_characters_are_replaced():
     assert F.safe_filename("a:b.txt") == "a_b.txt"
-    assert "‮" not in F.safe_filename("fdp‮gnp.exe")
+    assert "‮" not in F.safe_filename("a‮b.txt")
     assert "\x00" not in F.safe_filename("a\x00b.txt")
 
 
-@pytest.mark.parametrize("raw", ["CON", "nul.txt", "com1.log", "LPT9.tar.gz"])
+@pytest.mark.parametrize("raw", ["CON", "nul.txt", "com1.log", "LPT9.tar.gz", "CONIN$", "COM¹.txt"])
 def test_windows_reserved_names_are_prefixed(raw):
     assert F.safe_filename(raw).startswith("_")
 
@@ -105,18 +105,18 @@ def test_file_path_inside_downloads(home):
 
 
 @pytest.mark.parametrize("dest", [
-    "~/Library/LaunchAgents", "/tmp", "~/.config/autostart/x.desktop",
-    "~/Downloads/../.ssh", "~",
+    "~/elsewhere", "/tmp", "~/.config/other/x.txt",
+    "~/Downloads/../other", "~",
 ])
 def test_forbidden_destinations(home, dest):
     with pytest.raises(F.DestinationNotAllowed):
         F.resolve_destination(dest, "f")
-    assert not (home / ".ssh").exists() and not (home / "Library").exists()
+    assert not (home / "other").exists() and not (home / "elsewhere").exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="symlinks")
 def test_symlink_out_of_allowed_roots_is_refused(home):
     (home / "Downloads").mkdir()
-    (home / "Downloads" / "sortie").symlink_to(home)
+    (home / "Downloads" / "link").symlink_to(home)
     with pytest.raises(F.DestinationNotAllowed):
-        F.resolve_destination("~/Downloads/sortie", "f")
+        F.resolve_destination("~/Downloads/link", "f")

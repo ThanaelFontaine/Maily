@@ -11,11 +11,11 @@ const TOKEN_KEY = "maily.token";
 function takeToken() {
   let tok = "";
   const m = /^#k=([A-Za-z0-9_-]+)$/.exec(location.hash);
+  if (m) history.replaceState(null, "", location.pathname + location.search);
   try {
     if (m) {
       tok = m[1];
       sessionStorage.setItem(TOKEN_KEY, tok);
-      history.replaceState(null, "", location.pathname + location.search);
     } else {
       tok = sessionStorage.getItem(TOKEN_KEY) || "";
     }

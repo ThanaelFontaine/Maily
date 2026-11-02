@@ -128,7 +128,7 @@ def make_act_fn(store):
 def _migrate_secrets(store) -> None:
     """Moves the Keychain secrets into the encrypted file (once)."""
     from core import secret_file
-    names = ["oauth_client", "api_token"]
+    names = ["oauth_client"]
     try:
         names += [f"account:{a['email']}" for a in store.list_accounts()]
     except Exception:

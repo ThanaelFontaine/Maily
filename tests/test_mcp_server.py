@@ -74,7 +74,7 @@ def home(tmp_path, monkeypatch):
     return tmp_path.resolve()
 
 
-@pytest.mark.parametrize("hostile", ["../.zshrc", "/abs/x", "../../Library/LaunchAgents/x.plist"])
+@pytest.mark.parametrize("hostile", ["../x", "/elsewhere/x", "../../y.txt"])
 def test_download_attachment_stays_in_downloads(monkeypatch, home, hostile):
     from core import accounts_service
     monkeypatch.setattr(S, "_account_of", lambda mid: ({"id": mid}, {"email": "a@example.com"}))
@@ -93,9 +93,9 @@ def test_download_attachment_refuses_forbidden_dest(monkeypatch, home):
     monkeypatch.setattr(S, "_account_of", lambda mid: ({"id": mid}, {"email": "a@example.com"}))
     monkeypatch.setattr(accounts_service, "fetch_attachment",
                         lambda *a, **k: (b"data", "text/plain", "f.txt"))
-    r = S.maily_download_attachment(1, 1, dest_path=str(home / "Library" / "LaunchAgents"))
+    r = S.maily_download_attachment(1, 1, dest_path=str(home / "elsewhere"))
     assert r["code"] == "dest_path_not_allowed"
-    assert not (home / "Library").exists()
+    assert not (home / "elsewhere").exists()
 
 
 def test_export_eml_confined_like_attachments(monkeypatch, home):

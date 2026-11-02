@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Ready-made client for local automations (scripts, agents).
 
-Reads runtime.json (written by the app at launch) and the local API token
-(in the encrypted secret store), then talks to Maily's local HTTP API. The
-Maily app must be running.
+Reads runtime.json (written by the app at launch), which holds the base URL
+and the API token of the running app, then talks to Maily's local HTTP API.
+The Maily app must be running.
 
 Examples (from the repository root):
   uv run python scripts/claude_client.py accounts

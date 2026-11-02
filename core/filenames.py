@@ -18,7 +18,7 @@ MAX_NAME = 150
 MAX_EXT = 16
 MAX_SUFFIX = 99
 _FORBIDDEN = re.compile(r'[<>:"/\\|?*]')
-_RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|COM[0-9]|LPT[0-9])$", re.IGNORECASE)
+_RESERVED = re.compile(r"^(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[0-9¹²³]|LPT[0-9¹²³])$", re.IGNORECASE)
 
 
 class DestinationNotAllowed(ValueError):

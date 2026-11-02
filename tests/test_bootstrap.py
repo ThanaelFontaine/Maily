@@ -114,3 +114,17 @@ def test_claude_client_reads_the_token_from_runtime_json(monkeypatch):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert mod._base_and_token() == ("http://127.0.0.1:5000", "tok-from-runtime")
+
+
+def test_the_keyring_migration_does_not_ask_for_the_api_token(monkeypatch):
+    from core import secret_file
+    asked = []
+    monkeypatch.setattr(secret_file, "migrate_from_keyring", lambda names: asked.extend(names))
+
+    class _Store:
+        def list_accounts(self):
+            return [{"email": "a@example.com"}]
+
+    bootstrap._migrate_secrets(_Store())
+    assert "api_token" not in asked
+    assert "oauth_client" in asked and "account:a@example.com" in asked
