@@ -16,9 +16,9 @@ The journeys that must keep working for a person using Maily (local app, local A
   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/health            # 200
   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8765/accounts          # 401, no token
   ```
-  The token is injected into the served page (`window.MAILY_TOKEN`); send it as `Authorization: Bearer <token>`. `GET /accounts` then returns the three fictitious accounts.
+  The demo prints its launch address with the token (`/#k=<token>`, or pass `--token`); send it as `Authorization: Bearer <token>`. `GET /accounts` then returns the three fictitious accounts.
 - **Expected:** 200, then 401 without token, then 3 accounts (`example.com`, `example.org`, `example.net`).
-- **Automated:** `tests/test_api.py`, `tests/test_api_static.py` (`test_index_injects_token`, `test_static_served`), `tests/test_demo.py` (the demo refuses the real data folder).
+- **Automated:** `tests/test_api.py`, `tests/test_api_static.py` (`test_index_never_serves_the_token`, `test_static_served`), `tests/test_demo.py` (the demo refuses the real data folder).
 - **Result 2026-10-28:** green (manual: 200, 401, 3 accounts; suite green).
 
 ## P2. List and read messages

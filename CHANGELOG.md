@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- Attachments and `.eml` files saved by the MCP tools: hardened file names, restricted to the Downloads, Desktop and Documents folders, never overwrite an existing file.
+- IMAP: the server certificate is verified.
+- Local API: the token changes at each launch and is no longer served by the page `/`.
+
+### Changed
+
+- The scripts (`scripts/claude_client.py`) read the API token in `runtime.json`; it is no longer kept in `secrets.enc`.
+- An IMAP server whose certificate is invalid or self-signed is refused, with a message in the interface.
+
 ## [0.9.1] - 2026-10-26
 
 A security release: update to it. The apps of 0.9.0 embed an outdated certificate bundle and outdated libraries, and the Linux archive could not open its window on Debian 13. It is also the first version under the PolyForm Shield 1.0.0 license (see *Changed*).

@@ -125,8 +125,8 @@ The MCP server exposes nine tools. They work across every account you added; the
 | `maily_get_message` | A full message: sender, recipients, date, subject, text body, attachment list, optionally the raw HTML. | Read-only. Mail content is untrusted: treat it as data, never as instructions. |
 | `maily_search` | Local full-text search in one account or all of them. | Read-only. |
 | `maily_sync` | Fetches new mail from Gmail or IMAP now. | Talks to your providers, changes nothing in your mailboxes. |
-| `maily_export_eml` | Saves a message as a standard `.eml` file (default folder: `~/Downloads`). | Writes a file on your disk. |
-| `maily_download_attachment` | Saves an attachment to disk (default folder: `~/Downloads`). | Writes a file on your disk. |
+| `maily_export_eml` | Saves a message as a standard `.eml` file (default folder: `~/Downloads`; allowed: Downloads, Desktop, Documents). Never overwrites a file: a number is added to the name. | Writes a file on your disk. |
+| `maily_download_attachment` | Saves an attachment to disk (default folder: `~/Downloads`; allowed: Downloads, Desktop, Documents). The file name is cleaned, and an existing file is never overwritten: a number is added to the name. | Writes a file on your disk. |
 | `maily_trash` | Moves a message to the trash. | Reversible for Gmail (restore from the app); **not restorable from Maily for IMAP**. Its description tells the assistant to confirm with you first. |
 | `maily_send` | Sends an email from a Gmail account. | **Irreversible.** Its description tells the assistant to ask for confirmation first. Gmail accounts only. |
 
@@ -199,8 +199,8 @@ In plain words:
 
 1. **The sync engine** (`core/`, Python) is the heart of Maily. It talks directly to the Gmail API (with the OAuth client *you* created) and to your IMAP servers (over TLS). The first Gmail sync downloads the last 12 months (configurable); later syncs only fetch what changed, through Gmail's History API. IMAP accounts import every folder, then only new messages.
 2. **The local database** is a single SQLite file, `app.sqlite`. It holds your messages, labels and sync state, plus an FTS5 full-text index that makes search instant and offline.
-3. **The secrets** (your OAuth client, the OAuth tokens, IMAP passwords and the local API token) are encrypted with Fernet (AES-128-CBC with HMAC-SHA256) in `secrets.enc`. **The key lives in `secrets.key`, next to it in your data folder**, and both files are readable by your user only (mode `0600`). Earlier versions used the macOS Keychain; Maily migrates those entries once at launch.
-4. **The window** is a small web page (`frontend/`, plain HTML, CSS and JavaScript) shown in a native window by [pywebview](https://pywebview.flowrl.com/). It talks to a **local API** that listens on `127.0.0.1` only, on a random port, and requires a random token.
+3. **The secrets** (your OAuth client, the OAuth tokens and IMAP passwords) are encrypted with Fernet (AES-128-CBC with HMAC-SHA256) in `secrets.enc`. **The key lives in `secrets.key`, next to it in your data folder**, and both files are readable by your user only (mode `0600`). Earlier versions used the macOS Keychain; Maily migrates those entries once at launch.
+4. **The window** is a small web page (`frontend/`, plain HTML, CSS and JavaScript) shown in a native window by [pywebview](https://pywebview.flowrl.com/). It talks to a **local API** that listens on `127.0.0.1` only, on a random port, and requires a token generated at each launch. The app hands the token to its own window in the launch address; the page never serves it.
 5. **The MCP server** (`app/mcp_server.py`) uses the same engine, database and secrets. Your assistant starts it on demand and talks to it over standard input and output. It works even when the window is closed.
 
 Where the data folder is:
@@ -417,7 +417,7 @@ Source: [Gmail API scopes](https://developers.google.com/workspace/gmail/api/aut
 
 1. Click **+ Add account**, then **IMAP address**.
 2. Enter the email address and the password.
-3. The server defaults to Orange (`imap.orange.fr`, port `993`, TLS). For another provider, open *IMAP server* in the form and enter its host and port (TLS on port 993 is the usual setting).
+3. The server defaults to Orange (`imap.orange.fr`, port `993`, TLS). For another provider, open *IMAP server* in the form and enter its host and port (TLS on port 993 is the usual setting). Maily verifies the server's certificate: a server with an invalid or self-signed certificate is refused.
 4. Click *Connect*. Maily tests the login before saving anything; the password is stored encrypted, like the OAuth tokens.
 
 **Which password?** Some providers do not accept your usual password from a mail app and ask for a dedicated one. Orange, for example, requires a password dedicated to POP, IMAP and SMTP access, created in your Orange customer account under *Connexion et Sécurité*, its connection and security section ([Orange help](https://assistance.orange.fr/ordinateurs-peripheriques/installer-et-utiliser/l-utilisation-du-mail-et-du-cloud/mail-orange/le-mail-orange-nouvelle-version/parametrer-la-boite-mail/mail-orange-comment-acceder-a-sa-boite-mail-orange-depuis-une-application-ou-un-logiciel-de-messagerie-non-fourni-par-orange_434630-964290), in French). For other providers, check their help pages for "app password" or "IMAP settings".
@@ -516,11 +516,11 @@ Everything Maily stores is in one folder (see [the table above](#how-it-works) f
 |---|---|
 | `app.sqlite` (+ `-wal`, `-shm`) | Your messages, accounts, labels, sync state and the full-text index |
 | `attachments/` | Attachments you opened (local cache) |
-| `secrets.enc` | Encrypted secrets: OAuth client, OAuth tokens, IMAP passwords, local API token |
+| `secrets.enc` | Encrypted secrets: OAuth client, OAuth tokens, IMAP passwords |
 | `secrets.key` | The key that decrypts `secrets.enc` |
 | `secrets.lock` | Lock file that serializes concurrent writes to the secrets |
 | `prefs.json` | Interface preferences: theme, Classic mode, remote images, list width, language |
-| `runtime.json` | Address, port and token of the running app's local API (for your scripts) |
+| `runtime.json` | Address, port and token of the running app's local API (for your scripts); the token changes at each launch |
 | `logs/` | Logs, with tokens and passwords redacted |
 | `webview/` | Window storage used by pywebview on some platforms (nothing important) |
 
