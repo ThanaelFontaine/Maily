@@ -287,16 +287,17 @@ def maily_send(profile: str, to: str, subject: str, body_text: str,
     return {"sent_from": acc["email"], "to": to, "result": res}
 
 
-def _save_path(dest_path, filename):
-    import pathlib
-    if dest_path:
-        p = pathlib.Path(dest_path).expanduser()
-        if p.is_dir():
-            p = p / filename
-    else:
-        p = pathlib.Path.home() / "Downloads" / filename
-    p.parent.mkdir(parents=True, exist_ok=True)
-    return p
+def _write_download(dest_path, filename, data):
+    """Saves data under a safe name in an allowed folder, never over an existing
+    file. Returns the path, or an error dict for the tool."""
+    from core import filenames
+    try:
+        folder, name = filenames.resolve_destination(dest_path, filename)
+        return filenames.write_new(folder, name, data)
+    except filenames.DestinationNotAllowed as e:
+        return {"error": str(e), "code": "dest_path_not_allowed"}
+    except OSError as e:
+        return {"error": f"could not save the file: {e}"}
 
 
 def _account_of(message_id):
@@ -311,15 +312,18 @@ def _account_of(message_id):
 @mcp.tool()
 def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
     """Saves a message as an .eml file (raw RFC 822) on disk.
-    dest_path : folder or full path (default: ~/Downloads). Works for Gmail
-    and IMAP accounts. Returns the path of the written file."""
+    dest_path : folder or full path inside ~/Downloads, ~/Desktop or
+    ~/Documents (default: ~/Downloads). An existing file is never overwritten:
+    a number is added to the name. Works for Gmail and IMAP accounts. Returns
+    the path of the written file."""
     from core.accounts_service import export_eml
     try:
         data, filename = export_eml(store(), message_id)
     except Exception as e:
         return {"error": f".eml export failed: {e}"}
-    p = _save_path(dest_path, filename)
-    p.write_bytes(data)
+    p = _write_download(dest_path, filename, data)
+    if isinstance(p, dict):
+        return p
     return {"saved": str(p), "bytes": len(data)}
 
 
@@ -327,7 +331,9 @@ def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
 def maily_download_attachment(message_id: int, attachment_id: int,
                              dest_path: str | None = None) -> dict:
     """Downloads an attachment of a message to disk.
-    dest_path : folder or full path (default: ~/Downloads)."""
+    dest_path : folder or full path inside ~/Downloads, ~/Desktop or
+    ~/Documents (default: ~/Downloads). An existing file is never overwritten:
+    a number is added to the name."""
     from core.accounts_service import fetch_attachment
     m, acc = _account_of(message_id)
     if not acc:
@@ -338,8 +344,9 @@ def maily_download_attachment(message_id: int, attachment_id: int,
                                                 attachment_id, attdir)
     except Exception as e:
         return {"error": f"download failed: {e}"}
-    p = _save_path(dest_path, filename or "attachment")
-    p.write_bytes(data)
+    p = _write_download(dest_path, filename or "attachment", data)
+    if isinstance(p, dict):
+        return p
     return {"saved": str(p), "mime": mime, "bytes": len(data)}
 
 
