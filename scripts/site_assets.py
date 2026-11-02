@@ -88,17 +88,20 @@ class Demo:
     def __init__(self, lang: str = "en") -> None:
         self.lang = lang
 
+    def command(self, port: int) -> list[str]:
+        return [sys.executable, "scripts/demo.py", "--port", str(port), "--data-dir", self.dir,
+                "--lang", self.lang, "--token", self.token]
+
     def __enter__(self) -> "Demo":
         self.dir = tempfile.mkdtemp(prefix="maily-site-demo-")
         port = free_port()
         env = {**os.environ, "MAILY_NO_BIOMETRIC": "1",
                "PYTHON_KEYRING_BACKEND": "keyring.backends.null.Keyring"}
         env.pop("MAILY_DATA_DIR", None)
-        self.proc = subprocess.Popen(
-            [sys.executable, "scripts/demo.py", "--port", str(port), "--data-dir", self.dir,
-             "--lang", self.lang, "--token", self.token],
-            cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.token = secrets.token_urlsafe(16)
+        self.proc = subprocess.Popen(
+            self.command(port), cwd=ROOT, env=env,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         base = f"http://127.0.0.1:{port}/"
         self.url = base + "#k=" + self.token
         for _ in range(150):
