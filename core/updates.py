@@ -14,11 +14,10 @@ is off, or in demo mode (`offline=True`).
 from __future__ import annotations
 import datetime
 import json
-import ssl
 import sys
 import threading
 import urllib.request
-from core import paths, prefs
+from core import paths, prefs, tls
 
 LATEST_URL = "https://api.github.com/repos/ThanaelFontaine/Maily/releases/latest"
 TIMEOUT = 6.0
@@ -41,14 +40,7 @@ def parse_version(tag):
     return tuple(int(p) for p in parts)
 
 
-def _tls_context():
-    """certifi's CA bundle when available: the packaged app embeds it (packaging/maily.spec),
-    while the system's default paths may not exist inside a frozen bundle."""
-    try:
-        import certifi
-        return ssl.create_default_context(cafile=certifi.where())
-    except (ImportError, OSError):
-        return ssl.create_default_context()
+_tls_context = tls.verified_context   # kept under this name for the tests
 
 
 def fetch_latest():

@@ -202,10 +202,12 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
     def add_imap(payload: ImapConnectPayload):
         if add_imap_fn is None:
             raise _fail(501, "not_available", "add imap not wired")
-        from core.imap_client import ImapError
+        from core.imap_client import ImapError, ImapCertificateError
         from core.accounts_service import AddAccountInProgress
         try:
             return add_imap_fn(payload.email, payload.password, payload.host, payload.port)
+        except ImapCertificateError as e:
+            raise _fail(400, "imap_certificate", f"IMAP server certificate not verified: {e}")
         except ImapError as e:
             raise _fail(400, "imap_login_failed", f"IMAP connection failed: {e}")
         except AddAccountInProgress as e:

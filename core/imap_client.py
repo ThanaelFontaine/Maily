@@ -7,8 +7,10 @@ Deliberately small: reading is the only goal (no SMTP).
 """
 from __future__ import annotations
 import imaplib
+import ssl
 import re
 import datetime
+from core import tls
 
 # Usual trash folder names across servers (Orange = "Trash"; "Corbeille" is
 # the French name some servers use).
@@ -22,6 +24,10 @@ _KEY_SEP = "\x1f"
 
 class ImapError(Exception):
     pass
+
+
+class ImapCertificateError(ImapError):
+    """The server's certificate could not be verified."""
 
 
 class NoTrashFolder(ImapError):
@@ -78,8 +84,11 @@ class ImapClient:
 
     def connect(self):
         try:
-            self.conn = imaplib.IMAP4_SSL(self.host, self.port)
+            self.conn = imaplib.IMAP4_SSL(self.host, self.port,
+                                         ssl_context=tls.verified_context())
             self.conn.login(self.username, self.password)
+        except ssl.SSLCertVerificationError as e:
+            raise ImapCertificateError(f"IMAP server certificate not verified: {e}") from e
         except (imaplib.IMAP4.error, OSError) as e:
             raise ImapError(f"IMAP connection or credentials refused: {e}") from e
         return self
