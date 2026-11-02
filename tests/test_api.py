@@ -327,3 +327,25 @@ def test_about_endpoint(client, monkeypatch, tmp_path):
     r = c.get("/about", headers=_auth())
     assert r.status_code == 200
     assert r.json() == {"version": core.__version__, "data_dir": str(tmp_path / "d")}
+
+
+def test_add_imap_certificate_error_has_its_own_code(database):
+    from core.imap_client import ImapCertificateError
+
+    def boom(email, password, host, port):
+        raise ImapCertificateError("self signed")
+
+    c = TestClient(create_app(Store(database), TOKEN, add_imap_fn=boom))
+    r = c.post("/accounts/imap", headers=_auth(), json={"email": "a@example.net", "password": "x"})
+    assert r.status_code == 400
+    assert r.headers["X-Maily-Error"] == "imap_certificate"
+
+
+def test_guard_accepts_only_the_exact_token(database):
+    c = TestClient(create_app(Store(database), TOKEN))
+    good = {"Authorization": "Bearer " + TOKEN}
+    same_length = {"Authorization": "Bearer " + "x" * len(TOKEN)}
+    assert c.get("/accounts", headers=good).status_code == 200
+    assert c.get("/accounts", headers=same_length).status_code == 401
+    assert c.get("/accounts", headers={"Authorization": "Bearer nope"}).status_code == 401
+    assert c.get("/accounts").status_code == 401

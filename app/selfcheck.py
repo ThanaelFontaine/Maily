@@ -100,7 +100,8 @@ def _window_check(data_dir: pathlib.Path, give_up) -> str:
     from api.app import create_app
 
     store = Store(Database(data_dir / "window.sqlite"))
-    app = create_app(store, secrets.token_urlsafe(16), frontend_dir=bootstrap._frontend_dir())
+    token = secrets.token_urlsafe(16)
+    app = create_app(store, token, frontend_dir=bootstrap._frontend_dir())
     port = bootstrap.free_port()
     bootstrap._start_server(app, port)
     base = f"http://127.0.0.1:{port}"
@@ -108,11 +109,15 @@ def _window_check(data_dir: pathlib.Path, give_up) -> str:
         raise RuntimeError("the local server did not start")
 
     result: dict = {}
-    win = webview.create_window("Maily self-check", base, width=800, height=600)
+    win = webview.create_window("Maily self-check", bootstrap.launch_url(base, token),
+                                width=800, height=600)
 
     def on_loaded():
         try:
             result["title"] = win.evaluate_js("document.title")
+            # The window must have received the token and cleaned its address.
+            result["token"] = win.evaluate_js("sessionStorage.getItem('maily.token')")
+            result["hash"] = win.evaluate_js("location.hash")
         except Exception as e:  # noqa: BLE001
             result["error"] = f"{type(e).__name__}: {e}"
         finally:
@@ -138,6 +143,8 @@ def _window_check(data_dir: pathlib.Path, give_up) -> str:
         raise RuntimeError(result["error"])
     if result.get("title") != "Maily":
         raise RuntimeError(f"unexpected page title {result.get('title')!r}")
+    if result.get("token") != token or result.get("hash"):
+        raise RuntimeError("the window did not receive the launch token")
     backend = getattr(getattr(webview, "guilib", None), "__name__", "?").rsplit(".", 1)[-1]
     return f"page loaded ({backend} backend)"
 

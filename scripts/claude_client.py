@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Ready-made client for local automations (scripts, agents).
 
-Reads runtime.json (written by the app at launch) and the local API token
-(in the encrypted secret store), then talks to Maily's local HTTP API. The
-Maily app must be running.
+Reads runtime.json (written by the app at launch), which holds the base URL
+and the API token of the running app, then talks to Maily's local HTTP API.
+The Maily app must be running.
 
 Examples (from the repository root):
   uv run python scripts/claude_client.py accounts
@@ -31,9 +31,9 @@ def _base_and_token():
     rt = runtime.read_runtime_file(layout["runtime_json"])
     if not rt:
         raise SystemExit("Maily does not seem to be running (no runtime.json). Start the app first.")
-    token = runtime.read_api_token()
+    token = rt.get("token")
     if not token:
-        raise SystemExit("API token not found. Start the app at least once.")
+        raise SystemExit("API token not found in runtime.json. Start the app first.")
     return rt["base_url"], token
 
 

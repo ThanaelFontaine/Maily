@@ -202,6 +202,8 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="The Maily interface on fictitious data.")
     ap.add_argument("--data-dir", help="folder of the demo database (default: a temporary folder)")
     ap.add_argument("--port", type=int, default=0, help="local port (default: a free port)")
+    ap.add_argument("--token", default=None,
+                    help="API token (default: random); the printed address carries it")
     ap.add_argument("--lang", choices=("en", "fr"), default="en",
                     help="language of the fictitious mail (default: en)")
     args = ap.parse_args(argv)
@@ -240,12 +242,12 @@ def main(argv=None) -> None:
         att = store.get_attachment(att_id)
         return b"%PDF-1.4\n% demo file\n", "application/pdf", att["filename"]
 
-    token = secrets.token_urlsafe(24)   # in memory only, never written to disk
+    token = args.token or secrets.token_urlsafe(24)   # in memory only, never written to disk
     app = create_app(store, token, sync_fn=lambda account_id: 0, send_fn=send_fn, act_fn=act_fn,
                      download_fn=download_fn, frontend_dir=_frontend_dir(),
                      offline=True)   # demo: no network, so no update check
     port = args.port or free_port()
-    print(f"Maily (demo): http://127.0.0.1:{port}/")
+    print(f"Maily (demo): http://127.0.0.1:{port}/#k={token}")
     print(f"Fictitious data in: {data_dir}")
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
 

@@ -2,6 +2,7 @@
 import datetime
 import json
 import os
+import ssl
 import stat
 import pytest
 from fastapi.testclient import TestClient
@@ -184,8 +185,8 @@ def test_real_request_has_the_expected_headers(monkeypatch):
     assert seen["headers"]["user-agent"] == f"Maily/{core.__version__}"
     assert 0 < seen["timeout"] <= 10
     # certifi's CA bundle: the system paths may not exist inside the packaged app
-    assert isinstance(seen["context"], updates.ssl.SSLContext)
-    assert seen["context"].verify_mode == updates.ssl.CERT_REQUIRED
+    assert isinstance(seen["context"], ssl.SSLContext)
+    assert seen["context"].verify_mode == ssl.CERT_REQUIRED
 
 
 # --- preference ---

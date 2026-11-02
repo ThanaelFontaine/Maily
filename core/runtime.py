@@ -10,16 +10,12 @@ _TOKEN_KEY = "api_token"
 SCHEMA_VERSION = "1"
 
 
-def get_or_create_api_token() -> str:
-    tok = secret_file.get(_TOKEN_KEY)
-    if not tok:
-        tok = secrets.token_urlsafe(32)
-        secret_file.set(_TOKEN_KEY, tok)
-    return tok
-
-
-def read_api_token() -> str | None:
-    return secret_file.get(_TOKEN_KEY)
+def new_api_token() -> str:
+    """A fresh token for this launch. It lives in runtime.json only (0600);
+    the one older versions kept in secrets.enc is removed. Raises
+    SecretStoreError when the secret store is unreadable (nothing is changed)."""
+    secret_file.delete(_TOKEN_KEY)
+    return secrets.token_urlsafe(32)
 
 
 def write_runtime_file(path, host: str, port: int, token: str | None = None) -> dict:

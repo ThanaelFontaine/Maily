@@ -128,3 +128,16 @@ def test_engine_refuses_imap_restore(database):
     mid = store.upsert_message(aid, "INBOX\x1f1\x1f7", subject="Trashed", is_trashed=1)
     with pytest.raises(ValueError, match="IMAP"):
         svc.untrash_message(store, "old@example.net", mid)
+
+
+def test_token_comes_from_the_launch_address_not_from_the_page():
+    assert "MAILY_TOKEN" not in JS
+    assert "location.hash" in JS and "sessionStorage" in JS
+    assert 'history.replaceState(null, "", location.pathname + location.search)' in JS
+
+
+def test_without_a_token_the_page_shows_a_notice_and_makes_no_request():
+    start = JS.index("async function main()")
+    guard = JS[start:JS.index("await loadPrefs()", start)]
+    assert "if (!TOKEN)" in guard and "app.openFromApp" in guard and "return;" in guard
+    assert "fetch(" not in guard and "api(" not in guard

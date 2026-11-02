@@ -65,3 +65,42 @@ def test_get_message_lists_real_attachments(monkeypatch, database):
     out = S.maily_get_message(mid)
     assert [a["filename"] for a in out["attachments"]] == ["invoice.pdf"]
     assert isinstance(out["attachments"][0]["attachment_id"], int)
+
+
+@pytest.fixture
+def home(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    return tmp_path.resolve()
+
+
+@pytest.mark.parametrize("hostile", ["../x", "/elsewhere/x", "../../y.txt"])
+def test_download_attachment_stays_in_downloads(monkeypatch, home, hostile):
+    from core import accounts_service
+    monkeypatch.setattr(S, "_account_of", lambda mid: ({"id": mid}, {"email": "a@example.com"}))
+    monkeypatch.setattr(accounts_service, "fetch_attachment",
+                        lambda *a, **k: (b"data", "text/plain", hostile))
+    r = S.maily_download_attachment(1, 1)
+    assert r["bytes"] == 4
+    written = [p for p in home.rglob("*") if p.is_file()]
+    assert len(written) == 1 and written[0].parent == home / "Downloads"
+    r2 = S.maily_download_attachment(1, 1)
+    assert r2["saved"] != r["saved"]
+
+
+def test_download_attachment_refuses_forbidden_dest(monkeypatch, home):
+    from core import accounts_service
+    monkeypatch.setattr(S, "_account_of", lambda mid: ({"id": mid}, {"email": "a@example.com"}))
+    monkeypatch.setattr(accounts_service, "fetch_attachment",
+                        lambda *a, **k: (b"data", "text/plain", "f.txt"))
+    r = S.maily_download_attachment(1, 1, dest_path=str(home / "elsewhere"))
+    assert r["code"] == "dest_path_not_allowed"
+    assert not (home / "elsewhere").exists()
+
+
+def test_export_eml_confined_like_attachments(monkeypatch, home):
+    from core import accounts_service
+    monkeypatch.setattr(accounts_service, "export_eml", lambda st, mid: (b"raw", "../../x.eml"))
+    r = S.maily_export_eml(1)
+    assert r["saved"].startswith(str(home / "Downloads"))
+    assert S.maily_export_eml(1, dest_path="/tmp")["code"] == "dest_path_not_allowed"

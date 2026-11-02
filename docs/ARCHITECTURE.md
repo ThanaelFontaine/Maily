@@ -52,10 +52,10 @@ tests/                pytest suite (network and real data never used)
 2. **Logs** go to `logs/maily.log` (1 MB, 3 rotations). A filter redacts tokens, passwords and long base64 strings.
 3. **Database.** `core.db.Database` opens `app.sqlite` in WAL mode and applies pending migrations.
 4. **Secrets.** A one-time migration imports old entries from the system keyring into `secrets.enc` (earlier versions used the macOS Keychain). Then, on macOS, the **Touch ID gate** runs (skipped if no biometric hardware, or with `MAILY_NO_BIOMETRIC=1`). If Touch ID fails or is cancelled, the app quits.
-5. **API token.** A random token (`secrets.token_urlsafe(32)`) is created once and kept in `secrets.enc`. If the secret store cannot be read, Maily stops with a clear message (on stderr and in a small window) and writes nothing.
+5. **API token.** A new random token (`secrets.token_urlsafe(32)`) is generated at each launch and written only to `runtime.json` (`0600`); a token left in `secrets.enc` by an older version is removed. If the secret store cannot be read, Maily stops with a clear message (on stderr and in a small window) and writes nothing.
 6. **Local API.** FastAPI is started by uvicorn in a thread, on `127.0.0.1` and a free random port. When `/health` answers, `runtime.json` is written (`0600`) with `host`, `port`, `base_url`, `schema_version` and `token`.
 7. **Auto sync.** A background thread syncs every account at startup and then every `MAILY_POLL_INTERVAL_SECONDS` (180 s, minimum 60 s). A single lock is shared with the Sync button, so two syncs never overlap. Each pass records `last_sync_at` and `last_sync_error` in `sync_state`.
-8. **Window.** pywebview opens the page served by the local API. The API injects the token into the page (`window.MAILY_TOKEN`). On macOS, the window is transparent with native vibrancy (used by the Glassmorphism theme); other themes paint an opaque background.
+8. **Window.** pywebview opens the page served by the local API. The window receives the per-launch API token in its launch address (`/#k=<token>`); the page keeps it in `sessionStorage` and removes it from the address bar, and the API never serves it. On macOS, the window is transparent with native vibrancy (used by the Glassmorphism theme); other themes paint an opaque background.
 
 ## Data model
 

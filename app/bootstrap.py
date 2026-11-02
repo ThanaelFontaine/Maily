@@ -128,7 +128,7 @@ def make_act_fn(store):
 def _migrate_secrets(store) -> None:
     """Moves the Keychain secrets into the encrypted file (once)."""
     from core import secret_file
-    names = ["oauth_client", "api_token"]
+    names = ["oauth_client"]
     try:
         names += [f"account:{a['email']}" for a in store.list_accounts()]
     except Exception:
@@ -398,7 +398,8 @@ def run():
 
     from core.secret_file import SecretStoreError
     try:
-        token = runtime.get_or_create_api_token()
+        # A new token at each launch, kept in runtime.json only (0600).
+        token = runtime.new_api_token()
     except SecretStoreError as e:
         # Unreadable secret store: stop without writing anything on it.
         fail_unreadable_secrets(e)
@@ -428,7 +429,9 @@ def run():
     # (MAILY_POLL_INTERVAL_SECONDS, 180 by default).
     AutoSync(store, sync_fn, settings.poll_interval_seconds).start()
 
-    win = webview.create_window("Maily", base, **window_kwargs(sys.platform))
+    # The window receives the token in the address fragment (never sent to the
+    # server, removed from the address bar by the page).
+    win = webview.create_window("Maily", launch_url(base, token), **window_kwargs(sys.platform))
     if sys.platform == "darwin":
         # Applies the transparency fix once the native webview is ready (the
         # `loaded` event guarantees that it exists).
@@ -437,6 +440,10 @@ def run():
     # core/prefs.py), but cookies and caches are kept between launches.
     storage = str(paths.runtime_dir() / "webview")
     webview.start(private_mode=False, storage_path=storage)
+
+
+def launch_url(base: str, token: str) -> str:
+    return f"{base}/#k={token}"
 
 
 def parse_args(argv=None):
