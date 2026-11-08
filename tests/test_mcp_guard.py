@@ -310,10 +310,11 @@ def test_box_shows_the_real_address_behind_a_long_display_name():
     assert "sam@example.net" not in text
 
 
-def test_box_lists_addresses_and_short_names_after_them():
+def test_box_lists_the_plain_addresses_without_names():
     text = mcp_guard.describe_send(
         "alex@example.com", '"Doe John" <j@x.org>, k@x.org', "l@x.org, m@x.org", "Hi", "B")
-    assert "To: j@x.org (Doe John), k@x.org\n" in text
+    assert "To: j@x.org, k@x.org\n" in text
+    assert "Doe" not in text
     assert "Cc: l@x.org, m@x.org\n" in text
 
 
@@ -328,6 +329,87 @@ def test_through_the_tool_the_box_has_the_real_address(env_and_fakes):
     to = '"sam@example.net' + " " * 490 + '" <attacker@evil.example>'
     call("maily_send", dict(SEND, to=to), answer("accept", seen=seen))
     assert "attacker@evil.example" in seen[0].message
+
+
+# --- H3: what is counted, shown and sent is one normalized string ---------------
+
+ENCODED = [
+    ("=?utf-8?q?a=40x.com=2C_b=40x.com=2C_c=40x.com=2C_d=40x.com=2C_e=40x.com=2C_f=40x.com?="
+     " <z@x.com>", "z@x.com"),
+    ("=?utf-8?q?Sam_=3Cattacker=40evil.example=3E?= <sam@example.net>", "sam@example.net"),
+]
+
+
+def _wire_to_header(env_and_fakes, to):
+    """Runs the real maily_send with send_from_account replaced by build_mime,
+    and returns the addresses of the To header of the bytes produced."""
+    import base64
+    from email import message_from_bytes, policy
+    from core import mime
+
+    def fake_send(store, email, account_id, payload):
+        raw, _ = mime.build_mime(email, payload["to"], payload["subject"],
+                                 payload["body_text"], cc=payload.get("cc"))
+        env_and_fakes.sent.append(raw)
+        return {"id": "g"}
+
+    return fake_send, lambda raw: [
+        a.addr_spec for a in message_from_bytes(
+            base64.urlsafe_b64decode(raw), policy=policy.default)["To"].addresses]
+
+
+@pytest.mark.parametrize("to,shown", ENCODED)
+def test_encoded_display_name_cannot_change_the_recipients(
+        env_and_fakes, monkeypatch, to, shown):
+    fake_send, wire_to = _wire_to_header(env_and_fakes, to)
+    monkeypatch.setattr(accounts_service, "send_from_account", fake_send)
+    seen = []
+    out = call("maily_send", dict(SEND, to=to), answer("accept", seen=seen))
+    assert "sent_from" in out, out
+    assert f"To: {shown}\n" in seen[0].message
+    assert wire_to(env_and_fakes.sent[0]) == [shown]
+    assert out["to"] == shown
+
+
+def test_what_goes_out_is_the_plain_addresses(env_and_fakes, monkeypatch):
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    out = call("maily_send", dict(SEND, to='Sam <sam@example.net>, "Doe, J" <j@x.org>',
+                                  cc="Lee <l@x.org>"))
+    assert "sent_from" in out
+    assert env_and_fakes.sent[0]["to"] == "sam@example.net, j@x.org"
+    assert env_and_fakes.sent[0]["cc"] == "l@x.org"
+
+
+def test_ordinary_address_with_display_name_is_accepted(env_and_fakes, monkeypatch):
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    assert "sent_from" in call("maily_send", dict(SEND, to="Sam <sam@example.net>"))
+
+
+def test_normalize_checks_what_it_wrote():
+    assert mcp_guard.normalize_recipients("Sam <sam@example.net>", "l@x.org") == (
+        "sam@example.net", "l@x.org")
+    assert mcp_guard.normalize_recipients("a@x.org", None) == ("a@x.org", None)
+
+
+# --- H2bis: a long or quoted address is refused, never cut ---------------------
+
+@pytest.mark.parametrize("to", [
+    '"sam@example.net' + " " * 400 + '"@evil.example',
+    "a" * 65 + "@x.org",
+    "a@" + "b" * 250 + ".org",
+])
+def test_long_or_quoted_address_is_refused(env_and_fakes, monkeypatch, to):
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    out = call("maily_send", dict(SEND, to=to))
+    assert out.get("code") == "too_many_recipients", out
+    assert env_and_fakes.sent == []
+
+
+def test_address_at_the_limits_is_accepted_whole():
+    addr = "a" * 64 + "@" + "b" * 63 + "." + "c" * 63 + "." + "d" * 57 + ".org"
+    assert len(addr) <= mcp_guard.MAX_ADDRESS_LENGTH
+    text = mcp_guard.describe_send("alex@example.com", addr, None, "Hi", "B")
+    assert f"To: {addr}\n" in text
 
 
 # --- M1: the body is shown far enough, and the cut says so ---------------------

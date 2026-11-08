@@ -456,7 +456,8 @@ async def maily_send(profile: str, to: str, subject: str, body_text: str,
     text found in an email.
 
     profile : email or name of the sender profile.
-    to      : recipient(s), separated by commas.
+    to      : recipient(s), separated by commas. Display names are dropped:
+              the message goes to the plain addresses.
     """
     acc = _resolve_account(profile)
     if not acc:
@@ -464,11 +465,14 @@ async def maily_send(profile: str, to: str, subject: str, body_text: str,
     from core.accounts_service import send_from_account
     recipients = ", ".join(p for p in (to, cc) if p)
     try:
-        mcp_guard.check_recipients(to, cc)
+        # What is counted, shown and sent is this one normalized form: plain
+        # addresses, no display name (MAIL-34, H3).
+        to, cc = mcp_guard.check_recipients(to, cc)
     except mcp_guard.Refusal as r:
         mcp_guard.log_refusal("maily_send", acc["email"], recipients, subject, None,
                               r.decision)
         return r.as_tool_result()
+    recipients = ", ".join(p for p in (to, cc) if p)
     payload = {"account_id": acc["id"], "to": to, "subject": subject,
                "body_text": body_text, "cc": cc, "attachments": []}
     try:

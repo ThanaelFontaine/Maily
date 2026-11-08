@@ -34,6 +34,7 @@ import re
 import sqlite3
 import time
 import unicodedata
+from email import message_from_bytes, policy as email_policy
 from email.message import EmailMessage
 from typing import Callable
 
@@ -42,6 +43,9 @@ from core import paths
 log = logging.getLogger("maily.mcp_guard")
 
 MAX_RECIPIENTS = 5
+# Practical limits of one address (RFC 5321: 254 characters, 64 for the local part).
+MAX_ADDRESS_LENGTH = 254
+MAX_LOCAL_PART_LENGTH = 64
 DEFAULT_MAX_SENDS_PER_HOUR = 10
 DEFAULT_MAX_TRASH_PER_HOUR = 30
 WINDOW_SECONDS = 3600
@@ -262,41 +266,91 @@ class UnreadableRecipients(ValueError):
     them: the guard does not guess, nothing is sent."""
 
 
+def _parse_field(name: str, value) -> list[tuple[str, str]]:
+    """One recipient field (`name` is "To" or "Cc") as (display name, addr_spec)
+    pairs, read by the parser that builds the message. Fails closed."""
+    if value is None or value == "":
+        if name == "To":
+            raise UnreadableRecipients("`to` is empty")
+        return []
+    if not isinstance(value, str):
+        raise UnreadableRecipients(f"`{name.lower()}` is not text")
+    msg = EmailMessage()
+    try:
+        msg[name] = value
+        header = msg[name]
+        defects = tuple(getattr(header, "defects", ()) or ())
+        found = [(a.display_name or "", a.addr_spec) for a in header.addresses]
+    except Exception as e:
+        raise UnreadableRecipients(
+            f"`{name.lower()}` could not be read as a list of addresses") from e
+    if defects:
+        raise UnreadableRecipients(
+            f"`{name.lower()}` is not a clean list of addresses: write plain "
+            "addresses separated by commas")
+    if not found or any(not addr or "@" not in addr for _n, addr in found):
+        raise UnreadableRecipients(
+            f"`{name.lower()}` does not give a readable address")
+    for _n, addr in found:
+        _check_address_shape(name.lower(), addr)
+    return found
+
+
 def parse_recipients(to, cc=None) -> list[tuple[str, str]]:
     """The addresses `to` and `cc` give once read by the parser that builds the
     message (core/mime.py: `EmailMessage`, default policy), as (display name,
-    addr_spec) pairs, `to` first. Counting and showing use this list, so what
-    the guard counts and what the human reads is what goes out.
+    addr_spec) pairs, `to` first.
 
     Fails closed: raises UnreadableRecipients when a non-blank field yields no
-    address, when the parser raises, or when it reports a defect in the header
-    (a lenient reading is exactly where two parsers part ways)."""
-    out: list[tuple[str, str]] = []
-    for name, value in (("To", to), ("Cc", cc)):
-        if value is None or value == "":
-            if name == "To":
-                raise UnreadableRecipients("`to` is empty")
-            continue
-        if not isinstance(value, str):
-            raise UnreadableRecipients(f"`{name.lower()}` is not text")
-        msg = EmailMessage()
-        try:
-            msg[name] = value
-            header = msg[name]
-            defects = tuple(getattr(header, "defects", ()) or ())
-            found = [(a.display_name or "", a.addr_spec) for a in header.addresses]
-        except Exception as e:
-            raise UnreadableRecipients(
-                f"`{name.lower()}` could not be read as a list of addresses") from e
-        if defects:
-            raise UnreadableRecipients(
-                f"`{name.lower()}` is not a clean list of addresses: write plain "
-                "addresses separated by commas")
-        if not found or any(not addr or "@" not in addr for _n, addr in found):
-            raise UnreadableRecipients(
-                f"`{name.lower()}` does not give a readable address")
-        out.extend(found)
-    return out
+    address, when the parser raises, when it reports a defect in the header (a
+    lenient reading is exactly where two parsers part ways), or when an address
+    is too long or quoted."""
+    return _parse_field("To", to) + _parse_field("Cc", cc)
+
+
+def _check_address_shape(field: str, addr: str) -> None:
+    """One address must be short and plain: at most 254 characters, 64 for the
+    local part, and no quoted local part (no legitimate use from an assistant,
+    and it is how a long address gets cut or staged in the box)."""
+    local, _, _domain = addr.rpartition("@")
+    if len(addr) > MAX_ADDRESS_LENGTH or len(local) > MAX_LOCAL_PART_LENGTH:
+        raise UnreadableRecipients(
+            f"`{field}` has an address that is too long (at most {MAX_ADDRESS_LENGTH} "
+            f"characters, {MAX_LOCAL_PART_LENGTH} before the @)")
+    if '"' in local or any(unicodedata.category(c) in ("Cc", "Cf", "Zl", "Zp", "Zs")
+                           for c in addr):
+        raise UnreadableRecipients(
+            f"`{field}` has an address with quotes, spaces or control characters: "
+            "write plain addresses")
+
+
+def normalize_recipients(to, cc=None) -> tuple[str, str | None]:
+    """The `to` and `cc` strings that go out: the addr_spec of each address,
+    without display name, joined by ", ". What the guard counts, what the box
+    shows and what is sent are this same string (a display name, once decoded
+    from RFC 2047 and written back, could carry other addresses). Belt and
+    braces: the strings are put in a message, serialized and read again, and
+    must give exactly the same addresses. Raises UnreadableRecipients."""
+    to_addrs = [addr for _n, addr in _parse_field("To", to)]
+    cc_addrs = [addr for _n, addr in _parse_field("Cc", cc)]
+    to_line = ", ".join(to_addrs)
+    cc_line = ", ".join(cc_addrs) if cc_addrs else None
+    msg = EmailMessage()
+    msg["To"] = to_line
+    if cc_line:
+        msg["Cc"] = cc_line
+    try:
+        again = message_from_bytes(msg.as_bytes(), policy=email_policy.default)
+        got_to = [a.addr_spec for a in again["To"].addresses]
+        got_cc = [a.addr_spec for a in again["Cc"].addresses] if cc_line else []
+        header_to = str(again["To"])
+        header_cc = str(again["Cc"]) if cc_line else None
+    except Exception as e:
+        raise UnreadableRecipients("the recipients could not be checked once written") from e
+    if (got_to != to_addrs or got_cc != cc_addrs
+            or header_to != to_line or header_cc != cc_line):
+        raise UnreadableRecipients("the recipients do not read the same once written")
+    return to_line, cc_line
 
 
 def count_recipients(to, cc=None) -> int:
@@ -305,9 +359,13 @@ def count_recipients(to, cc=None) -> int:
     return len(parse_recipients(to, cc))
 
 
-def check_recipients(to, cc=None) -> int:
+def check_recipients(to, cc=None) -> tuple[str, str | None]:
+    """Reads, limits and normalizes the recipients. Returns the (to, cc)
+    strings that must be sent, shown and journalled: plain addresses, no
+    display name. Raises Refusal."""
     try:
         n = count_recipients(to, cc)
+        to_line, cc_line = normalize_recipients(to, cc)
     except UnreadableRecipients as e:
         raise Refusal(TOO_MANY_RECIPIENTS,
                       f"Maily cannot read the recipients reliably ({e}). Nothing was sent.",
@@ -317,7 +375,7 @@ def check_recipients(to, cc=None) -> int:
                       f"{n} recipients in `to` and `cc`; Maily sends to {MAX_RECIPIENTS} "
                       "at most in one message from an MCP client. Nothing was sent.",
                       "refused_cap")
-    return n
+    return to_line, cc_line
 
 
 # --- The human's agreement ----------------------------------------------------
@@ -369,23 +427,11 @@ def _squeeze_blank_lines(text: str) -> str:
 
 
 def _addresses_shown(to, cc) -> tuple[str, str | None]:
-    """The To and Cc lines of the box: the addresses as they will go out
-    (never the raw string), the display name after the address and short."""
-    def show(value):
-        if not value:
-            return None
-        items = []
-        for name, addr in parse_recipients(value):
-            label = _plain(addr, 320)
-            name = _plain(name, 40)
-            # A name that looks like an address or breaks out of the brackets
-            # could stage a second address in the box: it is left out.
-            if name and not any(c in name for c in '@<>,()"'):
-                items.append(f"{label} ({name})")
-            else:
-                items.append(label)
-        return ", ".join(items)
-    return show(to) or "", show(cc)
+    """The To and Cc lines of the box: the normalized addresses, whole (an
+    address is never cut: one that is too long is refused earlier), without
+    display name, exactly the strings that go out."""
+    to_line, cc_line = normalize_recipients(to, cc)
+    return _plain(to_line, 10 ** 9), (_plain(cc_line, 10 ** 9) if cc_line else None)
 
 
 def describe_send(profile, to, cc, subject, body_text) -> str:
