@@ -19,6 +19,8 @@ _DOWNLOAD_URLS = {
     "fr": "https://maily.thanaelfontaine.eu/fr/telecharger/",
     None: "https://maily.thanaelfontaine.eu/download/",
 }
+# Shape of the data: URI substituted for a cid: reference: raster image, base64 only.
+_INLINE_URI = re.compile(r"data:image/(?:png|jpeg|gif|webp|bmp|avif);base64,[A-Za-z0-9+/]*={0,2}")
 _RELEASES_URL = "https://github.com/ThanaelFontaine/Maily/releases/latest"
 _CATEGORY_LABELS = {
     "promotions": "CATEGORY_PROMOTIONS",
@@ -292,7 +294,7 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
                         uri = inline_fn(message_id, att["id"])
                     except Exception:
                         uri = None
-                    if uri:
+                    if uri and _INLINE_URI.fullmatch(uri):
                         html = pattern.sub(lambda m: uri, html)
         # Number of remote resources removed (tracking pixels, web images): the
         # interface uses it to offer "Show images".
