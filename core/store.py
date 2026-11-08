@@ -42,15 +42,23 @@ class Store:
     def list_accounts(self):
         return self.db.read().execute("SELECT * FROM accounts ORDER BY id").fetchall()
 
-    def delete_account(self, account_id):
+    def delete_account(self, account_id) -> list[tuple[int, str | None]]:
+        """Deletes the account and everything it owns. Returns the
+        (attachment id, local_path) of the attachment rows removed, so the caller
+        can delete the cached files (a row is gone once the files are orphaned)."""
         # The ON DELETE CASCADE foreign keys (foreign_keys=ON) purge threads/messages/
         # labels/outbox/sync_state, and the messages_ad trigger cleans the FTS index.
         # Attachments carry no account_id, so they are purged explicitly first.
+        # The outbox keeps no attachment rows.
         with self.db.writer() as c:
+            atts = [(r[0], r[1]) for r in c.execute(
+                "SELECT id, local_path FROM attachments WHERE owner_kind='message' AND owner_id IN "
+                "(SELECT id FROM messages WHERE account_id=?)", (account_id,)).fetchall()]
             c.execute(
                 "DELETE FROM attachments WHERE owner_kind='message' AND owner_id IN "
                 "(SELECT id FROM messages WHERE account_id=?)", (account_id,))
             c.execute("DELETE FROM accounts WHERE id=?", (account_id,))
+        return atts
 
     def get_account(self, account_id):
         return self.db.read().execute("SELECT * FROM accounts WHERE id=?", (account_id,)).fetchone()
