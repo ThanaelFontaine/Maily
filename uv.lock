@@ -553,7 +553,7 @@ requires-dist = [
     { name = "google-auth-oauthlib", specifier = ">=1.2" },
     { name = "jsonschema", specifier = ">=4.20" },
     { name = "keyring", specifier = ">=25.4" },
-    { name = "mcp", specifier = ">=1.2,<2" },
+    { name = "mcp", specifier = ">=1.10,<2" },
     { name = "nh3", specifier = ">=0.2.18" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pyobjc-framework-localauthentication", marker = "sys_platform == 'darwin'", specifier = ">=10.0" },

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import logging
 import os
 import re
 import threading
@@ -13,6 +14,8 @@ from core import secrets_store
 from core.imap_client import ImapClient, ImapError, parse_imap_key
 from core.imap_sync import ImapSyncer
 from core.rfc822_parse import extract_part
+
+log = logging.getLogger(__name__)
 
 
 class AddAccountInProgress(Exception):
@@ -101,6 +104,14 @@ def logout_account(store, account_id) -> None:
         else:
             secrets_store.delete_account_token(email)
     store.delete_account(account_id)
+    # The MCP guard journal keeps recipients and subjects of what the assistant
+    # sent or trashed from this profile: erased with the account (best effort,
+    # a damaged journal must not keep an account connected).
+    try:
+        from core import mcp_guard
+        mcp_guard.forget_profile((acc or {}).get("email"))
+    except Exception:
+        log.warning("could not erase the MCP guard journal of the account", exc_info=True)
 
 
 def _safe_name(name: str) -> str:
