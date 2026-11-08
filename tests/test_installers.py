@@ -23,7 +23,7 @@ INSTALL_PS1 = ROOT / "packaging" / "install" / "install.ps1"
 SIGNER = "ThanaelFontaine/Maily/.github/workflows/release.yml"
 
 # Everything install.sh calls on the Linux path, taken from the real system.
-TOOLS = ["sh", "tar", "awk", "cut", "tr", "mktemp", "rm", "mkdir", "mv", "ln", "cp", "sed", "grep", "cat", "dirname", "basename"]
+TOOLS = ["sh", "tar", "awk", "cut", "tr", "mktemp", "rm", "mkdir", "mv", "ln", "cp", "sed", "grep", "cat", "dirname", "basename", "gzip"]
 
 FAKE_CURL = f"""#!{sys.executable}
 import os, shutil, sys
