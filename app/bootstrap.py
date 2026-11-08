@@ -156,6 +156,33 @@ def _start_server(app, port):
     return server
 
 
+# Raster image types an inline (cid:) attachment may be shown as. Anything else
+# (SVG, HTML, a malformed header...) is never turned into a data: URI.
+_INLINE_IMAGE_TYPES = {
+    "image/png": "image/png",
+    "image/x-png": "image/png",
+    "image/jpeg": "image/jpeg",
+    "image/jpg": "image/jpeg",
+    "image/pjpeg": "image/jpeg",
+    "image/gif": "image/gif",
+    "image/webp": "image/webp",
+    "image/bmp": "image/bmp",
+    "image/avif": "image/avif",
+}
+
+
+def inline_image_mime(mime):
+    """Canonical MIME type of an inline image, or None if it is not on the allow-list.
+
+    The stored value comes from the message's own Content-Type header, so it is
+    untrusted: parameters (``; name=a.jpg``) are dropped, case is folded, and only
+    the exact allow-listed types are accepted.
+    """
+    if not isinstance(mime, str):
+        return None
+    return _INLINE_IMAGE_TYPES.get(mime.split(";", 1)[0].strip().lower())
+
+
 def make_attachment_fns(store, attachments_dir):
     import base64
     from core import accounts_service as svc
@@ -170,7 +197,10 @@ def make_attachment_fns(store, attachments_dir):
 
     def inline_fn(message_id, att_id):
         data, mime, _filename = svc.fetch_attachment(store, _email(message_id), message_id, att_id, attachments_dir)
-        return f"data:{mime or 'application/octet-stream'};base64,{base64.b64encode(data).decode()}"
+        safe_mime = inline_image_mime(mime)
+        if safe_mime is None:
+            return None
+        return f"data:{safe_mime};base64,{base64.b64encode(data).decode()}"
 
     return download_fn, inline_fn
 
