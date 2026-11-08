@@ -56,13 +56,16 @@ def test_jobs_run_build_before_publish():
     assert "needs: [plan, build]" in _job("publish")
 
 
-def test_assets_are_the_three_builds_and_their_checksums():
-    assert _rn().assets("1.2.3") == [
+def test_assets_are_the_three_builds_the_installers_and_their_checksums():
+    assets = _rn().assets("1.2.3")
+    assert assets == [
         "Maily-1.2.3-macos-arm64.dmg", "Maily-1.2.3-macos-arm64.dmg.sha256",
         "Maily-1.2.3-windows-x64.zip", "Maily-1.2.3-windows-x64.zip.sha256",
         "Maily-1.2.3-linux-x64.tar.gz", "Maily-1.2.3-linux-x64.tar.gz.sha256",
         "Maily-macos-arm64.dmg", "Maily-windows-x64.zip", "Maily-linux-x64.tar.gz",
+        "install.sh", "install.sh.sha256", "install.ps1", "install.ps1.sha256",
     ]
+    assert len(assets) == 13 and len(set(assets)) == 13
 
 
 def test_aliases_copy_each_build_under_a_fixed_name():
@@ -79,7 +82,7 @@ def test_aliases_copy_each_build_under_a_fixed_name():
 def test_release_builds_with_the_build_workflow_on_the_tested_commit():
     build = _job("build")
     assert "uses: ./.github/workflows/build.yml" in build
-    assert "ref: ${{ github.event.workflow_run.head_sha }}" in build
+    assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in build
     assert "workflow_call:" in BUILD
 
 
@@ -131,7 +134,8 @@ def test_publish_creates_a_draft_with_the_files_then_publishes_it():
     assert "scripts/release_notes.py assets" in publish
     assert "Missing build file" in publish
     assert "shasum -a 256 -c" in publish
-    create = publish.index("gh release create")
+    assert '-ge 13' in publish and '-ge 9' not in publish
+    create = publish.rindex("gh release create")
     assert "--draft --verify-tag" in publish[create:create + 300]
     assert publish.index("git push origin") < create < publish.index("gh release edit \"$TAG\" --draft=false")
 
@@ -148,3 +152,106 @@ def test_reruns_recover():
     # only an explicit "nothing to do" from plan skips the next jobs
     assert "needs.plan.outputs.needed != 'false'" in _job("build")
     assert "needs.plan.outputs.needed != 'false'" in publish
+
+
+# ---- Provenance (MA-5, MAIL-20): attestations, installers, dry run -----------
+
+def test_only_the_publish_job_can_write_and_attest():
+    publish = _job("publish")
+    for perm in ("contents: write", "id-token: write", "attestations: write"):
+        assert perm in publish
+    for name in ("plan", "build"):
+        job = _job(name)
+        for perm in ("id-token: write", "attestations: write", "contents: write"):
+            assert perm not in job
+    # the workflow-level default stays read-only, and build.yml is not elevated
+    top = WORKFLOW.split("\njobs:\n")[0]
+    assert "permissions:\n  contents: read" in top
+    assert "id-token" not in BUILD and "attestations" not in BUILD
+
+
+def test_every_action_is_pinned_by_full_sha():
+    for text in (WORKFLOW, BUILD):
+        for line in re.findall(r"^\s+- uses: (\S+)|^\s+uses: (\S+)", text, re.M):
+            ref = "".join(line)
+            if ref.startswith("./"):
+                continue
+            assert re.fullmatch(r".+@[0-9a-f]{40}", ref), ref
+
+
+def test_the_release_files_are_attested_before_the_draft_is_created():
+    publish = _job("publish")
+    m = re.search(r"uses: actions/attest@([0-9a-f]{40}) # v\d+\.\d+\.\d+\n\s+with:\n\s+subject-path: release-assets/\*", publish)
+    assert m, "actions/attest pinned by SHA with subject-path release-assets/*"
+    assert publish.index("actions/attest@") < publish.index("gh release create")
+    # the attested files are final: the installers and aliases are added before
+    assert publish.index("packaging/install/") < publish.index("actions/attest@")
+    assert publish.index("release_notes.py aliases") < publish.index("actions/attest@")
+
+
+def test_the_installers_come_from_the_tested_commit_with_their_checksums():
+    publish = _job("publish")
+    assert 'cp "packaging/install/$f" "release-assets/$f"' in publish
+    assert "for f in install.sh install.ps1" in publish
+    assert '"$f.sha256"' in publish
+    assert (ROOT / "packaging" / "install" / "install.sh").is_file()
+    assert (ROOT / "packaging" / "install" / "install.ps1").is_file()
+
+
+def test_a_published_release_is_never_completed_or_modified():
+    assert "gh release upload" not in WORKFLOW
+    publish = _job("publish")
+    assert "already published" in publish
+    plan = _job("plan")
+    assert "A published release is final" in plan
+    assert "needed=false" in plan
+
+
+def _dry_run_block():
+    publish = _job("publish")
+    start = publish.index('if [ "$DRY_RUN" = "true" ]; then')
+    end = publish.index("exit 0\n          fi", start)
+    return publish[start:end]
+
+
+def test_dry_run_is_a_manual_trigger_that_defaults_to_true():
+    assert re.search(r"workflow_dispatch:\n    inputs:\n      dry_run:\n(?:        .*\n)*?        type: boolean\n        default: true", WORKFLOW)
+    plan = _job("plan")
+    # a manual run that is not a dry run is refused
+    assert '"$DISPATCH" = "true" ] && [ "$DRY_RUN" != "true"' in plan
+    assert "exit 1" in plan[plan.index('"$DISPATCH" = "true" ] && [ "$DRY_RUN" != "true"'):][:400]
+    # a push to main is still published, only by the Tests workflow
+    assert "workflow_run.conclusion == 'success'" in plan
+
+
+def test_dry_run_publishes_nothing_and_removes_its_draft():
+    block = _dry_run_block()
+    for forbidden in ("git push", "git tag", "--draft=false", "--verify-tag", "announce=true", "gh release edit"):
+        assert forbidden not in block
+    assert "--draft --target" in block
+    assert "trap " in block and "-X DELETE" in block and " EXIT" in block
+    assert "gh attestation verify" in block and "--signer-workflow" in block
+    assert "cmp " in block  # the downloaded copy is the built file
+    # the drafts of a dry run have a name that no real tag can have
+    assert 'dry-run-$GITHUB_RUN_ID' in block
+
+
+def test_dry_run_runs_even_when_the_version_is_already_published():
+    plan = _job("plan")
+    i = plan.index('if [ "$DISPATCH" = "true" ]; then')
+    assert "needed=true" in plan[i:i + 300]
+    # and it comes before the published-release check
+    assert i < plan.index("gh release view")
+
+
+def test_the_discord_announcement_only_follows_a_real_publication():
+    publish = _job("publish")
+    assert "steps.publish.outputs.announce == 'true'" in publish
+    assert publish.count("announce=true") == 1
+    assert publish.index("announce=true") > publish.index("gh release edit")
+
+
+def test_the_publish_job_stays_on_a_github_machine():
+    assert "runs-on: ubuntu-latest" in _job("publish")
+    for text in (WORKFLOW, BUILD):
+        assert not [l for l in re.findall(r"^\s+runs-on:.*$", text, re.M) if "self-hosted" in l]

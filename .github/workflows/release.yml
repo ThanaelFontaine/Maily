@@ -1,26 +1,44 @@
 # Every version has its GitHub release, created by the CI together with the
-# tag, with notes that say what changes, and with the macOS, Windows and Linux
-# apps attached.
+# tag, with notes that say what changes, with the macOS, Windows and Linux
+# apps and the two installers attached, and with a signed build provenance
+# attestation for every file.
 #
-# Trigger: after a GREEN run of the "Tests" workflow on a push to main.
+# Trigger: after a GREEN run of the "Tests" workflow on a push to main, or by
+# hand (workflow_dispatch) in "dry run" mode only (see below).
 #
 # 1. plan:    reads the version in pyproject.toml and its "## [X.Y.Z]" section
 #             of CHANGELOG.md (fails if it is missing or empty). If release
-#             vX.Y.Z is already published with all its files
-#             (scripts/release_notes.py assets), there is nothing to do and the
-#             next jobs are skipped.
+#             vX.Y.Z is already published, there is nothing to do and the next
+#             jobs are skipped: a published release is final and is never
+#             completed or modified (a published release that lacks a file
+#             only gets a warning: publish a new version).
 # 2. build:   build.yml on the tested commit: the macOS disk image, the Windows
 #             zip and the Linux archive, each with its SHA-256 file, each binary
 #             checked by running it. Nothing is published here.
-# 3. publish: only once EVERY build succeeded: creates the vX.Y.Z tag, then a
-#             DRAFT release with all the files, then publishes it. A release is
-#             therefore never visible without its downloads.
+# 3. publish: only once EVERY build succeeded: adds the two installers
+#             (packaging/install/) and their SHA-256 files, attests the 13 files
+#             (actions/attest: SLSA build provenance, signed through GitHub's
+#             OIDC token, recorded in the public Sigstore log), creates the
+#             vX.Y.Z tag, then a DRAFT release with all the files, then
+#             publishes it. A release is therefore never visible without its
+#             downloads, and never without their attestations.
+#
+# Dry run (workflow_dispatch, from any branch): runs the same chain on the
+# branch head, attests the files, creates a DRAFT release that carries a
+# throwaway name, downloads its files back, checks them against the build
+# and runs `gh attestation verify` on each, then removes the draft. It never
+# pushes a tag and never publishes. The attestations it records are real
+# ones, for the files of that branch. Publishing by hand is refused: only the
+# Tests workflow on main publishes.
 #
 # Re-running the workflow resumes safely: an existing tag on the same commit is
-# reused, an unpublished draft left by an interrupted run is replaced, and a
-# published release that lacks a file only gets the missing ones. The build and
-# publish jobs recompute the version themselves; they are only skipped when
-# plan says explicitly that everything is already published.
+# reused and an unpublished draft left by an interrupted run is replaced.
+# The build and publish jobs recompute the version themselves; they are only
+# skipped when plan says explicitly that everything is already published.
+#
+# The publish job stays on a GitHub machine, not on the Mac mini runner: it
+# holds the token that signs the attestations and writes the release, and the
+# repository is public (rule of 07/11/2026: no self-hosted runner there).
 #
 # The whole chain starts from this workflow because events created with
 # GITHUB_TOKEN (the tag, the release) do not start other workflows.
@@ -33,6 +51,12 @@ on:
     workflows: ["Tests"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build, attest, draft, verify, remove the draft. Never publishes. Must stay true."
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -43,7 +67,7 @@ concurrency:
 
 jobs:
   plan:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -51,27 +75,38 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - name: Version, notes and release state
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
+          DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          if [ "$DISPATCH" = "true" ] && [ "$DRY_RUN" != "true" ]; then
+            echo "A manual run is a dry run only. Releases are published by the Tests workflow on main." >&2
+            exit 1
+          fi
           VERSION="$(python3 scripts/release_notes.py version)"
           TAG="v$VERSION"
           python3 scripts/release_notes.py notes "$VERSION"
-          # Asset names of the PUBLISHED release, if there is one.
-          HAVE="$(gh release view "$TAG" --json isDraft,assets --jq 'select(.isDraft | not) | .assets[].name' 2>/dev/null || true)"
-          ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
-          [ -n "$ASSETS" ] || { echo "No release file names." >&2; exit 1; }
-          MISSING=0
-          while read -r f; do
-            grep -qxF "$f" <<< "$HAVE" || MISSING=1
-          done <<< "$ASSETS"
-          if [ "$MISSING" -eq 0 ]; then
-            echo "Release $TAG is already published with all its files: nothing to do."
+          if [ "$DISPATCH" = "true" ]; then
+            echo "Dry run: the chain runs even if $TAG is already published."
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Is the release PUBLISHED (a draft does not count)?
+          PUBLISHED="$(gh release view "$TAG" --json isDraft --jq 'select(.isDraft | not) | "yes"' 2>/dev/null || true)"
+          if [ -n "$PUBLISHED" ]; then
+            HAVE="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+            ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
+            [ -n "$ASSETS" ] || { echo "No release file names." >&2; exit 1; }
+            while read -r f; do
+              grep -qxF "$f" <<< "$HAVE" || echo "::warning::Published release $TAG has no $f. A published release is final: publish a new version."
+            done <<< "$ASSETS"
+            echo "Release $TAG is already published: nothing to do."
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
@@ -84,20 +119,26 @@ jobs:
       contents: read
     uses: ./.github/workflows/build.yml
     with:
-      ref: ${{ github.event.workflow_run.head_sha }}
+      ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
   publish:
     needs: [plan, build]
     if: ${{ needs.plan.outputs.needed != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # The only job that writes: it pushes the tag and creates the release.
+    timeout-minutes: 20
+    # The only job that writes: it pushes the tag, creates the release and
+    # signs the attestations (id-token: the OIDC token that Sigstore trusts).
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -106,22 +147,23 @@ jobs:
           merge-multiple: true
           path: release-assets
 
-      - name: Tag, draft release with all the files, then publish
-        id: publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      - name: Add the installers, check every file
         run: |
           VERSION="$(python3 scripts/release_notes.py version)"
-          TAG="v$VERSION"
           # The same builds under a name without the version (latest/download links).
           while read -r ALIAS BUILD; do
             [ -f "release-assets/$BUILD" ] && cp "release-assets/$BUILD" "release-assets/$ALIAS"
           done < <(python3 scripts/release_notes.py aliases "$VERSION")
+          # The installers, from the tested commit, with their checksum files
+          # (<hash>  <name>, the format of shasum -a 256 -c).
+          for f in install.sh install.ps1; do
+            cp "packaging/install/$f" "release-assets/$f"
+            (cd release-assets && shasum -a 256 "$f" > "$f.sha256")
+          done
           # Every expected file is there, and every build matches its checksum.
           ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
           mapfile -t FILES <<< "$ASSETS"
-          [ "${#FILES[@]}" -ge 9 ] || { echo "Unexpected release file list: $ASSETS" >&2; exit 1; }
+          [ "${#FILES[@]}" -ge 13 ] || { echo "Unexpected release file list: $ASSETS" >&2; exit 1; }
           for f in "${FILES[@]}"; do
             [ -f "release-assets/$f" ] || { echo "Missing build file: $f" >&2; exit 1; }
             case "$f" in
@@ -130,18 +172,67 @@ jobs:
           done
           python3 scripts/release_notes.py notes "$VERSION" > release-notes.md
 
+      # Build provenance (SLSA) for the 13 files, signed through the OIDC token
+      # of this workflow run: `gh attestation verify` checks it against the
+      # repository and this workflow file. It says that this workflow built
+      # the files from this commit; it does not make the code trustworthy by
+      # itself, and it is not a Developer ID signature.
+      # https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations
+      - name: Attest the release files
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: release-assets/*
+
+      - name: Tag, draft release with all the files, then publish
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(python3 scripts/release_notes.py version)"
+          TAG="v$VERSION"
+          SIGNER="$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          ASSETS="$(python3 scripts/release_notes.py assets "$VERSION")"
+          mapfile -t FILES <<< "$ASSETS"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            # Dry run: a draft with a throwaway name, no tag, never published.
+            NAME="Maily dry run $TAG (run $GITHUB_RUN_ID)"
+            gh release create "dry-run-$GITHUB_RUN_ID" "${FILES[@]/#/release-assets/}" \
+              --draft --target "$HEAD_SHA" --title "$NAME" --notes-file release-notes.md
+            ID="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+                    --jq ".[] | select(.name == \"$NAME\" and .draft) | .id" | head -n 1)"
+            [ -n "$ID" ] || { echo "The dry run draft was not created." >&2; exit 1; }
+            # The draft is removed whatever happens below.
+            trap 'gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$ID" && echo "Dry run draft removed."' EXIT
+            mkdir -p dry-run-check
+            ATTACHED="$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" --jq '.assets[].name' | sort)"
+            [ "$ATTACHED" = "$(printf '%s\n' "${FILES[@]}" | sort)" ] \
+              || { echo "The draft does not carry exactly the expected files:" >&2; echo "$ATTACHED" >&2; exit 1; }
+            for f in "${FILES[@]}"; do
+              AID="$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" --jq ".assets[] | select(.name == \"$f\") | .id")"
+              gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$AID" > "dry-run-check/$f"
+              cmp "release-assets/$f" "dry-run-check/$f"
+              gh attestation verify "dry-run-check/$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$SIGNER"
+              echo "Dry run OK: $f"
+            done
+            echo "Dry run complete: ${#FILES[@]} files built, attested, drafted and verified. Nothing was tagged or published."
+            exit 0
+          fi
+
           # Releases already attached to this tag (drafts are listed too: the
           # token has push access).
           RELEASES="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
                         --jq ".[] | select(.tag_name == \"$TAG\") | \"\(.id) \(.draft)\"")"
-          PUBLISHED=""
           while read -r ID DRAFT; do
             [ -n "$ID" ] || continue
             if [ "$DRAFT" = "true" ]; then
               echo "Replacing the unpublished draft $ID left by an interrupted run."
               gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$ID"
             else
-              PUBLISHED="$ID"
+              # A published release is final (releases are immutable): never
+              # complete it, never touch it.
+              echo "Release $TAG is already published. Publish a new version instead." >&2
+              exit 1
             fi
           done <<< "$RELEASES"
 
@@ -159,18 +250,10 @@ jobs:
             git push origin "$TAG"
           fi
 
-          if [ -n "$PUBLISHED" ]; then
-            # Published earlier without its files: add the missing ones only.
-            HAVE="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
-            for f in "${FILES[@]}"; do
-              grep -qxF "$f" <<< "$HAVE" || gh release upload "$TAG" "release-assets/$f"
-            done
-          else
-            gh release create "$TAG" "${FILES[@]/#/release-assets/}" \
-              --draft --verify-tag --title "Maily $TAG" --notes-file release-notes.md
-            gh release edit "$TAG" --draft=false
-            echo "announce=true" >> "$GITHUB_OUTPUT"
-          fi
+          gh release create "$TAG" "${FILES[@]/#/release-assets/}" \
+            --draft --verify-tag --title "Maily $TAG" --notes-file release-notes.md
+          gh release edit "$TAG" --draft=false
+          echo "announce=true" >> "$GITHUB_OUTPUT"
 
       # Announces the release in the "prod maily" channel of Discord, through the
       # webhook kept in the DISCORD_RELEASES_WEBHOOK_URL secret. Runs only when
