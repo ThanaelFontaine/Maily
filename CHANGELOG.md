@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- Inline images (`cid:`): the image type declared by a message is now checked against an allow-list of raster formats (PNG, JPEG, GIF, WebP, BMP, AVIF) before the image is shown; a forged type can no longer inject markup into the reading pane, and SVG is never displayed inline (MAIL-17, MA-3).
+
 ## [0.9.2] - 2026-11-02
 
 A security release: update to it.
