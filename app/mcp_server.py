@@ -135,6 +135,11 @@ MAX_BODY_HTML = 50_000
 # Header fields are cut too (a 200,000 character subject would fill the context
 # of the model at every listing).
 MAX_FIELD = {"subject": 2_000, "snippet": 2_000, "from": 5_000, "to": 5_000, "cc": 5_000}
+# Attachments are written by the sender too: the number listed and the length
+# of each name and type are capped (`attachments_total` tells how many exist).
+MAX_ATTACHMENTS = 100
+MAX_ATT_FILENAME = 500
+MAX_ATT_MIME = 255
 
 # Strings a message could use to imitate the envelope or the notice. The search
 # runs on a normalized form of the text (see `_fold`): NFKD, format characters
@@ -362,12 +367,21 @@ def maily_get_message(message_id: int, include_html: bool = False) -> dict:
     # The file name and the type are written by the sender, like the subject:
     # they go in the envelope, neutralized. The top-level `attachments` is the
     # deprecated copy (same values). `attachment_id` and `size` are Maily's own.
-    out["attachments"] = [
-        {"attachment_id": a["id"], "filename": _neutralize(a.get("filename")),
-         "mime_type": _neutralize(a.get("mime_type")), "size": a.get("size")}
-        for a in atts if not a.get("content_id")
-    ]
+    listed = [a for a in atts if not a.get("content_id")]
+    cut_att = len(listed) > MAX_ATTACHMENTS
+    out["attachments"] = []
+    for a in listed[:MAX_ATTACHMENTS]:
+        name, cut_name = _clip(_neutralize(a.get("filename")), MAX_ATT_FILENAME)
+        mime, cut_mime = _clip(_neutralize(a.get("mime_type")), MAX_ATT_MIME)
+        cut_att = cut_att or cut_name or cut_mime
+        out["attachments"].append({"attachment_id": a["id"], "filename": name,
+                                   "mime_type": mime, "size": a.get("size")})
     env["attachments"] = [dict(a) for a in out["attachments"]]
+    if len(listed) > MAX_ATTACHMENTS:
+        env["attachments_total"] = out["attachments_total"] = len(listed)
+    if cut_att:
+        env["truncated"] = True
+        out["truncated"] = True
     if include_html:
         out["body_html"] = clean["body_html"]  # deprecated, see `untrusted_email_content`
     return out

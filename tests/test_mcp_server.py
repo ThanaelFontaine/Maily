@@ -303,6 +303,76 @@ def test_attachment_names_are_inside_the_envelope_and_neutralized(monkeypatch, d
     assert out["attachments"] == env_atts
 
 
+def _msg_with_attachments(monkeypatch, database, atts):
+    from core.store import Store
+    store = Store(database)
+    aid = store.upsert_account("alex@example.com")
+    mid = store.upsert_message(aid, "g1", subject="Att", body_text="body")
+    store.replace_attachments(mid, [
+        {"filename": f, "mime_type": m, "size": 1, "gmail_attachment_id": f"a{i}"}
+        for i, (f, m) in enumerate(atts)])
+    monkeypatch.setattr(S, "_store", store)
+    return S.maily_get_message(mid)
+
+
+def _assert_same_everywhere(out):
+    assert out["attachments"] == out["untrusted_email_content"]["attachments"]
+    assert out.get("truncated") == out["untrusted_email_content"].get("truncated")
+    assert out.get("attachments_total") == out["untrusted_email_content"].get("attachments_total")
+
+
+def test_attachment_filename_cap(monkeypatch, database):
+    n = 500
+    assert S.MAX_ATT_FILENAME == n
+    out = _msg_with_attachments(monkeypatch, database, [("a" * n, "text/plain")])
+    assert len(out["attachments"][0]["filename"]) == n and "truncated" not in out
+    _assert_same_everywhere(out)
+    out = _msg_with_attachments(monkeypatch, database, [("a" * (n + 1), "text/plain")])
+    assert len(out["attachments"][0]["filename"]) == n
+    assert out["truncated"] is True and out["untrusted_email_content"]["truncated"] is True
+    _assert_same_everywhere(out)
+
+
+def test_attachment_mime_type_cap(monkeypatch, database):
+    n = 255
+    assert S.MAX_ATT_MIME == n
+    out = _msg_with_attachments(monkeypatch, database, [("f.bin", "x" * n)])
+    assert len(out["attachments"][0]["mime_type"]) == n and "truncated" not in out
+    _assert_same_everywhere(out)
+    out = _msg_with_attachments(monkeypatch, database, [("f.bin", "x" * (n + 1))])
+    assert len(out["attachments"][0]["mime_type"]) == n
+    assert out["truncated"] is True and out["untrusted_email_content"]["truncated"] is True
+    _assert_same_everywhere(out)
+
+
+def test_attachment_count_cap(monkeypatch, database):
+    n = 100
+    assert S.MAX_ATTACHMENTS == n
+    out = _msg_with_attachments(monkeypatch, database, [(f"f{i}.txt", "text/plain") for i in range(n)])
+    assert len(out["attachments"]) == n
+    assert "truncated" not in out and "attachments_total" not in out
+    _assert_same_everywhere(out)
+    out = _msg_with_attachments(monkeypatch, database, [(f"f{i}.txt", "text/plain") for i in range(n + 1)])
+    assert len(out["attachments"]) == n
+    assert out["truncated"] is True and out["attachments_total"] == n + 1
+    assert all(isinstance(a["attachment_id"], int) for a in out["attachments"])
+    _assert_same_everywhere(out)
+
+
+def test_attachment_count_ignores_inline_images(monkeypatch, database):
+    from core.store import Store
+    store = Store(database)
+    aid = store.upsert_account("alex@example.com")
+    mid = store.upsert_message(aid, "g1", subject="Att", body_text="body")
+    store.replace_attachments(mid, [
+        {"filename": f"i{i}.png", "mime_type": "image/png", "size": 1,
+         "gmail_attachment_id": f"i{i}", "content_id": f"c{i}"}
+        for i in range(S.MAX_ATTACHMENTS + 1)])
+    monkeypatch.setattr(S, "_store", store)
+    out = S.maily_get_message(mid)
+    assert out["attachments"] == [] and "truncated" not in out
+
+
 def test_download_attachment_neutralizes_mime(monkeypatch, home):
     from core import accounts_service
     monkeypatch.setattr(accounts_service, "fetch_attachment",
