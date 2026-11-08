@@ -1,10 +1,53 @@
 from __future__ import annotations
 from googleapiclient.errors import HttpError
-from core.gmail import parse_gmail_message, HistoryExpired
+import json
+import logging
+from core.gmail import parse_gmail_message, HistoryExpired, _headers_map
+from core.rfc822_parse import UNREADABLE_LABEL, UNREADABLE_BODY
+
+log = logging.getLogger("maily.sync")
 
 
 def _status(e):
     return getattr(e, "status_code", None) or getattr(getattr(e, "resp", None), "status", None)
+
+
+def _fallback_fields(raw: dict) -> dict:
+    """Placeholder card for a Gmail message `parse_gmail_message` cannot read: the headers
+    given by the API, a fixed body, the labels plus the local MAILY_UNREADABLE one."""
+    def clean(v):
+        return None if v is None else str(v).encode("utf-8", errors="replace").decode("utf-8")
+    try:
+        headers = _headers_map(raw.get("payload") or {})
+    except Exception:
+        headers = {}
+    try:
+        labels = [str(x) for x in (raw.get("labelIds") or [])]
+    except Exception:
+        labels = []
+    try:
+        date = int(raw["internalDate"]) if raw.get("internalDate") else None
+    except (TypeError, ValueError):
+        date = None
+    return {
+        "thread_id": raw.get("threadId"),
+        "rfc822_message_id": clean(headers.get("message-id")),
+        "direction": "out" if "SENT" in labels else "in",
+        "addr_from": clean(headers.get("from")),
+        "addr_to": clean(headers.get("to")),
+        "addr_cc": clean(headers.get("cc")),
+        "addr_bcc": clean(headers.get("bcc")),
+        "subject": clean(headers.get("subject")),
+        "snippet": UNREADABLE_BODY,
+        "body_text": UNREADABLE_BODY,
+        "body_html": None,
+        "internal_date": date,
+        "label_ids": json.dumps(labels + [UNREADABLE_LABEL]),
+        "is_unread": 1 if "UNREAD" in labels else 0,
+        "is_starred": 1 if "STARRED" in labels else 0,
+        "is_trashed": 1 if "TRASH" in labels else 0,
+        "has_attachments": 0,
+    }
 
 
 class Syncer:
@@ -14,7 +57,13 @@ class Syncer:
         self.account_id = account_id
 
     def _store_message(self, raw) -> int:
-        fields, atts = parse_gmail_message(raw)
+        # Only the analysis is guarded (never the network calls): a message that cannot be
+        # parsed becomes a placeholder card instead of blocking the sync.
+        try:
+            fields, atts = parse_gmail_message(raw)
+        except Exception as e:
+            log.warning("unreadable Gmail message stored as a placeholder (%s)", type(e).__name__)
+            fields, atts = _fallback_fields(raw), []
         mid = self.store.upsert_message(self.account_id, raw["id"], **fields)
         self.store.replace_attachments(mid, atts)
         return mid

@@ -9,13 +9,34 @@ charsets).
 """
 from __future__ import annotations
 import email
+import email.header
+import email.parser
 import email.policy
 import email.utils
 import json
+import logging
+
+log = logging.getLogger("maily.rfc822")
+
+# A message the parser cannot read (broken charset, absurd nesting) is stored as a
+# placeholder card carrying this local label, so that it can be read again after a
+# future fix, instead of blocking the whole sync.
+UNREADABLE_LABEL = "MAILY_UNREADABLE"
+UNREADABLE_BODY = "Maily could not read this message. Open it with your mail provider."
 
 
 def _msg(raw: bytes):
     return email.message_from_bytes(raw, policy=email.policy.default)
+
+
+def _content(part) -> str:
+    """Decoded text of a text part. An unknown or invalid charset falls back to UTF-8
+    with replacement characters, so the message is shown instead of failing."""
+    try:
+        return part.get_content()
+    except (LookupError, UnicodeError):
+        payload = part.get_payload(decode=True) or b""
+        return payload.decode("utf-8", errors="replace")
 
 
 def _iter_attachment_parts(msg):
@@ -41,14 +62,14 @@ def _bodies(msg):
                 continue
             ctype = part.get_content_type()
             if ctype == "text/plain" and text is None:
-                text = part.get_content()
+                text = _content(part)
             elif ctype == "text/html" and html is None:
-                html = part.get_content()
+                html = _content(part)
     else:
         if msg.get_content_type() == "text/html":
-            html = msg.get_content()
+            html = _content(msg)
         else:
-            text = msg.get_content()
+            text = _content(msg)
     return text, html
 
 
@@ -109,6 +130,58 @@ def parse_rfc822(raw: bytes) -> tuple[dict, list[dict]]:
         if fields[k] is not None:
             fields[k] = str(fields[k])
     return fields, attachments
+
+
+def _plain_header(value):
+    """Header as clean text, whatever its encoding (no surrogates, never raises)."""
+    if value is None:
+        return None
+    try:
+        text = str(email.header.make_header(email.header.decode_header(str(value))))
+    except Exception:
+        text = str(value)
+    return text.encode("utf-8", errors="replace").decode("utf-8")
+
+
+def parse_headers_only(raw: bytes) -> dict:
+    """Fallback card for a message `parse_rfc822` cannot read: the headers only (read
+    with the permissive `compat32` policy, which never recurses into the body), a
+    fixed placeholder body, no attachment."""
+    msg = email.parser.BytesParser(policy=email.policy.compat32).parsebytes(
+        raw, headersonly=True)
+    msg_id = _plain_header(msg.get("Message-ID"))
+    return {
+        "thread_id": msg_id,
+        "rfc822_message_id": msg_id,
+        "direction": "in",
+        "addr_from": _plain_header(msg.get("From")),
+        "addr_to": _plain_header(msg.get("To")),
+        "addr_cc": _plain_header(msg.get("Cc")),
+        "addr_bcc": _plain_header(msg.get("Bcc")),
+        "subject": _plain_header(msg.get("Subject")),
+        "snippet": UNREADABLE_BODY,
+        "body_text": UNREADABLE_BODY,
+        "body_html": None,
+        "internal_date": _internal_date_ms(msg),
+        "has_attachments": 0,
+    }
+
+
+def parse_rfc822_safe(raw: bytes) -> tuple[dict, list[dict], bool]:
+    """`parse_rfc822` that survives a malformed message: (fields, attachments, readable).
+    On failure, the fields are the headers-only fallback card and `readable` is False.
+    Only the analysis is guarded; the caller keeps network errors out of this."""
+    try:
+        fields, atts = parse_rfc822(raw)
+        return fields, atts, True
+    except Exception as e:  # RecursionError, LookupError, ValueError... any parser failure
+        log.warning("unreadable message stored as a placeholder (%s)", type(e).__name__)
+    try:
+        fields = parse_headers_only(raw)
+    except Exception:
+        fields = {"direction": "in", "snippet": UNREADABLE_BODY,
+                  "body_text": UNREADABLE_BODY, "has_attachments": 0}
+    return fields, [], False
 
 
 def extract_part(raw: bytes, locator: str) -> tuple[bytes, str, str]:
