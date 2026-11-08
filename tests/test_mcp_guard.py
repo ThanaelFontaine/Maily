@@ -514,6 +514,80 @@ def test_two_connections_cannot_both_slip_under_the_limit(monkeypatch):
     assert results.count("rate_limited") == 6
 
 
+def test_limit_holds_when_the_gap_between_count_and_insert_is_wide(monkeypatch):
+    """The same race with the window opened on purpose: every insert waits 30 ms,
+    so an implementation that counts and inserts in two separate steps lets all
+    ten threads through. It must still be exactly 4 (QA, MAIL-34 lot 1a: the test
+    above alone caught a transaction-less version only one run in five)."""
+    monkeypatch.setenv("MAILY_MCP_MAX_SENDS_PER_HOUR", "4")
+    real_insert = mcp_guard._insert
+
+    def slow_insert(*a, **k):
+        time.sleep(0.03)
+        return real_insert(*a, **k)
+
+    monkeypatch.setattr(mcp_guard, "_insert", slow_insert)
+    results, barrier = [], threading.Barrier(10)
+
+    def worker():
+        barrier.wait()
+        try:
+            mcp_guard.reserve("maily_send", "alex@example.com", "x@y.org", "s")
+            results.append("ok")
+        except mcp_guard.Refusal as r:
+            results.append(r.code)
+
+    threads = [threading.Thread(target=worker) for _ in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert results.count("ok") == 4
+    assert results.count("rate_limited") == 6
+
+
+_CHILD = """
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from core import mcp_guard
+real = mcp_guard._insert
+mcp_guard._insert = lambda *a, **k: (time.sleep(0.03), real(*a, **k))[1]
+start = float(sys.argv[2])
+while time.time() < start:
+    time.sleep(0.001)
+ok = 0
+for _ in range(8):
+    try:
+        mcp_guard.reserve("maily_send", "alex@example.com", "x@y.org", "s")
+        ok += 1
+    except mcp_guard.Refusal:
+        pass
+print(ok)
+"""
+
+
+def test_two_processes_share_the_hourly_limit(tmp_path, monkeypatch):
+    """CA3: two separate processes (two MCP servers started by two clients), each
+    asking for 8 slots against a limit of 10 on the same journal file: 10 pass
+    in all, never 11 or more."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = str(Path(__file__).resolve().parent.parent)
+    start = time.time() + 2.0
+    env = dict(os.environ, MAILY_MCP_MAX_SENDS_PER_HOUR="10")
+    procs = [subprocess.Popen([sys.executable, "-c", _CHILD, root, str(start)], env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+             for _ in range(2)]
+    outs = []
+    for pr in procs:
+        out, err = pr.communicate(timeout=120)
+        assert pr.returncode == 0, err
+        outs.append(int(out.strip()))
+    assert sum(outs) == 10
+    assert len([r for r in journal_rows() if r["counted"] == 1]) == 10
+
+
 def test_journal_unavailable_fails_closed(env_and_fakes, monkeypatch):
     monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
     blocker = mcp_guard.paths.runtime_dir() / "blocker"
