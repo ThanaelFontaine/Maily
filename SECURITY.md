@@ -22,6 +22,25 @@ What to expect: an acknowledgement within 7 days, an assessment and a plan, then
 
 Only the latest released version receives security fixes.
 
+## Verify a download
+
+Every release from **0.10.0** carries 13 files: the three apps (`.dmg`, `.zip`, `.tar.gz`), the two installers (`install.sh`, `install.ps1`), a `.sha256` file for each of those five, and the three apps again under a name without the version. The CI attests each of the 13 files (a [GitHub artifact attestation](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations): SLSA build provenance, signed through the OIDC identity of the release workflow and recorded in the public Sigstore log), and releases are immutable: once published, a release and its tag cannot be changed.
+
+With the [GitHub CLI](https://cli.github.com), signed in (`gh auth login`, which `gh attestation verify` requires), from the folder that holds the file:
+
+```bash
+gh attestation verify Maily-X.Y.Z-linux-x64.tar.gz --repo ThanaelFontaine/Maily \
+  --signer-workflow ThanaelFontaine/Maily/.github/workflows/release.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
+gh release verify-asset vX.Y.Z Maily-X.Y.Z-linux-x64.tar.gz --repo ThanaelFontaine/Maily
+```
+
+`install.sh` and `install.ps1` run the first check themselves before installing anything, and stop if it fails. Without `gh`, or with `gh` not signed in, they warn and continue with the checksum only; `MAILY_REQUIRE_ATTESTATION=1` makes them refuse instead. A version older than 0.10.0 has no attestation.
+
+**What the attestation covers:** the file was produced by the `release.yml` workflow of this repository, run from the `main` branch (`--source-ref refs/heads/main`: a file built by that workflow from any other branch, as the dry runs are, is refused) on GitHub-hosted machines (`--deny-self-hosted-runners`), from the commit named in the attestation, and it has not been altered since. Together with the immutable release, it also blocks a swap of the file after publication, which a checksum published in the same place cannot do.
+
+**What it does not cover:** it does not make the code safe (it says where and how the file was built, not that the source is free of bugs; the code is public so that anyone can read it); it does not protect against someone who can change the release workflow or the code on `main`, which is why `main` requires a pull request and passing checks (a branch cannot produce a file that passes the check above); and it is **not an Apple Developer ID or Microsoft code signature**. The apps stay unsigned: macOS and Windows show their warning at first launch, and the steps in the [README](README.md#option-a-download-the-app) still apply. The installer you pipe into a shell, as the README gives it, is `packaging/install/install.sh` (or `install.ps1`) of this repository on `main`; from 0.10.0 the same file is attached to each release with its own attestation. The older website addresses still serve the previous installer, which checks the checksum only. If you want to be sure, download the installer, read it, and verify it with the same commands before running it.
+
 ## Threat model
 
 ### What Maily is
