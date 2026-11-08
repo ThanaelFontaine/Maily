@@ -61,3 +61,8 @@ def test_windowed_binary_gets_real_standard_streams(monkeypatch):
     assert sys.stderr is not None
     sys.stdout.close()
     sys.stderr.close()
+
+
+def test_self_check_reports_the_sqlite_version():
+    names = [n for n, _f in selfcheck._checks(__import__("pathlib").Path("."))]
+    assert "sqlite" in names

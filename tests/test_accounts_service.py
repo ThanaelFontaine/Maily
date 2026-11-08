@@ -259,3 +259,111 @@ def test_export_eml_imap(monkeypatch, tmp_path):
     data, filename = svc.export_eml(store, mid)
     assert data == b"RAW-IMAP" and filename.endswith(".eml")
     db.close()
+
+
+def _two_accounts_with_cache(tmp_path, monkeypatch):
+    """Two accounts, each with a message and one cached attachment file."""
+    db = Database(tmp_path / "data" / "maily.sqlite") if (tmp_path / "data").mkdir() is None else None
+    store = Store(db)
+    att_dir = tmp_path / "data" / "attachments"
+    att_dir.mkdir()
+    monkeypatch.setattr(svc.secrets_store, "delete_account_token", lambda email: None)
+    out = {}
+    for tag, email in (("one", "one@example.com"), ("two", "two@example.com")):
+        out[tag] = {"aid": store.upsert_account(email)}
+    # several mails per account, interleaved: they share database pages, as real mail does
+    for i in range(8):
+        for tag in ("one", "two"):
+            aid = out[tag]["aid"]
+            mid = store.upsert_message(
+                aid, f"g-{tag}-{i}", subject=f"subject-{tag}-ZQXJ{tag}-{i}",
+                snippet=f"snippet-{tag}-ZQXJ{tag}",
+                body_text=f"body-{tag}-ZQXJ{tag} " + "lorem ipsum " * 20, addr_from="sender@example.org",
+                label_ids='["INBOX"]')
+            if i == 0:
+                store.replace_attachments(mid, [{"filename": f"{tag}.txt", "mime_type": "text/plain",
+                                                 "size": 5, "gmail_attachment_id": f"att-{tag}"}])
+                att = store.list_attachments(mid)[0]["id"]
+                path = att_dir / f"{att}_{tag}.txt"
+                path.write_bytes(f"file-{tag}-ZQXJ{tag}".encode())
+                store.set_attachment_path(att, str(path))
+                out[tag].update({"mid": mid, "att": att, "path": path})
+    return db, store, att_dir, out
+
+
+def test_logout_deletes_the_attachment_files_of_the_account_only(monkeypatch, tmp_path):
+    db, store, att_dir, acc = _two_accounts_with_cache(tmp_path, monkeypatch)
+    orphan = att_dir / f"{acc['one']['att']}_renamed.bin"      # same id, other name
+    orphan.write_bytes(b"x")
+    svc.logout_account(store, acc["one"]["aid"], str(att_dir))
+    assert not acc["one"]["path"].exists() and not orphan.exists()
+    assert acc["two"]["path"].exists()
+    assert store.list_attachments(acc["two"]["mid"])
+    db.close()
+
+
+@pytest.mark.skipif(not __import__("core.db", fromlist=["x"]).fts_secure_delete_supported(),
+                    reason="SQLite older than 3.42")
+def test_logout_leaves_no_trace_of_the_mail_in_the_data_folder(monkeypatch, tmp_path):
+    db, store, att_dir, acc = _two_accounts_with_cache(tmp_path, monkeypatch)
+    data = tmp_path / "data"
+    # a real database has long been checkpointed: the text is in the main file
+    assert db.checkpoint_truncate()
+    # the strings are in the database file or its log before the disconnection
+    before = b"".join(p.read_bytes() for p in data.rglob("*") if p.is_file())
+    assert b"ZQXJone" in before
+    assert b"zqxjone" in before.lower()
+    svc.logout_account(store, acc["one"]["aid"], str(att_dir))
+    after = b"".join(p.read_bytes() for p in data.rglob("*") if p.is_file())
+    # the full-text index stores lower-case words: look for them too
+    assert b"zqxjone" not in after.lower()
+    assert b"ZQXJtwo" in after                                  # the other account is kept
+    wal = data / "maily.sqlite-wal"
+    assert (not wal.exists()) or wal.stat().st_size == 0
+    # the full-text search of the other account still works, the first one's is empty
+    assert len(store.search_messages("body-two-ZQXJtwo")) == 8
+    assert store.search_messages("body-one-ZQXJone") == []
+    db.close()
+
+
+def test_logout_rebuilds_the_index_when_fts_secure_delete_is_missing(monkeypatch, tmp_path):
+    db, store, att_dir, acc = _two_accounts_with_cache(tmp_path, monkeypatch)
+    monkeypatch.setattr(db, "fts_secure_delete", False)
+    rebuilt = []
+    real = db.rebuild_fts
+    monkeypatch.setattr(db, "rebuild_fts", lambda: (rebuilt.append(1), real())[1])
+    svc.logout_account(store, acc["one"]["aid"], str(att_dir))
+    assert rebuilt == [1]
+    assert len(store.search_messages("body-two-ZQXJtwo")) == 8
+    db.close()
+
+
+def test_logout_never_deletes_a_file_outside_the_attachments_folder(monkeypatch, tmp_path):
+    db, store, att_dir, acc = _two_accounts_with_cache(tmp_path, monkeypatch)
+    outside = tmp_path / "precious.txt"
+    outside.write_text("keep me")
+    link_target = tmp_path / "target.txt"
+    link_target.write_text("keep me too")
+    (att_dir / f"{acc['one']['att']}_link").symlink_to(link_target)
+    store.set_attachment_path(acc["one"]["att"], str(outside))          # trapped path
+    traversal = att_dir / ".." / "precious.txt"
+    store.set_attachment_path(acc["two"]["att"], str(traversal))
+    svc.logout_account(store, acc["one"]["aid"], str(att_dir))
+    svc.logout_account(store, acc["two"]["aid"], str(att_dir))
+    assert outside.read_text() == "keep me"
+    assert link_target.read_text() == "keep me too"                      # link removed, not target
+    assert not (att_dir / f"{acc['one']['att']}_link").is_symlink()
+    db.close()
+
+
+def test_logout_erases_the_index_by_rebuilding_it_without_the_fts_option(monkeypatch, tmp_path):
+    from core import db as dbmod
+    monkeypatch.setattr(dbmod, "fts_secure_delete_supported", lambda: False)   # SQLite < 3.42
+    db, store, att_dir, acc = _two_accounts_with_cache(tmp_path, monkeypatch)
+    assert db.fts_secure_delete is False
+    assert db.checkpoint_truncate()
+    svc.logout_account(store, acc["one"]["aid"], str(att_dir))
+    after = b"".join(p.read_bytes() for p in (tmp_path / "data").rglob("*") if p.is_file())
+    assert b"zqxjone" not in after.lower()
+    assert len(store.search_messages("body-two-ZQXJtwo")) == 8
+    db.close()

@@ -66,3 +66,24 @@ def test_delete_account_removes_account_and_cache(store):
     assert store.get_account(other) is not None
     assert len(store.list_messages(other)) == 1
     assert store.search_messages("Keep")[0]["gmail_id"] == "g2"
+
+
+def test_delete_account_returns_the_attachments_it_removed(tmp_path):
+    from core.db import Database
+    from core.store import Store
+    db = Database(tmp_path / "s.sqlite")
+    store = Store(db)
+    a1 = store.upsert_account("a@example.com")
+    a2 = store.upsert_account("b@example.com")
+    m1 = store.upsert_message(a1, "g1", subject="x")
+    m2 = store.upsert_message(a2, "g2", subject="y")
+    store.replace_attachments(m1, [{"filename": "f1.txt", "mime_type": "text/plain",
+                                    "size": 1, "gmail_attachment_id": "x1"}])
+    store.replace_attachments(m2, [{"filename": "f2.txt", "mime_type": "text/plain",
+                                    "size": 1, "gmail_attachment_id": "x2"}])
+    att1 = store.list_attachments(m1)[0]["id"]
+    store.set_attachment_path(att1, "/somewhere/1_f1.txt")
+    assert store.delete_account(a1) == [(att1, "/somewhere/1_f1.txt")]
+    assert store.list_attachments(m1) == []
+    assert len(store.list_attachments(m2)) == 1          # the other account is untouched
+    db.close()

@@ -118,7 +118,7 @@
   "settings.classicModeHelp": "„Automatisch“ folgt der hellen oder dunklen Einstellung des Systems.",
   "settings.colorLabel": "Farbe {color}",
   "settings.disconnect": "Trennen",
-  "settings.disconnectConfirm": "{email} trennen?\nDie auf diesem Computer gespeicherten E-Mails werden gelöscht (Sie erhalten sie zurück, wenn Sie das Konto erneut verbinden).",
+  "settings.disconnectConfirm": "{email} trennen?\nDie auf diesem Computer gespeicherten E-Mails und Anhänge werden gelöscht, ebenso der Suchindex (Sie erhalten sie zurück, wenn Sie das Konto erneut verbinden).",
   "settings.displayNameFor": "Anzeigename für {email}",
   "settings.glassDensity": "Hintergrunddichte (Glassmorphism)",
   "settings.glassDensityAria": "Hintergrunddichte",
