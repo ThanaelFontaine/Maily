@@ -231,6 +231,9 @@ def test_dry_run_publishes_nothing_and_removes_its_draft():
     assert "--draft --target" in block
     assert "trap " in block and "-X DELETE" in block and " EXIT" in block
     assert "gh attestation verify" in block and "--signer-workflow" in block
+    # a dry run runs on a branch: it pins the branch of the run, not main
+    assert '--source-ref "$GITHUB_REF"' in block and "--deny-self-hosted-runners" in block
+    assert "refs/heads/main" not in block
     assert "cmp " in block  # the downloaded copy is the built file
     # the drafts of a dry run have a name that no real tag can have
     assert 'dry-run-$GITHUB_RUN_ID' in block
@@ -255,3 +258,20 @@ def test_the_publish_job_stays_on_a_github_machine():
     assert "runs-on: ubuntu-latest" in _job("publish")
     for text in (WORKFLOW, BUILD):
         assert not [l for l in re.findall(r"^\s+runs-on:.*$", text, re.M) if "self-hosted" in l]
+
+
+@pytest.mark.parametrize("path", [
+    "packaging/install/install.sh",
+    "packaging/install/install.ps1",
+    "README.md",
+    "SECURITY.md",
+    "docs/BUILD.md",
+])
+def test_attestation_checks_pin_main_and_refuse_self_hosted_runners(path):
+    # --signer-workflow alone accepts a file attested by release.yml run from
+    # any branch (a dry run does that): every check given to a user, and the
+    # installers, must also pin refs/heads/main.
+    text = (ROOT / path).read_text(encoding="utf-8")
+    assert "--signer-workflow" in text or "'--signer-workflow'" in text
+    assert "refs/heads/main" in text
+    assert "--deny-self-hosted-runners" in text

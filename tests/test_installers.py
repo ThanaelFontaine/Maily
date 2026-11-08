@@ -162,7 +162,9 @@ def test_valid_attestation_installs_and_checks_the_right_file(env):
     assert env.installed()
     verify = [c for c in env.gh_calls() if c.startswith("attestation verify") and "--help" not in c]
     assert len(verify) == 1
-    assert verify[0].endswith(f"--repo ThanaelFontaine/Maily --signer-workflow {SIGNER}")
+    assert verify[0].endswith(
+        f"--repo ThanaelFontaine/Maily --signer-workflow {SIGNER} "
+        "--source-ref refs/heads/main --deny-self-hosted-runners")
 
 
 def test_invalid_attestation_stops_before_installing(env):
@@ -252,6 +254,7 @@ def test_both_installers_pin_the_signer_and_the_repository(path):
     text = path.read_text(encoding="utf-8")
     assert "ThanaelFontaine/Maily" in text and ".github/workflows/release.yml" in text
     assert "--signer-workflow" in text and "--repo" in text
+    assert "refs/heads/main" in text and "--deny-self-hosted-runners" in text
     assert "MAILY_REQUIRE_ATTESTATION" in text
     assert "0.10.0" in text
     assert "releases/latest/download/install" in text

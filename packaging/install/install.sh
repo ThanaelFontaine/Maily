@@ -129,6 +129,7 @@ elif ! gh auth status >/dev/null 2>&1; then
 else
   say "Checking the build attestation with gh..."
   gh attestation verify "$tmp/$file" --repo "$REPO" --signer-workflow "$SIGNER" \
+    --source-ref refs/heads/main --deny-self-hosted-runners \
     || fail "the attestation of this download could not be verified. Nothing was installed."
   say "Attestation verified: built by $SIGNER."
 fi

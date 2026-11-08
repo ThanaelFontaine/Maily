@@ -212,7 +212,8 @@ jobs:
               AID="$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" --jq ".assets[] | select(.name == \"$f\") | .id")"
               gh api -H "Accept: application/octet-stream" "repos/$GITHUB_REPOSITORY/releases/assets/$AID" > "dry-run-check/$f"
               cmp "release-assets/$f" "dry-run-check/$f"
-              gh attestation verify "dry-run-check/$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$SIGNER"
+              gh attestation verify "dry-run-check/$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$SIGNER" \
+                --source-ref "$GITHUB_REF" --deny-self-hosted-runners
               echo "Dry run OK: $f"
             done
             echo "Dry run complete: ${#FILES[@]} files built, attested, drafted and verified. Nothing was tagged or published."

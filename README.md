@@ -263,7 +263,8 @@ The checksum only proves that the file matches the one published next to it. To 
 
 ```bash
 gh attestation verify Maily-X.Y.Z-macos-arm64.dmg --repo ThanaelFontaine/Maily \
-  --signer-workflow ThanaelFontaine/Maily/.github/workflows/release.yml
+  --signer-workflow ThanaelFontaine/Maily/.github/workflows/release.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
 gh release verify-asset vX.Y.Z Maily-X.Y.Z-macos-arm64.dmg --repo ThanaelFontaine/Maily
 ```
 

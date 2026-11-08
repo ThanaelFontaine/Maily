@@ -95,7 +95,7 @@
     }
     else {
       Write-Host "Checking the build attestation with gh..."
-      if ((Invoke-Gh @('attestation', 'verify', (Join-Path $tmp $file), '--repo', $repo, '--signer-workflow', $signer)) -ne 0) {
+      if ((Invoke-Gh @('attestation', 'verify', (Join-Path $tmp $file), '--repo', $repo, '--signer-workflow', $signer, '--source-ref', 'refs/heads/main', '--deny-self-hosted-runners')) -ne 0) {
         throw "Maily: the attestation of this download could not be verified. Nothing was installed."
       }
       Write-Host "Attestation verified: built by $signer."
