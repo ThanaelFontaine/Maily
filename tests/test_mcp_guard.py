@@ -209,6 +209,11 @@ def test_capability_form_empty_or_absent():
     assert mcp_guard.supports_form_elicitation(SimpleNamespace(session=None)) is False
 
 
+def test_capability_without_form_and_url_fields_counts_as_form():
+    """B1: an older SDK's ElicitationCapability has neither field."""
+    assert mcp_guard.supports_form_elicitation(_ctx(SimpleNamespace())) is True
+
+
 def test_url_only_capability_counts_as_absent(env_and_fakes, monkeypatch):
     original = types.ElicitationCapability
     url_only = original(url=types.UrlElicitationCapability())
@@ -240,7 +245,104 @@ def test_six_recipients_refused(env_and_fakes, monkeypatch):
 def test_recipient_count_respects_quoted_names():
     assert mcp_guard.count_recipients('"Doe, John" <j@x.org>, k@x.org', "l@x.org") == 3
     assert mcp_guard.count_recipients("a@x.org", None) == 1
-    assert mcp_guard.count_recipients(None, None) == 0
+    with pytest.raises(mcp_guard.UnreadableRecipients):
+        mcp_guard.count_recipients(None, None)
+
+
+SIX = "a@x.com, b@x.com, c@x.com, d@x.com, e@x.com, f@x.com"
+TRICKY = [
+    SIX,
+    f"<{SIX}>",
+    f"{SIX} (x",
+    'a@x.com"", b@x.com, c@x.com, d@x.com, e@x.com, f@x.com',
+    "=?utf-8?q?a=40x.com=2C_b=40x.com?= <z@x.com>, c@x.com, d@x.com, e@x.com, f@x.com, g@x.com",
+]
+
+
+@pytest.mark.parametrize("to", TRICKY)
+def test_recipient_cap_holds_for_strings_the_parsers_read_differently(
+        env_and_fakes, monkeypatch, to):
+    """H1: the count uses the parser that builds the message, and anything it
+    reads with a defect is refused: nothing goes out."""
+    from core import mime
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    out = call("maily_send", dict(SEND, to=to))
+    assert out.get("code") == "too_many_recipients", out
+    assert env_and_fakes.sent == []
+    # What the guard let through is what the message carries.
+    raw, _ = mime.build_mime("alex@example.com", "a@x.org, b@x.org", "s", "b")
+    assert raw
+
+
+@pytest.mark.parametrize("to", ["", "   ", "garbage", "undisclosed-recipients:;",
+                                "a@x.com\r\nBcc: z@x.com"])
+def test_unreadable_recipients_are_refused(env_and_fakes, monkeypatch, to):
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    out = call("maily_send", dict(SEND, to=to))
+    assert out.get("code") == "too_many_recipients", out
+    assert env_and_fakes.sent == []
+
+
+def test_five_ordinary_addresses_still_go(env_and_fakes, monkeypatch):
+    monkeypatch.setenv("MAILY_ALLOW_SEND", "1")
+    to = '"Doe, John" <a@x.com>, b@x.com, c@x.com, d@x.com, e@x.com'
+    assert "sent_from" in call("maily_send", dict(SEND, to=to))
+    assert len(env_and_fakes.sent) == 1
+
+
+def test_count_matches_the_message_built_for_sending():
+    from email import message_from_bytes, policy
+    import base64
+    from core import mime
+    to, cc = '"Doe, John" <a@x.com>, b@x.com', "c@x.com"
+    raw, _ = mime.build_mime("me@x.com", to, "s", "b", cc=cc)
+    msg = message_from_bytes(base64.urlsafe_b64decode(raw), policy=policy.default)
+    sent = len(msg["To"].addresses) + len(msg["Cc"].addresses)
+    assert mcp_guard.count_recipients(to, cc) == sent == 3
+
+
+# --- CA2: the box shows what will go out ---------------------------------------
+
+def test_box_shows_the_real_address_behind_a_long_display_name():
+    to = '"sam@example.net' + " " * 490 + '" <attacker@evil.example>'
+    text = mcp_guard.describe_send("alex@example.com", to, None, "Hi", "Body")
+    assert "attacker@evil.example" in text
+    assert "sam@example.net" not in text
+
+
+def test_box_lists_addresses_and_short_names_after_them():
+    text = mcp_guard.describe_send(
+        "alex@example.com", '"Doe John" <j@x.org>, k@x.org', "l@x.org, m@x.org", "Hi", "B")
+    assert "To: j@x.org (Doe John), k@x.org\n" in text
+    assert "Cc: l@x.org, m@x.org\n" in text
+
+
+def test_box_drops_a_name_that_stages_an_address():
+    text = mcp_guard.describe_send(
+        "alex@example.com", '"x@good.org" <attacker@evil.example>', None, "Hi", "B")
+    assert "good.org" not in text and "attacker@evil.example" in text
+
+
+def test_through_the_tool_the_box_has_the_real_address(env_and_fakes):
+    seen = []
+    to = '"sam@example.net' + " " * 490 + '" <attacker@evil.example>'
+    call("maily_send", dict(SEND, to=to), answer("accept", seen=seen))
+    assert "attacker@evil.example" in seen[0].message
+
+
+# --- M1: the body is shown far enough, and the cut says so ---------------------
+
+def test_long_body_says_what_is_not_shown():
+    text = mcp_guard.describe_send("a@x.org", "b@x.org", None, "S", "x" * 5000)
+    assert "x" * 4000 in text and "x" * 4001 not in text
+    assert "(+1000 characters not shown)" in text
+
+
+def test_short_body_is_shown_whole_and_blank_runs_are_squeezed():
+    body = "start" + "\n \n" * 500 + "end"
+    text = mcp_guard.describe_send("a@x.org", "b@x.org", None, "S", body)
+    assert "end" in text and "not shown" not in text
+    assert text.count("\n") < 15
 
 
 def test_eleventh_send_in_an_hour_refused(env_and_fakes, monkeypatch):

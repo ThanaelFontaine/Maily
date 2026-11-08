@@ -27,13 +27,14 @@ started by two clients cannot both slip under the limit.
 from __future__ import annotations
 import asyncio
 import contextlib
-import email.utils
 import logging
 import os
 import pathlib
+import re
 import sqlite3
 import time
 import unicodedata
+from email.message import EmailMessage
 from typing import Callable
 
 from core import paths
@@ -256,15 +257,61 @@ def forget_profile(email: str | None) -> int:
 
 # --- Limits on one message ----------------------------------------------------
 
+class UnreadableRecipients(ValueError):
+    """The recipient fields cannot be read the way the sending code will read
+    them: the guard does not guess, nothing is sent."""
+
+
+def parse_recipients(to, cc=None) -> list[tuple[str, str]]:
+    """The addresses `to` and `cc` give once read by the parser that builds the
+    message (core/mime.py: `EmailMessage`, default policy), as (display name,
+    addr_spec) pairs, `to` first. Counting and showing use this list, so what
+    the guard counts and what the human reads is what goes out.
+
+    Fails closed: raises UnreadableRecipients when a non-blank field yields no
+    address, when the parser raises, or when it reports a defect in the header
+    (a lenient reading is exactly where two parsers part ways)."""
+    out: list[tuple[str, str]] = []
+    for name, value in (("To", to), ("Cc", cc)):
+        if value is None or value == "":
+            if name == "To":
+                raise UnreadableRecipients("`to` is empty")
+            continue
+        if not isinstance(value, str):
+            raise UnreadableRecipients(f"`{name.lower()}` is not text")
+        msg = EmailMessage()
+        try:
+            msg[name] = value
+            header = msg[name]
+            defects = tuple(getattr(header, "defects", ()) or ())
+            found = [(a.display_name or "", a.addr_spec) for a in header.addresses]
+        except Exception as e:
+            raise UnreadableRecipients(
+                f"`{name.lower()}` could not be read as a list of addresses") from e
+        if defects:
+            raise UnreadableRecipients(
+                f"`{name.lower()}` is not a clean list of addresses: write plain "
+                "addresses separated by commas")
+        if not found or any(not addr or "@" not in addr for _n, addr in found):
+            raise UnreadableRecipients(
+                f"`{name.lower()}` does not give a readable address")
+        out.extend(found)
+    return out
+
+
 def count_recipients(to, cc=None) -> int:
-    """Number of addresses in `to` and `cc` once the lists are split (quoted
-    names with commas are respected). Each entry counts, duplicates included."""
-    parts = [p for p in (to, cc) if p]
-    return sum(1 for _name, addr in email.utils.getaddresses(parts) if addr.strip())
+    """Number of addresses in `to` and `cc` (duplicates included), read by the
+    same parser as the sending code. Raises UnreadableRecipients."""
+    return len(parse_recipients(to, cc))
 
 
 def check_recipients(to, cc=None) -> int:
-    n = count_recipients(to, cc)
+    try:
+        n = count_recipients(to, cc)
+    except UnreadableRecipients as e:
+        raise Refusal(TOO_MANY_RECIPIENTS,
+                      f"Maily cannot read the recipients reliably ({e}). Nothing was sent.",
+                      "refused_cap") from e
     if n > MAX_RECIPIENTS:
         raise Refusal(TOO_MANY_RECIPIENTS,
                       f"{n} recipients in `to` and `cc`; Maily sends to {MAX_RECIPIENTS} "
@@ -287,7 +334,9 @@ def supports_form_elicitation(ctx) -> bool:
         return False
     if caps is None:
         return False
-    return caps.form is not None or caps.url is None
+    # Older SDKs have no `form` / `url` fields: an object without them is an
+    # empty `elicitation`, which counts as form.
+    return getattr(caps, "form", None) is not None or getattr(caps, "url", None) is None
 
 
 def env_allows(tool: str) -> bool:
@@ -310,13 +359,48 @@ def _plain(text, limit: int, keep_newlines: bool = False) -> str:
     return s if len(s) <= limit else s[:limit] + "..."
 
 
+BODY_SHOWN = 4000
+
+
+def _squeeze_blank_lines(text: str) -> str:
+    """Runs of blank lines (spaces or tabs only) become one blank line, so a
+    long stretch of empty lines cannot push text out of the box."""
+    return re.sub(r"(?:[ \t]*\n){3,}", "\n\n", text)
+
+
+def _addresses_shown(to, cc) -> tuple[str, str | None]:
+    """The To and Cc lines of the box: the addresses as they will go out
+    (never the raw string), the display name after the address and short."""
+    def show(value):
+        if not value:
+            return None
+        items = []
+        for name, addr in parse_recipients(value):
+            label = _plain(addr, 320)
+            name = _plain(name, 40)
+            # A name that looks like an address or breaks out of the brackets
+            # could stage a second address in the box: it is left out.
+            if name and not any(c in name for c in '@<>,()"'):
+                items.append(f"{label} ({name})")
+            else:
+                items.append(label)
+        return ", ".join(items)
+    return show(to) or "", show(cc)
+
+
 def describe_send(profile, to, cc, subject, body_text) -> str:
-    lines = ["Send this email?", "", f"From: {_plain(profile, 200)}",
-             f"To: {_plain(to, 500)}"]
-    if cc:
-        lines.append(f"Cc: {_plain(cc, 500)}")
-    lines += [f"Subject: {_plain(subject, 300)}", "",
-              _plain(body_text, 600, keep_newlines=True)]
+    """The text of the confirmation box. Raises UnreadableRecipients when the
+    recipients cannot be read (callers refuse before asking)."""
+    to_line, cc_line = _addresses_shown(to, cc)
+    lines = ["Send this email?", "", f"From: {_plain(profile, 200)}", f"To: {to_line}"]
+    if cc_line:
+        lines.append(f"Cc: {cc_line}")
+    body = _squeeze_blank_lines(_plain(body_text, 10 ** 9, keep_newlines=True))
+    hidden = len(body) - BODY_SHOWN
+    shown = body[:BODY_SHOWN]
+    if hidden > 0:
+        shown += f"\n\n(+{hidden} characters not shown)"
+    lines += [f"Subject: {_plain(subject, 300)}", "", shown]
     return "\n".join(lines)
 
 
