@@ -262,7 +262,7 @@ def test_installers_point_at_the_github_release_not_the_site(path):
     text = path.read_text(encoding="utf-8")
     assert "maily.thanaelfontaine.eu/install" not in text
     # No dash characters other than the plain hyphen (writing rule).
-    assert "—" not in text and "–" not in text
+    assert chr(0x2014) not in text and chr(0x2013) not in text
 
 
 def test_powershell_installer_checks_before_extracting():
