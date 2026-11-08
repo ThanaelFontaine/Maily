@@ -275,3 +275,15 @@ def test_attestation_checks_pin_main_and_refuse_self_hosted_runners(path):
     assert "--signer-workflow" in text or "'--signer-workflow'" in text
     assert "refs/heads/main" in text
     assert "--deny-self-hosted-runners" in text
+
+
+def test_dry_run_has_its_own_queue_and_is_refused_on_main():
+    assert "group: release-${{ github.event_name }}" in WORKFLOW
+    plan = _job("plan")
+    assert '"$GITHUB_REF" = "refs/heads/main"' in plan
+    assert "A dry run is never started on main" in plan
+
+
+def test_dry_run_trap_looks_the_draft_up_by_name_before_creating_it():
+    block = _dry_run_block()
+    assert block.index("trap cleanup EXIT") < block.index("gh release create")

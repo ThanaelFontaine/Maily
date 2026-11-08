@@ -62,7 +62,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: release
+  # A dry run has its own queue: GitHub keeps one pending run per group, so a
+  # dry run started while a real release waits its turn would cancel it.
+  group: release-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -87,6 +89,10 @@ jobs:
         run: |
           if [ "$DISPATCH" = "true" ] && [ "$DRY_RUN" != "true" ]; then
             echo "A manual run is a dry run only. Releases are published by the Tests workflow on main." >&2
+            exit 1
+          fi
+          if [ "$DISPATCH" = "true" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "A dry run is never started on main: its attestations would pass the installers' check (refs/heads/main). Start it on your branch." >&2
             exit 1
           fi
           VERSION="$(python3 scripts/release_notes.py version)"
@@ -197,13 +203,21 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             # Dry run: a draft with a throwaway name, no tag, never published.
             NAME="Maily dry run $TAG (run $GITHUB_RUN_ID)"
+            # The draft is removed whatever happens below, even if its creation
+            # fails half way: the trap looks it up by its throwaway name.
+            # shellcheck disable=SC2329
+            cleanup() {
+              for DRAFT in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
+                               --jq ".[] | select(.name == \"$NAME\" and .draft) | .id"); do
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$DRAFT" && echo "Dry run draft removed."
+              done
+            }
+            trap cleanup EXIT
             gh release create "dry-run-$GITHUB_RUN_ID" "${FILES[@]/#/release-assets/}" \
               --draft --target "$HEAD_SHA" --title "$NAME" --notes-file release-notes.md
             ID="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate \
                     --jq ".[] | select(.name == \"$NAME\" and .draft) | .id" | head -n 1)"
             [ -n "$ID" ] || { echo "The dry run draft was not created." >&2; exit 1; }
-            # The draft is removed whatever happens below.
-            trap 'gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$ID" && echo "Dry run draft removed."' EXIT
             mkdir -p dry-run-check
             ATTACHED="$(gh api "repos/$GITHUB_REPOSITORY/releases/$ID" --jq '.assets[].name' | sort)"
             [ "$ATTACHED" = "$(printf '%s\n' "${FILES[@]}" | sort)" ] \
