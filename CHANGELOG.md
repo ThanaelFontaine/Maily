@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- Inline images (`cid:`): the image type declared by a message is now checked against an allow-list of raster formats (PNG, JPEG, GIF, WebP, BMP, AVIF) before the image is shown; a forged type can no longer inject markup into the reading pane, and SVG is never displayed inline (MAIL-17, MA-3).
+- MCP read tools (`maily_list_messages`, `maily_search`, `maily_get_message`): the content of received emails is now returned as untrusted data, in an `untrusted_email_content` object next to a fixed `notice`; long fields are cut (`truncated: true`), and text imitating the envelope or the notice is broken with a visible middle dot. The previous top-level fields are deprecated and will be removed in a later version (MAIL-34, MA-1).
+- Disconnecting an account now erases its whole local copy: messages, cached attachment files (only inside the `attachments` folder, links never followed) and search index (FTS5 `secure-delete`, or a rebuild on SQLite older than 3.42), with SQLite `secure_delete` on and the write-ahead log truncated; `Maily --self-check` now requires SQLite 3.42 or later (MAIL-34, MA-7).
+
 ## [0.9.2] - 2026-11-02
 
 A security release: update to it.

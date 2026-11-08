@@ -118,7 +118,7 @@
   "settings.classicModeHelp": "«Automático» sigue el ajuste claro u oscuro del sistema.",
   "settings.colorLabel": "Color {color}",
   "settings.disconnect": "Desconectar",
-  "settings.disconnectConfirm": "¿Desconectar {email}?\nSe borrará el correo descargado en este ordenador (lo recuperarás al volver a conectar la cuenta).",
+  "settings.disconnectConfirm": "¿Desconectar {email}?\nSe borrarán el correo y los adjuntos descargados en este ordenador, junto con el índice de búsqueda (lo recuperarás al volver a conectar la cuenta).",
   "settings.displayNameFor": "Nombre visible de {email}",
   "settings.glassDensity": "Densidad del fondo (Glassmorphism)",
   "settings.glassDensityAria": "Densidad del fondo",

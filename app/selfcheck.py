@@ -53,6 +53,14 @@ def _checks(data_dir: pathlib.Path) -> list[tuple[str, object]]:
             conn.close()
         return f"{len(files)} migrations, schema {level}"
 
+    def sqlite_version():
+        import sqlite3
+        from core import db
+        if not db.fts_secure_delete_supported():
+            raise RuntimeError(f"SQLite {sqlite3.sqlite_version} is older than "
+                               "3.42 (FTS5 secure-delete missing)")
+        return f"SQLite {sqlite3.sqlite_version}"
+
     def encryption():
         from cryptography.fernet import Fernet
         f = Fernet(Fernet.generate_key())
@@ -86,7 +94,7 @@ def _checks(data_dir: pathlib.Path) -> list[tuple[str, object]]:
         return "pywebview imported"
 
     return [("version", version), ("frontend", frontend), ("database", database),
-            ("encryption", encryption), ("tls bundle", tls_bundle),
+            ("sqlite", sqlite_version), ("encryption", encryption), ("tls bundle", tls_bundle),
             ("local api", local_api), ("window library", window_library)]
 
 

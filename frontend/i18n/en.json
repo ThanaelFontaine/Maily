@@ -118,7 +118,7 @@
   "settings.classicModeHelp": "\"Automatic\" follows the light or dark setting of the system.",
   "settings.colorLabel": "Color {color}",
   "settings.disconnect": "Disconnect",
-  "settings.disconnectConfirm": "Disconnect {email}?\nThe mail downloaded on this computer will be deleted (you can get it back by connecting the account again).",
+  "settings.disconnectConfirm": "Disconnect {email}?\nThe mail and attachments downloaded on this computer will be deleted, with the search index (you can get it back by connecting the account again).",
   "settings.displayNameFor": "Display name for {email}",
   "settings.glassDensity": "Background density (Glassmorphism)",
   "settings.glassDensityAria": "Background density",

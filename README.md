@@ -67,7 +67,7 @@ One thing stays true with any assistant: what it reads through Maily becomes par
 - **Gmail categories and labels:** *Primary*, *Promotions*, *Social* and *Updates* tabs; *Inbox*, *Archived*, *Trash* and your own labels as folders.
 - **IMAP accounts are read-only:** every IMAP folder is imported, without date limit; reading, search, attachments, trash and `.eml` export work, sending does not (Maily has no SMTP yet).
 - **Automatic sync** of every account every 3 minutes while the app is open, plus a *Sync* button.
-- **Disconnect** an account in one click: Maily removes its secrets and its local copy; your mailbox on the server is untouched.
+- **Disconnect** an account in one click: Maily removes its secrets and its whole local copy (mail, cached attachments, search index), and overwrites the deleted text in its database file instead of leaving it in free space; your mailbox on the server is untouched. What a disconnection cannot reach (backups, snapshots, files you saved or exported yourself, the SSD's own wear levelling) is listed in [SECURITY.md](SECURITY.md#what-maily-does-not-defend-against).
 
 ### Reading
 
@@ -668,7 +668,7 @@ Claude Desktop, Claude Code, and any MCP client that can start a local stdio ser
 IMAP reads mail; sending would need SMTP, which Maily does not implement yet. Contributions are welcome.
 
 **Can Maily or my assistant delete my mail for good?**
-Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. *Disconnect* only removes Maily's local copy and secrets; your mailbox is untouched.
+Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. *Disconnect* only removes Maily's local copy (mail, attachments, search index) and secrets; your mailbox is untouched.
 
 **Does it work offline?**
 Reading and searching what is already synced works offline. Syncing and sending need a connection.
