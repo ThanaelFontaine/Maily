@@ -19,8 +19,8 @@ import logging
 log = logging.getLogger("maily.rfc822")
 
 # A message the parser cannot read (broken charset, absurd nesting) is stored as a
-# placeholder card carrying this local label, so that it can be read again after a
-# future fix, instead of blocking the whole sync.
+# placeholder card carrying this local label, so that a future fix can find it and
+# import it again, instead of blocking the whole sync.
 UNREADABLE_LABEL = "MAILY_UNREADABLE"
 UNREADABLE_BODY = "Maily could not read this message. Open it with your mail provider."
 
