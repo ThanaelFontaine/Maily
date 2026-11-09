@@ -115,3 +115,61 @@ def test_incremental_refetches_a_message_once_per_run(store):
     client = PagedClient({"g1": _msg("g1", "One"), "g2": _msg("g2", "Two")}, pages)
     Syncer(store, client, acc).incremental()
     assert client.fetches == ["g2"]
+
+
+# --- MAIL-34 lot 2b: a message the parser cannot read does not block the Gmail sync ---
+
+import json
+from core.rfc822_parse import UNREADABLE_BODY, UNREADABLE_LABEL
+
+
+def _poison(gid, subject):
+    m = _msg(gid, subject, labels=["INBOX", "UNREAD"])
+    m["payload"]["headers"] += [{"name": "From", "value": "a@example.net"},
+                                {"name": "Message-ID", "value": f"<{gid}@example.net>"}]
+    m["payload"]["mimeType"] = "multipart/mixed"
+    node = m["payload"]
+    for _ in range(3000):                     # nesting deeper than the parser recursion limit
+        child = {"mimeType": "multipart/mixed", "parts": []}
+        node["parts"] = [child]
+        node = child
+    return m
+
+
+def test_gmail_backfill_survives_an_unparsable_message(store):
+    acc = store.upsert_account("me@example.com")
+    msgs = {"g1": _msg("g1", "One"), "g2": _poison("g2", "Poison"), "g3": _msg("g3", "Three")}
+    n = Syncer(store, FakeClient(msgs), acc).backfill()
+    assert n == 3
+    assert store.get_sync_state(acc, "backfill_done") == "1"
+    assert store.get_sync_state(acc, "last_history_id") == "10"
+    rows = {r["subject"]: r for r in store.list_messages(acc)}
+    assert set(rows) == {"One", "Poison", "Three"}
+    poison = rows["Poison"]
+    assert poison["body_text"] == UNREADABLE_BODY
+    assert json.loads(poison["label_ids"]) == ["INBOX", "UNREAD", UNREADABLE_LABEL]
+    assert poison["is_unread"] == 1 and poison["has_attachments"] == 0
+    assert poison["addr_from"] == "a@example.net"
+    assert UNREADABLE_LABEL not in json.loads(rows["Three"]["label_ids"])
+
+
+def test_gmail_incremental_survives_an_unparsable_message(store):
+    acc = store.upsert_account("me@example.com")
+    Syncer(store, FakeClient({"g1": _msg("g1", "One")}), acc).backfill()
+    hist = [{"id": "11", "messagesAdded": [{"message": {"id": "g2"}}, {"message": {"id": "g3"}}]}]
+    client = FakeClient({"g1": _msg("g1", "One"), "g2": _poison("g2", "Poison"),
+                         "g3": _msg("g3", "Three")}, history=hist)
+    assert Syncer(store, client, acc).incremental() == 2
+    assert store.get_sync_state(acc, "last_history_id") == "999"
+    assert {r["subject"] for r in store.list_messages(acc)} == {"One", "Poison", "Three"}
+
+
+def test_gmail_network_errors_are_not_swallowed(store):
+    acc = store.upsert_account("me@example.com")
+
+    class Down(FakeClient):
+        def get_message(self, gid, fmt="full"):
+            raise OSError("network down")
+
+    with pytest.raises(OSError):
+        Syncer(store, Down({"g1": _msg("g1", "One")}), acc).backfill()

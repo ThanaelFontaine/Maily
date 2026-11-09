@@ -13,7 +13,7 @@ The client is injected (testable without network).
 """
 from __future__ import annotations
 import json
-from core.rfc822_parse import parse_rfc822
+from core.rfc822_parse import parse_rfc822_safe, UNREADABLE_LABEL
 from core.imap_client import imap_msg_key, ImapError
 
 
@@ -40,8 +40,11 @@ class ImapSyncer:
         return f"imap:{folder}:last_uid"
 
     def _store_one(self, folder, uidvalidity, uid, raw, seen):
-        fields, atts = parse_rfc822(raw)
-        fields["label_ids"] = json.dumps([folder] if seen else [folder, "UNREAD"])
+        fields, atts, readable = parse_rfc822_safe(raw)
+        labels = [folder] if seen else [folder, "UNREAD"]
+        if not readable:
+            labels.append(UNREADABLE_LABEL)
+        fields["label_ids"] = json.dumps(labels)
         fields["is_unread"] = 0 if seen else 1
         mid = self.store.upsert_message(
             self.account_id, imap_msg_key(folder, uidvalidity, uid), **fields)
@@ -55,25 +58,33 @@ class ImapSyncer:
         ])
 
     def _fetch_and_store(self, folder, uidvalidity, uids):
+        # UIDs in ascending order, resume point saved after each message: a network error
+        # (ImapError, OSError) raised by `fetch` leaves last_uid on the last message stored,
+        # so the next sync resumes there and skips nothing. A message the parser cannot read
+        # never raises here: it is stored as a placeholder card (parse_rfc822_safe).
         count = 0
-        for uid in uids:
+        for uid in sorted(uids):
             raw, seen = self.client.fetch(uid)
             self._store_one(folder, uidvalidity, uid, raw, seen)
+            self.store.set_sync_state(self.account_id, self._uid_key(folder), uid)
             count += 1
-        if uids:
-            self.store.set_sync_state(self.account_id, self._uid_key(folder), max(uids))
         return count
+
+    def _reset_folder(self, folder, uidvalidity):
+        """New UIDVALIDITY: the old UIDs mean nothing, restart this folder from zero."""
+        self.store.set_sync_state(self.account_id, self._uid_key(folder), 0)
+        self.store.set_sync_state(self.account_id, self._val_key(folder), uidvalidity)
 
     def _folder_full(self, folder):
         uidvalidity = self.client.select_folder(folder)
-        self.store.set_sync_state(self.account_id, self._val_key(folder), uidvalidity)
+        self._reset_folder(folder, uidvalidity)
         return self._fetch_and_store(folder, uidvalidity, self.client.search_uids())
 
     def _folder_incremental(self, folder):
         uidvalidity = self.client.select_folder(folder)
         stored = self.store.get_sync_state(self.account_id, self._val_key(folder))
         if stored is None or str(stored) != str(uidvalidity):
-            self.store.set_sync_state(self.account_id, self._val_key(folder), uidvalidity)
+            self._reset_folder(folder, uidvalidity)
             return self._fetch_and_store(folder, uidvalidity, self.client.search_uids())
         last_uid = int(self.store.get_sync_state(self.account_id, self._uid_key(folder)) or 0)
         uids = [u for u in self.client.search_uids(min_uid=last_uid + 1) if u > last_uid]

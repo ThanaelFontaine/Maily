@@ -22,6 +22,25 @@ What to expect: an acknowledgement within 7 days, an assessment and a plan, then
 
 Only the latest released version receives security fixes.
 
+## Verify a download
+
+Every release from **0.10.0** carries 13 files: the three apps (`.dmg`, `.zip`, `.tar.gz`), the two installers (`install.sh`, `install.ps1`), a `.sha256` file for each of those five, and the three apps again under a name without the version. The CI attests each of the 13 files (a [GitHub artifact attestation](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations): SLSA build provenance, signed through the OIDC identity of the release workflow and recorded in the public Sigstore log), and releases are immutable: once published, a release and its tag cannot be changed.
+
+With the [GitHub CLI](https://cli.github.com), signed in (`gh auth login`, which `gh attestation verify` requires), from the folder that holds the file:
+
+```bash
+gh attestation verify Maily-X.Y.Z-linux-x64.tar.gz --repo ThanaelFontaine/Maily \
+  --signer-workflow ThanaelFontaine/Maily/.github/workflows/release.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
+gh release verify-asset vX.Y.Z Maily-X.Y.Z-linux-x64.tar.gz --repo ThanaelFontaine/Maily
+```
+
+`install.sh` and `install.ps1` run the first check themselves before installing anything, and stop if it fails. Without `gh`, or with `gh` not signed in, they warn and continue with the checksum only; `MAILY_REQUIRE_ATTESTATION=1` makes them refuse instead. A version older than 0.10.0 has no attestation.
+
+**What the attestation covers:** the file was produced by the `release.yml` workflow of this repository, run from the `main` branch (`--source-ref refs/heads/main`: a file built by that workflow from any other branch, as the dry runs are, is refused) on GitHub-hosted machines (`--deny-self-hosted-runners`), from the commit named in the attestation, and it has not been altered since. Together with the immutable release, it also blocks a swap of the file after publication, which a checksum published in the same place cannot do.
+
+**What it does not cover:** it does not make the code safe (it says where and how the file was built, not that the source is free of bugs; the code is public so that anyone can read it); it does not protect against someone who can change the release workflow or the code on `main`, which is why `main` requires a pull request and passing checks (a branch cannot produce a file that passes the check above); and it is **not an Apple Developer ID or Microsoft code signature**. The apps stay unsigned: macOS and Windows show their warning at first launch, and the steps in the [README](README.md#option-a-download-the-app) still apply. The installer you pipe into a shell, as the README gives it, is `packaging/install/install.sh` (or `install.ps1`) of this repository on `main`; from 0.10.0 the same file is attached to each release with its own attestation. The older website addresses still serve the previous installer, which checks the checksum only. If you want to be sure, download the installer, read it, and verify it with the same commands before running it.
+
 ## Threat model
 
 ### What Maily is
@@ -48,6 +67,7 @@ A desktop application that runs on your computer, under your user account, and b
 | **Prompt injection through email content** | The MCP read tools return the sender, recipients, subject, snippet and bodies of every message inside an `untrusted_email_content` object, with a fixed `notice` saying it is data, never instructions. Bodies are cut at 20,000 characters (text) and 50,000 (HTML), and attachment lists and names are capped too, with `truncated: true`, and text that imitates the envelope key or the notice is broken with a visible character. See [docs/MCP.md](docs/MCP.md#what-the-read-tools-return). |
 | **An assistant sending or trashing mail it was tricked into (or on its own)** | `maily_send` and `maily_trash` are guarded in code (`core/mcp_guard.py`), not only by their description. A client that supports MCP elicitation (form mode) must get an explicit "accept" with a ticked box from you; decline, cancel, an error or a timeout end the call, with no fallback. A client without elicitation is refused unless you set `MAILY_ALLOW_SEND=1` / `MAILY_ALLOW_TRASH=1` in the server's environment. Whatever the client does: 5 recipients at most per message, 10 sends and 30 trashes per hour for the whole installation (counted and recorded in one transaction, so two MCP servers cannot both slip under), and a journal of every attempt in `mcp_guard.sqlite` (mode `0600`, never the body, kept 90 days, erased per profile when the account is disconnected). The tools also carry MCP annotations (`destructiveHint`, `readOnlyHint`). See [docs/MCP.md](docs/MCP.md#3-safety-rules). |
 | **Someone using your unlocked session to open the app** | On macOS, the desktop window can require Touch ID (or the session password) at launch. |
+| **Mail left on the disk after you disconnect an account** | *Disconnect* deletes the account's secrets, its messages and the cached attachment files (only inside Maily's own `attachments` folder, links never followed). The database runs with SQLite `secure_delete`, so deleted text is overwritten with zeros in `app.sqlite` instead of staying in free pages; the full-text index is purged the same way (FTS5 `secure-delete`, SQLite 3.42 or later, which `Maily --self-check` requires; otherwise the index is rebuilt), and the write-ahead log (`app.sqlite-wal`) is folded in and truncated. Mail deleted by an earlier version may still sit in free pages of an older database file. |
 | **Destructive mistakes** | Gmail permissions are limited to `gmail.modify` and `gmail.send`: Maily can move mail to the trash but cannot delete it permanently. Sends go through an idempotent outbox, so a retry never sends twice. |
 
 ### What Maily does not defend against
@@ -58,6 +78,7 @@ A desktop application that runs on your computer, under your user account, and b
 - **What your AI assistant does with your mail.** When an assistant calls a Maily tool, the result becomes part of your conversation with it, so it is processed by whoever runs the model behind that assistant. Maily cannot control that side.
 - **Your Google account and your IMAP provider.** Their security (password, second factor, recovery) is outside Maily.
 - **Loading remote images.** Once you choose to load them for a message or globally, the sender can learn that you opened it and see your IP address.
+- **Copies of your mail outside Maily's data folder after a disconnection.** *Disconnect* cannot erase Time Machine or other backups, file-system snapshots, files you saved with the MCP tools or exported as `.eml`, the WebKit/WebView cache of the app window, or application logs you kept. On an SSD, overwriting a block does not guarantee the old cell is erased; full-disk encryption (FileVault, BitLocker, LUKS) is what covers that. If the write-ahead log cannot be truncated at that moment (another process holds the database), it is truncated at a later checkpoint.
 - **Backups.** A copy of the data folder containing both `secrets.enc` and `secrets.key` gives access to your tokens. Protect backups like a password.
 
 ### Good practices for users

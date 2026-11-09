@@ -75,11 +75,11 @@ def make_add_imap_fn(store):
     return _add
 
 
-def make_logout_fn(store):
+def make_logout_fn(store, attachments_dir=None):
     from core.accounts_service import logout_account
 
     def _logout(account_id):
-        return logout_account(store, account_id)
+        return logout_account(store, account_id, attachments_dir)
 
     return _logout
 
@@ -445,7 +445,7 @@ def run():
                      labels_fn=make_labels_fn(store), frontend_dir=_frontend_dir(),
                      glass_fn=set_glass_alpha, glass_get_fn=get_glass_alpha,
                      add_google_fn=make_add_google_fn(store),
-                     logout_fn=make_logout_fn(store),
+                     logout_fn=make_logout_fn(store, layout["attachments"]),
                      eml_fn=make_eml_fn(store),
                      add_imap_fn=make_add_imap_fn(store))
 

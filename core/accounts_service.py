@@ -6,6 +6,7 @@ import re
 import threading
 from googleapiclient.discovery import build
 from core import auth
+from core import paths
 from core.auth import load_credentials
 from core.gmail import GmailClient
 from core.sync import Syncer
@@ -89,29 +90,73 @@ def add_imap_account(store, email, password, host="imap.orange.fr", port=993) ->
         _add_account_lock.release()
 
 
-def logout_account(store, account_id) -> None:
+def logout_account(store, account_id, attachments_dir=None) -> None:
     """Disconnects an account: deletes its encrypted credentials (Google token
     or IMAP credentials, depending on the provider) AND its local cache
-    (messages, attachments, labels...). Reversible: connecting the account again
-    runs a new backfill. No-op for an unknown account."""
+    (messages, attachments, labels, search index...). The mail text no longer
+    stays in the database file nor in its write-ahead log (`secure_delete`,
+    full-text index cleaned, log truncated), and the cached attachment files
+    are deleted. Reversible: connecting the account again runs a new backfill.
+    No-op for an unknown account."""
     acc = store.get_account(account_id)
-    if acc is not None:
-        acc = dict(acc)
-        provider = acc.get("provider") or "gmail"
-        email = acc.get("email")
-        if provider == "imap":
-            secrets_store.delete_imap_credentials(email)
-        else:
-            secrets_store.delete_account_token(email)
-    store.delete_account(account_id)
+    if acc is None:
+        return
+    acc = dict(acc)
+    provider = acc.get("provider") or "gmail"
+    email = acc.get("email")
+    if provider == "imap":
+        secrets_store.delete_imap_credentials(email)
+    else:
+        secrets_store.delete_account_token(email)
+    atts = store.delete_account(account_id)
+    if attachments_dir is None:
+        attachments_dir = paths.ensure_runtime_dirs(paths.runtime_dir())["attachments"]
+    _delete_attachment_files(atts, attachments_dir)
+    db = store.db
+    if not getattr(db, "fts_secure_delete", False):
+        try:
+            db.rebuild_fts()
+        except Exception:
+            log.warning("could not rebuild the search index after a disconnection", exc_info=True)
+    if not db.checkpoint_truncate():
+        log.info("the write-ahead log could not be truncated now (database busy)")
     # The MCP guard journal keeps recipients and subjects of what the assistant
     # sent or trashed from this profile: erased with the account (best effort,
     # a damaged journal must not keep an account connected).
     try:
         from core import mcp_guard
-        mcp_guard.forget_profile((acc or {}).get("email"))
+        mcp_guard.forget_profile(email)
     except Exception:
         log.warning("could not erase the MCP guard journal of the account", exc_info=True)
+
+
+def _delete_attachment_files(atts, attachments_dir) -> None:
+    """Deletes the cached files of the removed attachment rows, only inside
+    `attachments_dir` (real path, links not followed): the file named by
+    `local_path` and the `{att_id}_*` files of the cache folder. A path outside
+    the folder is never touched."""
+    root = os.path.realpath(attachments_dir)
+    if not os.path.isdir(root):
+        return
+    targets = set()
+    for att_id, local_path in atts:
+        if local_path:
+            parent, name = os.path.split(os.path.abspath(local_path))
+            if os.path.realpath(parent) == root and name:
+                targets.add(os.path.join(root, name))
+        prefix = f"{int(att_id)}_"
+        try:
+            for name in os.listdir(root):
+                if name.startswith(prefix):
+                    targets.add(os.path.join(root, name))
+        except OSError:
+            pass
+    for path in targets:
+        try:
+            if os.path.isfile(path) or os.path.islink(path):
+                os.unlink(path)        # a link is removed, never its target
+        except OSError:
+            log.warning("could not delete a cached attachment", exc_info=True)
 
 
 def _safe_name(name: str) -> str:
