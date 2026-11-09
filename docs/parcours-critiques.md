@@ -5,7 +5,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - Last verified: 2026-11-09
 - Commit of `origin/main` verified: `d1ce0469af86b815ac9914ec97bdc658b9828f82` (version 0.10.0, after lot 6 of MAIL-34, before 0.10.1)
 - Environment: macOS, Python 3.12 from `uv sync --locked`, everything local, fictitious data only (demo mode), no real mailbox, no network to a provider.
-- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 630 passed, 2 skipped), re-run for this page.
+- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 628 passed, 2 skipped), re-run for this page.
 
 ## P1. Start the app and the local API on demo data
 
