@@ -12,7 +12,7 @@ Maily is a free desktop app with public source code that bridges your mailboxes 
 
 ![Maily with the default Classic theme: accounts on the left, the message list in the middle, the open message on the right](docs/images/classic-light.png)
 
-> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [download page](https://maily.thanaelfontaine.eu/download/), install it with one line (`curl -fsSL https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.sh | sh` on macOS and Linux, `irm https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.ps1 | iex` in Windows PowerShell; see [Install](#install)), or run it from source:
+> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [download page](https://maily.thanaelfontaine.eu/download/), install it with one line (`curl -fsSL https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.sh | sh` on macOS and Linux, `irm https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.ps1 | iex` in Windows PowerShell; see [Install](#install)), or run it from source:
 >
 > ```bash
 > git clone https://github.com/ThanaelFontaine/Maily
@@ -227,17 +227,17 @@ The apps are free, with public source code, but **not signed**: the first launch
 
 ### One-line install
 
-The fastest way, without git or uv. The script downloads the latest release from GitHub, checks it against its `.sha256` file, checks its [build attestation](SECURITY.md#verify-a-download) when the [GitHub CLI](https://cli.github.com) (`gh`) is installed and signed in, installs it and tells you what to do next. Run the same line again to update. It needs no administrator password. The addresses above serve the installers of this repository (`main`). From 0.10.0 the same files are also attached to every release, with their own attestation (`https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.sh` and `install.ps1`). The older addresses on the website (`maily.thanaelfontaine.eu/install.sh`) still serve the previous installer, which checks the `.sha256` file only: `MAILY_REQUIRE_ATTESTATION` has no effect there.
+The fastest way, without git or uv. The script downloads the latest release from GitHub, checks it against its `.sha256` file, checks its [build attestation](SECURITY.md#verify-a-download) when the [GitHub CLI](https://cli.github.com) (`gh`) is installed and signed in, installs it and tells you what to do next. Run the same line again to update. It needs no administrator password. The addresses above serve the installers attached to the latest release, each with its own build attestation (from 0.10.0). The older addresses on the website (`maily.thanaelfontaine.eu/install.sh`) still serve the previous installer, which checks the `.sha256` file only: `MAILY_REQUIRE_ATTESTATION` has no effect there.
 
 ```bash
 # macOS (Apple Silicon) and Linux (x64): Maily.app in /Applications (or ~/Applications),
 # or on Linux ~/.local/opt/Maily with the maily command and an app menu entry
-curl -fsSL https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.sh | sh
+curl -fsSL https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.sh | sh
 ```
 
 ```powershell
 # Windows (x64), in PowerShell: %LOCALAPPDATA%\Programs\Maily and a Start menu entry
-irm https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.ps1 | iex
+irm https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.ps1 | iex
 ```
 
 Read them first if you like: [install.sh](packaging/install/install.sh) and [install.ps1](packaging/install/install.ps1) are in this repository, and the same files are attached to each release. `MAILY_VERSION=0.10.0` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.

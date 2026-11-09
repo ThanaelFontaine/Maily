@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- Dependencies: `oauthlib` 4.0.1, which closes the high-severity advisory GHSA-3jp2-3mrg-2vxc (Dependabot alert 69), with the monthly update of the uv group (fastapi 0.162.0, google-api-python-client 2.201.0, cryptography 50.0.2 and others; `opentelemetry-api` now arrives with fastapi) (MAIL-34).
+
+### Changed
+
+- The one-line install commands of the README now use the installers attached to the latest release (`releases/latest/download/install.sh` and `install.ps1`, with their build attestation) instead of the copies on `main`; the `MAILY_VERSION` examples in the installer headers now show 0.10.0 (MAIL-34).
+
 ## [0.10.0] - 2026-11-09
 
 A security release: update to it. It closes the findings of the security audit of 7 November 2026 that concern Maily (MA-1, MA-3, MA-4, MA-5, MA-7; MA-6 is done on the website, see below).

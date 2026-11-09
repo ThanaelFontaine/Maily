@@ -9,7 +9,7 @@
 # %LOCALAPPDATA%\Programs\Maily and adds Maily to the Start menu. Running it again updates Maily.
 # Your accounts and mail live in the data folder and are kept. No administrator rights needed.
 #
-# Options (environment variables): $env:MAILY_VERSION = "0.9.2" installs that version,
+# Options (environment variables): $env:MAILY_VERSION = "0.10.0" installs that version,
 # $env:MAILY_INSTALL_DIR = "C:\path" installs somewhere else, $env:MAILY_REQUIRE_ATTESTATION = "1"
 # refuses to install a download whose attestation could not be checked.
 

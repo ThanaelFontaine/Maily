@@ -273,3 +273,40 @@ def test_powershell_installer_checks_before_extracting():
     assert text.index("Checking the build attestation") < text.index("Expand-Archive")
     assert text.index("Get-FileHash") < text.index("Checking the build attestation")
     assert "Nothing was installed." in text
+
+
+def _version_tuple(v):
+    return tuple(int(p) for p in v.split("."))
+
+
+def test_readme_install_commands_use_the_installers_of_the_latest_release():
+    # The one-line commands must serve the installers attached to the release
+    # (with their attestation), never the copies on main (MAIL-34 lot 6).
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    base = "https://github.com/ThanaelFontaine/Maily/releases/latest/download/"
+    assert f"curl -fsSL {base}install.sh | sh" in text
+    assert f"irm {base}install.ps1 | iex" in text
+    assert "raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install" not in text
+
+
+@pytest.mark.parametrize("path", [INSTALL_SH, INSTALL_PS1])
+def test_installer_header_example_version_is_a_real_version(path):
+    # The "MAILY_VERSION = x.y.z installs that version" example must not name a
+    # version that does not exist yet, nor fall behind more than the project's
+    # own version allows (it was left on 0.9.2 after 0.10.0).
+    import re
+    text = path.read_text(encoding="utf-8")
+    m = re.search(r'MAILY_VERSION\s*=\s*"?(\d+\.\d+\.\d+)', text)
+    assert m, "the header must give an example version"
+    project = re.search(r'^version = "(\d+\.\d+\.\d+)"', (ROOT / "pyproject.toml").read_text(encoding="utf-8"), re.M).group(1)
+    assert _version_tuple(m.group(1)) <= _version_tuple(project)
+    assert _version_tuple(m.group(1)) >= (0, 10, 0)
+
+
+def test_lockfile_keeps_oauthlib_past_the_advisory():
+    # Dependabot alert 69: oauthlib >= 3.3.0 and < 4.0.1 is vulnerable.
+    import tomllib
+    lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    versions = [p["version"] for p in lock["package"] if p["name"] == "oauthlib"]
+    assert versions, "oauthlib is no longer locked: re-check alert 69"
+    assert all(_version_tuple(v) >= (4, 0, 1) for v in versions)
