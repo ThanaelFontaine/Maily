@@ -13,7 +13,7 @@
 # Running it again updates Maily. Your accounts and mail live in the data folder and are kept.
 # Nothing here needs sudo.
 #
-# Options (environment variables): MAILY_VERSION=0.9.2 installs that version,
+# Options (environment variables): MAILY_VERSION=0.10.0 installs that version,
 # MAILY_INSTALL_DIR=/path installs somewhere else, MAILY_REQUIRE_ATTESTATION=1
 # refuses to install a download whose attestation could not be checked.
 
