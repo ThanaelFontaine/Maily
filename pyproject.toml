@@ -34,7 +34,9 @@ dependencies = [
     # group) to avoid the install back-and-forth that broke the environment
     # when an MCP client ran `uv run` (jsonschema is a dependency of mcp,
     # pinned explicitly to make the resolution reliable).
-    "mcp>=1.2,<2",
+    # >=1.10: first release with elicitation (Context.elicit), used by the
+    # confirmation of maily_send and maily_trash (core/mcp_guard.py).
+    "mcp>=1.10,<2",
     "jsonschema>=4.20",
 ]
 

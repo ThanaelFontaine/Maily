@@ -158,6 +158,17 @@ def test_mcp_tool_reports_the_refusal(monkeypatch, database):
     mid = _imap_message(store)
     monkeypatch.setattr(S, "_store", store)
     monkeypatch.setattr(svc, "build_imap_client", lambda e: _NoTrashClient())
-    out = S.maily_trash(mid)
+    # The tool is behind the guard (MA-1): the owner enabled trashing for a
+    # client without elicitation, and the call goes through an in-memory client.
+    monkeypatch.setenv("MAILY_ALLOW_TRASH", "1")
+    import asyncio
+    import json
+    from mcp.shared.memory import create_connected_server_and_client_session
+
+    async def run():
+        async with create_connected_server_and_client_session(S.mcp) as client:
+            res = await client.call_tool("maily_trash", {"message_id": mid})
+            return res.structuredContent or json.loads(res.content[0].text)
+    out = asyncio.run(run())
     assert out["code"] == "no_trash_folder" and "no trash folder" in out["error"]
     assert dict(store.get_message(mid))["is_trashed"] == 0

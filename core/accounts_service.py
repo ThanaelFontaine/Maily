@@ -120,6 +120,14 @@ def logout_account(store, account_id, attachments_dir=None) -> None:
             log.warning("could not rebuild the search index after a disconnection", exc_info=True)
     if not db.checkpoint_truncate():
         log.info("the write-ahead log could not be truncated now (database busy)")
+    # The MCP guard journal keeps recipients and subjects of what the assistant
+    # sent or trashed from this profile: erased with the account (best effort,
+    # a damaged journal must not keep an account connected).
+    try:
+        from core import mcp_guard
+        mcp_guard.forget_profile(email)
+    except Exception:
+        log.warning("could not erase the MCP guard journal of the account", exc_info=True)
 
 
 def _delete_attachment_files(atts, attachments_dir) -> None:

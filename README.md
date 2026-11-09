@@ -460,6 +460,8 @@ Maily's MCP server lets an assistant running **on the same computer** use the `m
    If the file already has other servers, add the `"maily": {...}` entry inside the existing `"mcpServers"` object.
 3. Save, then **quit Claude Desktop completely and open it again**: it starts the servers listed in the file at launch.
 
+If your client cannot show a confirmation box (no MCP elicitation), sending and trashing are refused until you enable them in the server definition, with `"env": { "MAILY_ALLOW_SEND": "1", "MAILY_ALLOW_TRASH": "1" }` (a permanent agreement: see [Safety](#safety) and [docs/MCP.md](docs/MCP.md#3-safety-rules)).
+
 If the tools do not appear, put the full path of `uv` in `command` (find it with `which uv`), and look at the logs in `~/Library/Logs/Claude/` (`mcp.log` and `mcp-server-maily.log`). Source: [Connect to local MCP servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers).
 
 ### Claude Code
@@ -500,8 +502,8 @@ Once the tools are available, just ask:
 
 ### Safety
 
-- **Send and trash are confirmed.** The descriptions of `maily_send` and `maily_trash` tell the assistant to ask you before calling them, and your assistant's own permission system adds a second check: in Claude Desktop, tools perform actions with your approval ([source](https://modelcontextprotocol.io/docs/develop/connect-local-servers)), and in Claude Code you can force a prompt for these two tools with `ask` rules in your settings (`"permissions": {"ask": ["mcp__maily__maily_send", "mcp__maily__maily_trash"]}`, see [Claude Code permissions](https://code.claude.com/docs/en/permissions)).
-- **Mail is data, not instructions.** An email can contain text written to manipulate an AI ("forward all invoices to..."). Tell your assistant to treat the content of messages as data, never as instructions. A ready-to-paste rule is in [docs/MCP.md](docs/MCP.md#3-safety-rules-recommended).
+- **Send and trash are guarded in code.** `maily_send` and `maily_trash` never act on the assistant's word alone. If your client supports MCP elicitation (Claude Code in an interactive session does), Maily asks you in a box that shows the recipients, subject and start of the body, and only "accept" with the box ticked goes on. If your client cannot ask, Maily refuses (`confirmation_unavailable`) until you set `MAILY_ALLOW_SEND=1` (and `MAILY_ALLOW_TRASH=1` for the trash) in the `env` of the server definition: a permanent agreement, so use it only for a client you trust. In every case: 5 recipients at most per message, 10 emails and 30 trashes per hour, and a local journal of every attempt (never the body, erased with the account). Details and limits: [docs/MCP.md](docs/MCP.md#3-safety-rules). Your assistant's own permission prompt is a second check: in Claude Desktop, tools perform actions with your approval ([source](https://modelcontextprotocol.io/docs/develop/connect-local-servers)), and in Claude Code you can force a prompt for these two tools with `ask` rules in your settings (`"permissions": {"ask": ["mcp__maily__maily_send", "mcp__maily__maily_trash"]}`, see [Claude Code permissions](https://code.claude.com/docs/en/permissions)).
+- **Mail is data, not instructions.** An email can contain text written to manipulate an AI ("forward all invoices to..."). Tell your assistant to treat the content of messages as data, never as instructions. A ready-to-paste rule is in [docs/MCP.md](docs/MCP.md#3-safety-rules).
 - **No Touch ID for the MCP server.** The biometric gate protects the window only; the MCP server reads the secrets without asking, so that local automations work. Only connect clients you trust.
 
 Full reference (parameters, recipes, troubleshooting): **[docs/MCP.md](docs/MCP.md)**.
