@@ -1,7 +1,7 @@
 # Maily
 
 [![License: PolyForm Shield 1.0.0](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue.svg)](LICENSE)
-[![Version 0.9.2](https://img.shields.io/badge/version-0.9.2-1a73e8.svg)](CHANGELOG.md)
+[![Version 0.10.0](https://img.shields.io/badge/version-0.10.0-1a73e8.svg)](CHANGELOG.md)
 [![Platforms: macOS, Windows, Linux](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](#install)
 
 **All your mailboxes, every assistant, one connection.**
@@ -240,7 +240,7 @@ curl -fsSL https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packagin
 irm https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.ps1 | iex
 ```
 
-Read them first if you like: [install.sh](packaging/install/install.sh) and [install.ps1](packaging/install/install.ps1) are in this repository, and the same files are attached to each release. `MAILY_VERSION=0.9.2` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.
+Read them first if you like: [install.sh](packaging/install/install.sh) and [install.ps1](packaging/install/install.ps1) are in this repository, and the same files are attached to each release. `MAILY_VERSION=0.10.0` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.
 
 The attestation check needs `gh` signed in (`gh auth login`, [required by `gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify)). If the attestation is invalid, the script stops and installs nothing. Without `gh`, or with `gh` not signed in, it says so and goes on with the checksum only, unless you set `MAILY_REQUIRE_ATTESTATION=1`, which refuses to install what it could not check. A version older than 0.10.0 has no attestation: it installs with a warning (and is refused with `MAILY_REQUIRE_ATTESTATION=1`).
 
