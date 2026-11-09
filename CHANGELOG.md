@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-09
+
+A security release: update to it. It closes the findings of the security audit of 7 November 2026 that concern Maily (MA-1, MA-3, MA-4, MA-5, MA-7; MA-6 is done on the website, see below).
+
+**If you use Maily with an AI assistant (MCP):** `maily_send` and `maily_trash` now need your agreement. A client that supports MCP elicitation (Claude Code in an interactive session) shows you a box before each call. A client that cannot ask refuses until you set `MAILY_ALLOW_SEND=1` (resp. `MAILY_ALLOW_TRASH=1`) in the environment of the Maily server: it is off by default and is a standing agreement. Whatever the client, one send goes to at most 5 recipients, and the server allows at most 10 sends and 30 trashes per hour. See [docs/MCP.md](docs/MCP.md#3-safety-rules).
+
 ### Security
 
 - Inline images (`cid:`): the image type declared by a message is now checked against an allow-list of raster formats (PNG, JPEG, GIF, WebP, BMP, AVIF) before the image is shown; a forged type can no longer inject markup into the reading pane, and SVG is never displayed inline (MAIL-17, MA-3).
@@ -14,11 +20,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Release provenance: every file of a release (the three apps and their three fixed-name copies, `install.sh`, `install.ps1` and the `.sha256` files, 13 files in all) now carries a signed build attestation tied to this repository and to the release workflow, checked by `gh attestation verify` (see *Verify a download* in `SECURITY.md`). The installers verify it when the GitHub CLI is installed and signed in, stop and install nothing if it is invalid, and `MAILY_REQUIRE_ATTESTATION=1` refuses to install what could not be checked; they pin the check to `refs/heads/main` and refuse files built on a self-hosted runner. A published release is never completed or modified afterwards, and a manual dry run of the release workflow checks the whole chain without tagging or publishing (MAIL-34, MA-5).
 - Sync: a malformed message (unknown charset, absurdly nested multiparts) no longer stops the IMAP or Gmail sync: an unknown charset is decoded as UTF-8 with replacement characters, and a message that still cannot be read is stored as a placeholder card (headers only, local label `MAILY_UNREADABLE`, one log line without content); IMAP now saves its resume point after each message and restarts a folder from zero when its UIDVALIDITY changes (MAIL-34, MA-4).
 - MCP tools `maily_send` and `maily_trash` are now guarded by the server, not only by a sentence of their description: each call needs the human's agreement, asked through MCP elicitation (a form with a checkbox showing the profile, the recipients as the sending code reads them, the subject and the start of the message; decline, cancel, error or a 5 minute delay refuse, with no fallback on the variable), or, for a client that cannot ask, `MAILY_ALLOW_SEND=1` / `MAILY_ALLOW_TRASH=1` (off by default, only the value `1`). At most 5 recipients (`to` and `cc`) per send, 10 sends and 30 trashes per sliding hour for the whole data folder, lowered only by settings. Every attempt is written to a journal `mcp_guard.sqlite` (mode 0600, never the message body, 90 days), erased for a profile when its account is disconnected; if the journal cannot be opened the tool refuses. The tools carry the MCP annotations `destructiveHint` (send, trash) and `readOnlyHint` (the four read tools) (MAIL-34, MA-1).
+- Website (<https://maily.thanaelfontaine.eu>, its own repository): the publication chain now pins each action to a commit and `wrangler` to an exact version installed with `npm ci`, with no download by `npx` at deploy time (MAIL-34, MA-6). Nothing to do on your side.
 
 ### Changed
 
 - `maily_send`: recipients are now sent as bare addresses (a display name is dropped, so what the human sees in the agreement box is exactly what is sent); an address with quotes, a local part over 64 characters, over 254 characters in all, or a local part that is not ASCII is refused. A client without MCP elicitation (Claude Desktop is to be checked) now has to set `MAILY_ALLOW_SEND=1` / `MAILY_ALLOW_TRASH=1` to send or trash; the `mcp` dependency floor is now `>=1.10,<2` (elicitation arrived in 1.10).
-- `install.sh` and `install.ps1` now live in this repository (`packaging/install/`) and are attached to each release; the one-line install commands of the README use the copies on `main` (`raw.githubusercontent.com`) until 0.10.0, then `releases/latest/download/`; the website addresses still serve the previous installer, without the attestation check. Versions older than 0.10.0 have no attestation: the installers install them with a warning (MAIL-34, MA-5).
+- `install.sh` and `install.ps1` now live in this repository (`packaging/install/`) and are attached to each release from this version (`releases/latest/download/`); the one-line install commands of the README keep using the copies on `main` (`raw.githubusercontent.com`); the website addresses still serve the previous installer, without the attestation check. Versions older than 0.10.0 have no attestation: the installers install them with a warning (MAIL-34, MA-5).
 
 ## [0.9.2] - 2026-11-02
 
