@@ -45,18 +45,28 @@ ALIASES = (
 )
 
 
+# The two installers (packaging/install/), attached under a fixed name, each
+# followed by its .sha256 file. https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.sh
+# serves the installer of the latest release.
+INSTALLERS = ("install.sh", "install.ps1")
+
+
 def aliases(v: str) -> list[tuple[str, str]]:
     """(alias, versioned build) pairs of release v."""
     return [(alias, pattern.format(v=v)) for alias, pattern in zip(ALIASES, ASSET_PATTERNS)]
 
 
 def assets(v: str) -> list[str]:
-    """Every file of release v: each build and its checksum file, then the aliases."""
+    """Every file of release v (13): each build and its checksum file, the
+    aliases, then each installer and its checksum file. Each one is attested."""
     out = []
     for pattern in ASSET_PATTERNS:
         name = pattern.format(v=v)
         out += [name, name + ".sha256"]
-    return out + list(ALIASES)
+    out += list(ALIASES)
+    for name in INSTALLERS:
+        out += [name, name + ".sha256"]
+    return out
 
 
 def notes(v: str, changelog: str | None = None) -> str:

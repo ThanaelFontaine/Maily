@@ -12,7 +12,7 @@ Maily is a free desktop app with public source code that bridges your mailboxes 
 
 ![Maily with the default Classic theme: accounts on the left, the message list in the middle, the open message on the right](docs/images/classic-light.png)
 
-> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [download page](https://maily.thanaelfontaine.eu/download/), install it with one line (`curl -fsSL https://maily.thanaelfontaine.eu/install.sh | sh` on macOS and Linux, `irm https://maily.thanaelfontaine.eu/install.ps1 | iex` in Windows PowerShell; see [Install](#install)), or run it from source:
+> **Quick start.** Download the app for macOS (`.dmg`), Windows (`.zip`) or Linux (`.tar.gz`) from the [download page](https://maily.thanaelfontaine.eu/download/), install it with one line (`curl -fsSL https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.sh | sh` on macOS and Linux, `irm https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.ps1 | iex` in Windows PowerShell; see [Install](#install)), or run it from source:
 >
 > ```bash
 > git clone https://github.com/ThanaelFontaine/Maily
@@ -67,7 +67,7 @@ One thing stays true with any assistant: what it reads through Maily becomes par
 - **Gmail categories and labels:** *Primary*, *Promotions*, *Social* and *Updates* tabs; *Inbox*, *Archived*, *Trash* and your own labels as folders.
 - **IMAP accounts are read-only:** every IMAP folder is imported, without date limit; reading, search, attachments, trash and `.eml` export work, sending does not (Maily has no SMTP yet).
 - **Automatic sync** of every account every 3 minutes while the app is open, plus a *Sync* button.
-- **Disconnect** an account in one click: Maily removes its secrets and its local copy; your mailbox on the server is untouched.
+- **Disconnect** an account in one click: Maily removes its secrets and its whole local copy (mail, cached attachments, search index), and overwrites the deleted text in its database file instead of leaving it in free space; your mailbox on the server is untouched. What a disconnection cannot reach (backups, snapshots, files you saved or exported yourself, the SSD's own wear levelling) is listed in [SECURITY.md](SECURITY.md#what-maily-does-not-defend-against).
 
 ### Reading
 
@@ -215,7 +215,7 @@ Its full content is described in [Where your data lives](#where-your-data-lives)
 
 ## Install
 
-Download the ready-made app for your system on the [download page](https://maily.thanaelfontaine.eu/download/), install it with one command, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file, and the same three under a name without the version (`Maily-macos-arm64.dmg`, `Maily-windows-x64.zip`, `Maily-linux-x64.tar.gz`), so that `https://github.com/ThanaelFontaine/Maily/releases/latest/download/<name>` always serves the latest one:
+Download the ready-made app for your system on the [download page](https://maily.thanaelfontaine.eu/download/), install it with one command, or run Maily from source. Every [release](https://github.com/ThanaelFontaine/Maily/releases/latest) carries three downloads, built by the CI from the tagged code, each with a `.sha256` checksum file and a signed build attestation (from 0.10.0, see [Check a download](#option-a-download-the-app)), the two installers (`install.sh`, `install.ps1`, with their checksums), and the same three downloads under a name without the version (`Maily-macos-arm64.dmg`, `Maily-windows-x64.zip`, `Maily-linux-x64.tar.gz`), so that `https://github.com/ThanaelFontaine/Maily/releases/latest/download/<name>` always serves the latest one:
 
 | System | Download | What is inside |
 | --- | --- | --- |
@@ -227,20 +227,22 @@ The apps are free, with public source code, but **not signed**: the first launch
 
 ### One-line install
 
-The fastest way, without git or uv. The script downloads the latest release from GitHub, checks it against its `.sha256` file, installs it and tells you what to do next. Run the same line again to update. It needs no administrator password.
+The fastest way, without git or uv. The script downloads the latest release from GitHub, checks it against its `.sha256` file, checks its [build attestation](SECURITY.md#verify-a-download) when the [GitHub CLI](https://cli.github.com) (`gh`) is installed and signed in, installs it and tells you what to do next. Run the same line again to update. It needs no administrator password. The addresses above serve the installers of this repository (`main`). From 0.10.0 the same files are also attached to every release, with their own attestation (`https://github.com/ThanaelFontaine/Maily/releases/latest/download/install.sh` and `install.ps1`). The older addresses on the website (`maily.thanaelfontaine.eu/install.sh`) still serve the previous installer, which checks the `.sha256` file only: `MAILY_REQUIRE_ATTESTATION` has no effect there.
 
 ```bash
 # macOS (Apple Silicon) and Linux (x64): Maily.app in /Applications (or ~/Applications),
 # or on Linux ~/.local/opt/Maily with the maily command and an app menu entry
-curl -fsSL https://maily.thanaelfontaine.eu/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.sh | sh
 ```
 
 ```powershell
 # Windows (x64), in PowerShell: %LOCALAPPDATA%\Programs\Maily and a Start menu entry
-irm https://maily.thanaelfontaine.eu/install.ps1 | iex
+irm https://raw.githubusercontent.com/ThanaelFontaine/Maily/main/packaging/install/install.ps1 | iex
 ```
 
-Read them first if you like: [install.sh](https://maily.thanaelfontaine.eu/install.sh), [install.ps1](https://maily.thanaelfontaine.eu/install.ps1) (their source lives in the [site repository](https://github.com/ThanaelFontaine/maily.thanaelfontaine.eu/tree/main/site)). `MAILY_VERSION=0.9.0` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.
+Read them first if you like: [install.sh](packaging/install/install.sh) and [install.ps1](packaging/install/install.ps1) are in this repository, and the same files are attached to each release. `MAILY_VERSION=0.9.2` installs a given version, `MAILY_INSTALL_DIR` another folder. On Linux the script also says which system packages are missing; it never runs `sudo`.
+
+The attestation check needs `gh` signed in (`gh auth login`, [required by `gh attestation verify`](https://cli.github.com/manual/gh_attestation_verify)). If the attestation is invalid, the script stops and installs nothing. Without `gh`, or with `gh` not signed in, it says so and goes on with the checksum only, unless you set `MAILY_REQUIRE_ATTESTATION=1`, which refuses to install what it could not check. A version older than 0.10.0 has no attestation: it installs with a warning (and is refused with `MAILY_REQUIRE_ATTESTATION=1`).
 
 ### Updates
 
@@ -256,6 +258,17 @@ sha256sum -c Maily-X.Y.Z-linux-x64.tar.gz.sha256         # Linux
 ```
 
 A matching file prints `OK`. On Windows, in PowerShell, `Get-FileHash Maily-X.Y.Z-windows-x64.zip` prints its SHA-256 hash (in capitals): compare it with the hash at the start of the `.sha256` file.
+
+The checksum only proves that the file matches the one published next to it. To check that a release file was built from this repository by its release workflow, from version 0.10.0, use the [GitHub CLI](https://cli.github.com) (signed in with `gh auth login`):
+
+```bash
+gh attestation verify Maily-X.Y.Z-macos-arm64.dmg --repo ThanaelFontaine/Maily \
+  --signer-workflow ThanaelFontaine/Maily/.github/workflows/release.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
+gh release verify-asset vX.Y.Z Maily-X.Y.Z-macos-arm64.dmg --repo ThanaelFontaine/Maily
+```
+
+The first command checks the signed build provenance, the second that the file is the one attached to that (immutable) release. [SECURITY.md](SECURITY.md#verify-a-download) says what this covers and what it does not.
 
 #### macOS (Apple Silicon)
 
@@ -655,7 +668,7 @@ Claude Desktop, Claude Code, and any MCP client that can start a local stdio ser
 IMAP reads mail; sending would need SMTP, which Maily does not implement yet. Contributions are welcome.
 
 **Can Maily or my assistant delete my mail for good?**
-Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. *Disconnect* only removes Maily's local copy and secrets; your mailbox is untouched.
+Not on Gmail: trash is reversible there (*Restore*), and Maily never asks Google for permanent deletion. On an IMAP account, trashing moves the message to the server's trash folder and Maily cannot restore it, so treat it as final from Maily's side; on an account without a trash folder, Maily refuses to trash and changes nothing. *Disconnect* only removes Maily's local copy (mail, attachments, search index) and secrets; your mailbox is untouched.
 
 **Does it work offline?**
 Reading and searching what is already synced works offline. Syncing and sending need a connection.

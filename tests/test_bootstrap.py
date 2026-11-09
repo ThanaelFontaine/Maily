@@ -128,3 +128,63 @@ def test_the_keyring_migration_does_not_ask_for_the_api_token(monkeypatch):
     bootstrap._migrate_secrets(_Store())
     assert "api_token" not in asked
     assert "oauth_client" in asked and "account:a@example.com" in asked
+
+
+def _render_inline(database, monkeypatch, tmp_path, mime, data=b"PNGDATA"):
+    """GET /messages/{id}/html for a message whose cid: image has the given stored MIME type."""
+    from fastapi.testclient import TestClient
+    from api.app import create_app
+    from core import accounts_service as svc
+    from core.store import Store
+
+    store = Store(database)
+    a = store.upsert_account("me@example.com")
+    mid = store.upsert_message(a, "g1", body_html='<img src="cid:logo1"><p>hi</p>')
+    store.replace_attachments(mid, [{"filename": "logo", "mime_type": mime, "size": len(data),
+                                     "gmail_attachment_id": "att1", "content_id": "logo1"}])
+    monkeypatch.setattr(svc, "fetch_attachment", lambda *a, **k: (data, mime, "logo"))
+    _download, inline_fn = bootstrap.make_attachment_fns(store, str(tmp_path))
+    c = TestClient(create_app(store, "tok", inline_fn=inline_fn))
+    return c.get(f"/messages/{mid}/html", headers={"Authorization": "Bearer tok"})
+
+
+def test_inline_hostile_mime_leaves_cid_and_adds_no_remote_tag(database, monkeypatch, tmp_path):
+    r = _render_inline(database, monkeypatch, tmp_path, 'image/x"><img src=https://evil.example>')
+    assert "evil.example" not in r.text and "data:" not in r.text
+    assert "cid:logo1" in r.text
+    assert r.headers["X-Maily-Blocked-Remote"] == "0"
+
+
+def test_inline_mime_is_normalised(database, monkeypatch, tmp_path):
+    r = _render_inline(database, monkeypatch, tmp_path, "image/JPG; name=a.jpg")
+    assert "data:image/jpeg;base64,UE5HREFUQQ==" in r.text and "cid:logo1" not in r.text
+    assert r.headers["X-Maily-Blocked-Remote"] == "0"
+
+
+def test_inline_svg_and_non_images_are_refused(database, monkeypatch, tmp_path):
+    for mime in ("image/svg+xml", "text/html", "", None, "image/png\r\nX: y"):
+        r = _render_inline(database, monkeypatch, tmp_path, mime)
+        assert "data:" not in r.text and "cid:logo1" in r.text, mime
+
+
+def test_inline_image_mime_allow_list():
+    f = bootstrap.inline_image_mime
+    assert f("image/png") == "image/png" and f(" IMAGE/PJPEG ; q=1") == "image/jpeg"
+    assert f("image/x-png") == "image/png" and f("image/webp") == "image/webp"
+    assert f("image/svg+xml") is None and f("image/png/x") is None and f(None) is None
+
+
+def test_message_html_rejects_malformed_inline_uri(database):
+    from fastapi.testclient import TestClient
+    from api.app import create_app
+    from core.store import Store
+
+    store = Store(database)
+    a = store.upsert_account("me@example.com")
+    mid = store.upsert_message(a, "g1", body_html='<img src="cid:logo1">')
+    store.replace_attachments(mid, [{"filename": "l", "mime_type": "image/png", "size": 1,
+                                     "gmail_attachment_id": "a", "content_id": "logo1"}])
+    bad = 'data:image/png;base64,AA"><img src=https://evil.example>'
+    c = TestClient(create_app(store, "tok", inline_fn=lambda m, aid: bad))
+    r = c.get(f"/messages/{mid}/html", headers={"Authorization": "Bearer tok"})
+    assert "evil.example" not in r.text and "cid:logo1" in r.text

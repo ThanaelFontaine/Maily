@@ -97,9 +97,9 @@ def test_cid_prefix_no_collision(store):
         {"filename": "2", "mime_type": "image/png", "size": 1, "gmail_attachment_id": "a2", "content_id": "img2"},
     ])
     ids = {l["content_id"]: l["id"] for l in store.list_attachments(mid)}
-    c = TestClient(create_app(store, TOKEN, inline_fn=lambda m, aid: "data:AAA" if aid == ids["img"] else "data:BBB"))
+    c = TestClient(create_app(store, TOKEN, inline_fn=lambda m, aid: "data:image/png;base64,AAAA" if aid == ids["img"] else "data:image/png;base64,BBBB"))
     html = c.get(f"/messages/{mid}/html", headers=_auth()).text
-    assert "data:BBB" in html and "data:AAA2" not in html
+    assert "base64,BBBB" in html and "base64,AAAA2" not in html
 
 
 def test_index_host_check(store, tmp_path):
