@@ -81,9 +81,9 @@ The journeys that must keep working for a person using Maily (local app, local A
 
 - **Proves:** the launcher starts and the embedded pieces work (frontend, migrations, encryption, TLS bundle, local API libraries, window library).
 - **Run:** `uv run python run_maily.py --version` then `uv run python run_maily.py --self-check`
-- **Expected:** `Maily 0.9.2`, then seven `ok` lines and `Self-check passed.`, exit 0.
+- **Expected:** `Maily 0.9.2`, then eight `ok` lines and `Self-check passed.`, exit 0.
 - **Automated:** `tests/test_selfcheck.py`, and `--self-check --window` on every built binary in `build.yml`.
-- **Result 2026-11-09:** green (version 0.9.2, 7 checks ok, exit 0).
+- **Result 2026-11-09:** green (version 0.9.2, 8 checks ok, exit 0).
 
 ## P10. Build the downloadable apps
 
