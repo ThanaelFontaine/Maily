@@ -3,9 +3,9 @@
 The journeys that must keep working for a person using Maily (local app, local API, MCP server), with how to run each one by hand, what to expect, and what runs them automatically. Use it as the non-regression checklist before a release.
 
 - Last verified: 2026-11-09
-- Commit of `origin/main` verified: `097566aeffbfa2229ce5feb5ba2b08b6be97113b` (version 0.9.2, after the six merges of MAIL-34, before 0.10.0)
+- Commit of `origin/main` verified: `d1ce0469af86b815ac9914ec97bdc658b9828f82` (version 0.10.0, after lot 6 of MAIL-34, before 0.10.1)
 - Environment: macOS, Python 3.12 from `uv sync --locked`, everything local, fictitious data only (demo mode), no real mailbox, no network to a provider.
-- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 624 passed, 2 skipped), not re-run for this page.
+- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 630 passed, 2 skipped), re-run for this page.
 
 ## P1. Start the app and the local API on demo data
 
@@ -49,9 +49,9 @@ The journeys that must keep working for a person using Maily (local app, local A
 
 - **Proves:** the page served by FastAPI loads, lists mail, opens a message, runs archive, trash and restore from the buttons, searches and opens Settings, without a script error.
 - **Run:** start the demo (P1), open `http://127.0.0.1:8765/` in a headless Chromium (Playwright), then: select the first account, open the first message, click *Archive*, open *Archived*, trash a message, open *Trash*, click *Restore*, type `meeting` in the search box, open *Settings* then *About*. Watch the page console.
-- **Expected:** the message list appears; opening a message shows its subject in the reading pane and a sandboxed frame; the lists follow each action (the archived message leaves the inbox and shows in *Archived*, the trashed one shows in *Trash* and leaves it after *Restore*); the search shows the matching row; *About* shows `Version 0.9.2` and the demo data folder; no console or page error.
+- **Expected:** the message list appears; opening a message shows its subject in the reading pane and a sandboxed frame; the lists follow each action (the archived message leaves the inbox and shows in *Archived*, the trashed one shows in *Trash* and leaves it after *Restore*); the search shows the matching row; *About* shows `Version 0.10.0` and the demo data folder; no console or page error.
 - **Automated:** none for the browser flow (the API behind it is covered by P1 to P4; `tests/test_frontend_defaults.py` and `tests/test_i18n.py` cover the static side). The packaged app has `--self-check --window` in `build.yml`.
-- **Result 2026-11-09:** green (headless Chromium, one-off Playwright script not kept in the repository; each list followed its action, the reading frame is sandboxed, *About* shows `Version 0.9.2`, 0 console or page errors).
+- **Result 2026-11-09:** green (headless Chromium, one-off Playwright script not kept in the repository; the first account shows its two messages, opening one fills the reading pane with its subject in a sandboxed frame, *Archive* leaves the inbox and shows the message in *Archived*, *Trash* then *Restore* empties *Trash*, `meeting` finds 2 rows, *About* shows `Version 0.10.0` and the demo data folder, 0 console or page errors).
 
 ## P6. Connect an account, and send
 
@@ -81,9 +81,9 @@ The journeys that must keep working for a person using Maily (local app, local A
 
 - **Proves:** the launcher starts and the embedded pieces work (frontend, migrations, encryption, TLS bundle, local API libraries, window library).
 - **Run:** `uv run python run_maily.py --version` then `uv run python run_maily.py --self-check`
-- **Expected:** `Maily 0.9.2`, then eight `ok` lines and `Self-check passed.`, exit 0.
+- **Expected:** `Maily 0.10.0`, then eight `ok` lines and `Self-check passed.`, exit 0.
 - **Automated:** `tests/test_selfcheck.py`, and `--self-check --window` on every built binary in `build.yml`.
-- **Result 2026-11-09:** green (version 0.9.2, 8 checks ok, exit 0).
+- **Result 2026-11-09:** green (version 0.10.0, 8 checks ok, exit 0).
 
 ## P10. Build the downloadable apps
 
@@ -91,7 +91,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** `uv sync --group build` then the steps of `docs/BUILD.md`; or push a branch that touches the packaging (the paths listed in `.github/workflows/build.yml`), or run the Build workflow by hand (`workflow_dispatch`).
 - **Expected:** `Maily.app` and the `.dmg`, the Windows zip, the Linux archive, with their `.sha256` files.
 - **Automated:** `.github/workflows/build.yml` (on a pushed branch that touches the packaging, by hand, and from `release.yml`), `tests/test_release_workflow.py`.
-- **Result 2026-11-09:** green through CI, not rebuilt locally (the `build` dependency group is not installed here and each platform builds on its own runner). The Build workflow of the 2026-11-09 run on the branch of lot 1a (`a963342`, whose tree differs from `097566a` only by `CHANGELOG.md` and `docs/MCP.md`) passed on macOS arm64, Windows x64 and Linux x64, with the Linux archive self-checked on fedora:latest, debian:trixie and ubuntu:24.04; `packaging`, `.github`, `pyproject.toml` and `uv.lock` are identical to `main`.
+- **Result 2026-11-09:** green through CI, not rebuilt locally (the `build` dependency group is not installed here and each platform builds on its own runner). The Build workflow of the 2026-11-09 run on the branch of lot 6 (`f4ac1f7`, which changes `uv.lock`) passed on macOS arm64, Windows x64 and Linux x64, with the Linux archive self-checked on fedora:latest, debian:trixie and ubuntu:24.04; `uv.lock`, `pyproject.toml`, `packaging` and `.github` are identical between that commit and `main` (`d1ce046`), and the whole tree of the last lot 6 commit (`add90a3`) is identical to `main`. The Tests workflow of `d1ce046` on `main` is green.
 
 ## How to add a journey
 
