@@ -6,9 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-09
+
+A corrective release that follows 0.10.0: dependency updates and install instructions. Nothing changes in how Maily works.
+
 ### Security
 
-- Dependencies: `oauthlib` 4.0.1, which closes the high-severity advisory GHSA-3jp2-3mrg-2vxc (Dependabot alert 69), with the monthly update of the uv group (fastapi 0.162.0, google-api-python-client 2.201.0, cryptography 50.0.2 and others; `opentelemetry-api` now arrives with fastapi) (MAIL-34).
+- Dependencies: `oauthlib` 4.0.1, which closes the high-severity advisory GHSA-3jp2-3mrg-2vxc (Dependabot alert 69), with the monthly update of the uv group (fastapi 0.162.0, google-api-python-client 2.201.0, cryptography 50.0.2 and others; `opentelemetry-api` now arrives with fastapi). The advisory concerns OAuth servers that use the "device" flow; Maily, which is only an OAuth client of Google and does not use that flow, was not exposed: the update is made as hygiene. A test keeps the lock file past the vulnerable range (MAIL-34).
 
 ### Changed
 
@@ -267,7 +271,9 @@ First open-source release: a new default look, a single settings panel, a harden
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.8.0...v0.9.0
