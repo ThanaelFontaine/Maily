@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The CI refuses a workflow that names a runner of our own or an action not pinned by a full commit SHA (`scripts/check_workflows.py`, in the `check-text` job). The workflows already complied; the check keeps them so.
+
 ## [0.10.1] - 2026-11-09
 
 A corrective release that follows 0.10.0: dependency updates and install instructions. Nothing changes in how Maily works.

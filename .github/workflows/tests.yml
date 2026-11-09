@@ -1,5 +1,8 @@
-# Maily tests on macOS and Linux, and the text check (scripts/check_text.py):
-# on every push to main and every pull request
+# Runs on GitHub-hosted machines only: the repository is public, so no runner of
+# our own (rule of 07/11/2026). The workflows guard below fails the CI otherwise.
+#
+# Maily tests on macOS and Linux, the text check (scripts/check_text.py) and the
+# workflows guard (scripts/check_workflows.py): on every push to main and every pull request
 # (a PR triggers a single run; a pushed tag triggers none).
 # The tests use no network, no real mailbox and not the real data folder:
 # tests/conftest.py imposes a temporary folder and a null keyring.
@@ -59,3 +62,17 @@ jobs:
 
       - name: No em or en dash, no private path or address
         run: python3 scripts/check_text.py
+
+      # PyYAML (dev group of uv.lock, hashes checked by uv) parses the workflows for the guard.
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Only dev group (PyYAML), uv.lock must be up to date
+        run: uv sync --locked --only-group dev
+
+      - name: Workflows run on GitHub-hosted runners only, actions pinned by SHA
+        run: uv run --no-sync python scripts/check_workflows.py
