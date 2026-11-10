@@ -56,7 +56,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
 
@@ -125,7 +125,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
 
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
 
@@ -198,7 +198,7 @@ jobs:
             gcc pkg-config libgirepository-2.0-dev libcairo2-dev \
             gir1.2-gtk-3.0 gir1.2-webkit2-4.1 xvfb xauth
 
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
 
