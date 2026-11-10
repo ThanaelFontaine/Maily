@@ -116,6 +116,10 @@ The CI runs the archive on Ubuntu 24.04, Debian 13 and Fedora with exactly these
 
 The archive's `maily.desktop` runs `maily` from the `PATH` with the `maily` icon; `INSTALL.txt` shows how to link the binary into `~/.local/bin` and copy the entry and the icon into `~/.local/share`.
 
+## Where the CI runs
+
+Every workflow runs on the machines hosted by GitHub (`ubuntu-*`, `macos-*`, `windows-*`), never on a runner of our own: the repository is public, so anyone can open a pull request that changes a workflow, and a runner of ours would run what it says (rule of 07/11/2026). `scripts/check_workflows.py`, run by the `check-text` job on every pull request and every push to `main`, fails the CI when a workflow names a runner that is not on its list of GitHub-hosted labels (a `${{ matrix.os }}` is resolved against the matrix) or uses an action that is not pinned by a full 40-character commit SHA. Its rules are at the top of the script and its tests are in `tests/test_check_workflows.py`. To use a newer runner image, add its label to `HOSTED_LABELS` after checking the [GitHub documentation](https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners); to update an action, pin the new commit SHA (Dependabot does it, with the tag in a comment).
+
 ## Releases
 
 Releases are created by the CI, not by hand (see [CONTRIBUTING.md](../CONTRIBUTING.md#releasing-a-version)). After the tests pass on a push to `main`, [`.github/workflows/release.yml`](../.github/workflows/release.yml) runs three jobs, and a release is never visible without all its downloads:

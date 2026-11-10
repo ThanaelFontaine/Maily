@@ -36,9 +36,9 @@
 # The build and publish jobs recompute the version themselves; they are only
 # skipped when plan says explicitly that everything is already published.
 #
-# The publish job stays on a GitHub machine, not on the Mac mini runner: it
-# holds the token that signs the attestations and writes the release, and the
-# repository is public (rule of 07/11/2026: no self-hosted runner there).
+# The publish job stays on a GitHub machine: it holds the token that signs the
+# attestations and writes the release, and the repository is public (rule of
+# 07/11/2026: no runner of our own there).
 #
 # The whole chain starts from this workflow because events created with
 # GITHUB_TOKEN (the tag, the release) do not start other workflows.

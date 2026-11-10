@@ -21,6 +21,7 @@ cd Maily
 uv sync                           # Python 3.12 + dependencies + dev tools (pytest, httpx)
 uv run pytest                     # run the tests
 python3 scripts/check_text.py     # text check (no em or en dash, no personal path or address)
+uv run python scripts/check_workflows.py   # workflows: GitHub-hosted runners only, actions pinned by SHA
 uv run python scripts/demo.py     # the interface on fictitious data, no Google account needed
 ```
 
@@ -49,6 +50,7 @@ The product page at <https://maily.thanaelfontaine.eu> is not in this repository
 - **A new language.** Copy `frontend/i18n/en.json` to `frontend/i18n/<code>.json`, translate every value (keep the `{placeholders}`), add the language to `LANGUAGES` in `frontend/i18n.js` (code, native name, `Intl` locale) and in `core/prefs.py`, and add its `language.<code>` name to every file.
 - **Style.** Python 3.12, standard library first, small functions, clear names. Everything in the repository is in English (code, comments, docstrings, logs, tests, docs, commit messages); only the translation files in `frontend/i18n/` hold other languages. Keep the existing formatting.
 - **Commits.** One logical change per commit, with a message that says what changes and why.
+- **Workflows.** The CI runs on GitHub-hosted machines only (the repository is public) and every action is pinned by its full commit SHA, with the tag in a comment: `scripts/check_workflows.py` fails the CI otherwise (see [docs/BUILD.md](docs/BUILD.md#where-the-ci-runs)).
 - **Typography.** Do not use the em dash (U+2014) or en dash (U+2013) anywhere (code, docs, commit messages): use a colon, a comma, parentheses or a plain hyphen instead.
 
 ## Pull requests

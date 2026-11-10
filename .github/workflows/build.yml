@@ -1,3 +1,6 @@
+# Runs on GitHub-hosted machines only: the repository is public, so no runner of
+# our own (rule of 07/11/2026; scripts/check_workflows.py fails the CI otherwise).
+#
 # Builds the downloadable Maily apps and checks each one by running it.
 # Publishes nothing: the files are kept as workflow artifacts.
 #
