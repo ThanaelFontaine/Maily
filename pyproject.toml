@@ -81,3 +81,7 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    # Tests the CI also runs on Windows (job pytest-windows): the others check POSIX permissions.
+    "windows: also run on Windows by the CI (pytest -m windows)",
+]

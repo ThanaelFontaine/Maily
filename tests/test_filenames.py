@@ -5,6 +5,10 @@ import pytest
 
 from core import filenames as F
 
+# Also run on Windows by the CI (job pytest-windows, `pytest -m windows`): the tests
+# of POSIX modes and links skip themselves there.
+pytestmark = pytest.mark.windows
+
 
 @pytest.mark.parametrize("raw,expected", [
     ("../x", "x"),
