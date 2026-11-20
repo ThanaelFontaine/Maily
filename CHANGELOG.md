@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+
+- Files that `maily_download_attachment` and `maily_export_eml` write are now marked as coming from the internet before their content is written: the quarantine properties on macOS (agent `Maily`), a `Zone.Identifier` stream with `ZoneId=3` on Windows. Where the system has no such mark (Linux, a Windows volume without named streams) the file is written as before. If a supported mark cannot be set, nothing is saved (`quarantine_failed`). The mark is not a virus scan (MAIL-25).
+- `dest_path` can no longer change the extension of the saved file, and write errors no longer reveal the full path (`save_failed`).
+
 ### Changed
 
 - The CI refuses a workflow that names a runner of our own or an action not pinned by a full commit SHA (`scripts/check_workflows.py`, in the `check-text` job). The workflows already complied; the check keeps them so.

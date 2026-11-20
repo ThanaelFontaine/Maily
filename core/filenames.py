@@ -10,6 +10,7 @@ import os
 import pathlib
 import re
 import unicodedata
+from typing import Callable
 
 # Folders (under the home folder) where the MCP tools may write.
 ALLOWED_ROOTS = ("Downloads", "Desktop", "Documents")
@@ -66,7 +67,12 @@ def resolve_destination(dest_path: str | None, filename: str) -> tuple[pathlib.P
         if p.is_dir():
             folder = p
         else:
-            folder, filename = p.parent, safe_filename(p.name, filename)
+            folder, chosen = p.parent, safe_filename(p.name, filename)
+            # The extension is the one of the original name: a mail cannot
+            # make the assistant turn a .txt into a .bat.
+            if _split_ext(chosen)[1].lower() != _split_ext(filename)[1].lower():
+                raise DestinationNotAllowed("the file extension cannot be changed")
+            filename = chosen
     else:
         folder = pathlib.Path.home() / "Downloads"
     folder = folder.resolve()
@@ -79,16 +85,53 @@ def resolve_destination(dest_path: str | None, filename: str) -> tuple[pathlib.P
     return folder, filename
 
 
-def write_new(folder: pathlib.Path, filename: str, data: bytes) -> pathlib.Path:
+def write_new(folder: pathlib.Path, filename: str, data: bytes,
+              before_write: Callable | None = None) -> pathlib.Path:
     """Writes data to a new file in folder, 0600, never over an existing file or
-    link: a numbered suffix is added on collision."""
+    link: a numbered suffix is added on collision. before_write(path, f), if
+    given, runs right after the exclusive creation and before the data is
+    written; if it raises, the file, still empty, is removed (only if path is
+    still the file that was created) and the exception goes up."""
     stem, ext = _split_ext(filename)
     for i in range(MAX_SUFFIX + 1):
         path = folder / (filename if i == 0 else f"{stem} ({i}){ext}")
         try:
             with open(path, "xb", opener=lambda p, fl: os.open(p, fl, 0o600)) as f:
+                if before_write is not None:
+                    try:
+                        before_write(path, f)
+                    except BaseException:
+                        _remove_if_same_empty(path, f)
+                        raise
                 f.write(data)
             return path
         except FileExistsError:
             continue
     raise FileExistsError(f"too many files named {filename!r} in {folder}")
+
+
+def _remove_if_same_empty(path: pathlib.Path, f) -> None:
+    """Removes path only if it is still the empty file open as f."""
+    try:
+        a, b = os.fstat(f.fileno()), os.stat(path, follow_symlinks=False)
+        if a.st_size == 0 and b.st_size == 0 and os.path.samestat(a, b):
+            os.unlink(path)
+    except OSError:
+        pass
+
+
+def save_from_mail(dest_path: str | None, filename: str,
+                   data: bytes) -> tuple[pathlib.Path, str]:
+    """The one place where a file that comes from a mail is written: destination
+    checked, new file, marked as coming from the internet before the data is
+    written. Returns (path, quarantine status); raises DestinationNotAllowed,
+    quarantine.QuarantineFailed (nothing is left on disk) or OSError."""
+    from core import quarantine
+    folder, name = resolve_destination(dest_path, filename)
+    status: list[str] = []
+
+    def mark(path, _f):
+        status.append(quarantine.mark_from_mail(path))
+
+    path = write_new(folder, name, data, before_write=mark)
+    return path, status[0]

@@ -14,6 +14,7 @@ Launch (command to declare in the MCP configuration of the client):
 """
 from __future__ import annotations
 import datetime
+import logging
 import re
 import unicodedata
 from html.parser import HTMLParser
@@ -489,16 +490,25 @@ async def maily_send(profile: str, to: str, subject: str, body_text: str,
 
 
 def _write_download(dest_path, filename, data):
-    """Saves data under a safe name in an allowed folder, never over an existing
-    file. Returns the path, or an error dict for the tool."""
-    from core import filenames
+    """Saves data, a file that comes from a mail, under a safe name in an
+    allowed folder, never over an existing file, marked as coming from the
+    internet where the system supports it. Returns (path, quarantine status),
+    or an error dict for the tool. No error carries the path."""
+    from core import filenames, quarantine
     try:
-        folder, name = filenames.resolve_destination(dest_path, filename)
-        return filenames.write_new(folder, name, data)
+        return filenames.save_from_mail(dest_path, filename, data)
     except filenames.DestinationNotAllowed as e:
         return {"error": str(e), "code": "dest_path_not_allowed"}
+    except quarantine.QuarantineFailed as e:
+        # Never the file name or the path: they come from a mail.
+        logging.getLogger("maily.mcp").warning(
+            "a file from a mail was not saved: the mark could not be set (%s, errno %s)",
+            e.kind, e.errno)
+        return {"error": "the file could not be marked as coming from the internet, "
+                         "so it was not saved", "code": "quarantine_failed"}
     except OSError as e:
-        return {"error": f"could not save the file: {e}"}
+        return {"error": "could not save the file", "code": "save_failed",
+                "errno": e.errno}
 
 
 def _account_of(message_id):
@@ -515,17 +525,21 @@ def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
     """Saves a message as an .eml file (raw RFC 822) on disk.
     dest_path : folder or full path inside ~/Downloads, ~/Desktop or
     ~/Documents (default: ~/Downloads). An existing file is never overwritten:
-    a number is added to the name. Works for Gmail and IMAP accounts. Returns
-    the path of the written file."""
+    a number is added to the name. The extension cannot be changed through
+    dest_path. Maily marks the file as coming from the internet when the system
+    supports it (quarantine on macOS, Mark-of-the-Web on Windows); this is not
+    a virus scan. Works for Gmail and IMAP accounts. Returns the path of the
+    written file and "quarantine" ("applied" or "not_supported")."""
     from core.accounts_service import export_eml
     try:
         data, filename = export_eml(store(), message_id)
     except Exception as e:
         return {"error": f".eml export failed: {e}"}
-    p = _write_download(dest_path, filename, data)
-    if isinstance(p, dict):
-        return p
-    return {"saved": str(p), "bytes": len(data)}
+    r = _write_download(dest_path, filename, data)
+    if isinstance(r, dict):
+        return r
+    p, status = r
+    return {"saved": str(p), "bytes": len(data), "quarantine": status}
 
 
 @mcp.tool()
@@ -534,7 +548,10 @@ def maily_download_attachment(message_id: int, attachment_id: int,
     """Downloads an attachment of a message to disk.
     dest_path : folder or full path inside ~/Downloads, ~/Desktop or
     ~/Documents (default: ~/Downloads). An existing file is never overwritten:
-    a number is added to the name."""
+    a number is added to the name. The extension cannot be changed through
+    dest_path. Maily marks the file as coming from the internet when the system
+    supports it (quarantine on macOS, Mark-of-the-Web on Windows); this is not
+    a virus scan. Returns "quarantine" ("applied" or "not_supported")."""
     from core.accounts_service import fetch_attachment
     m, acc = _account_of(message_id)
     if not acc:
@@ -545,10 +562,12 @@ def maily_download_attachment(message_id: int, attachment_id: int,
                                                 attachment_id, attdir)
     except Exception as e:
         return {"error": f"download failed: {e}"}
-    p = _write_download(dest_path, filename or "attachment", data)
-    if isinstance(p, dict):
-        return p
-    return {"saved": str(p), "mime": _neutralize(mime), "bytes": len(data)}
+    r = _write_download(dest_path, filename or "attachment", data)
+    if isinstance(r, dict):
+        return r
+    p, status = r
+    return {"saved": str(p), "mime": _neutralize(mime), "bytes": len(data),
+            "quarantine": status}
 
 
 @mcp.tool(annotations=_DESTRUCTIVE)

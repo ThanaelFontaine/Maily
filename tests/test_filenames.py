@@ -95,12 +95,12 @@ def test_existing_allowed_folder(home):
 
 
 def test_new_nested_path_in_documents_is_created(home):
-    folder, name = F.resolve_destination("~/Documents/sous/dossier", "f.pdf")
-    assert folder == home / "Documents" / "sous" and folder.is_dir() and name == "dossier"
+    folder, name = F.resolve_destination("~/Documents/sous/dossier.pdf", "f.pdf")
+    assert folder == home / "Documents" / "sous" and folder.is_dir() and name == "dossier.pdf"
 
 
 def test_file_path_inside_downloads(home):
-    folder, name = F.resolve_destination("~/Downloads/x.pdf", "other")
+    folder, name = F.resolve_destination("~/Downloads/x.pdf", "other.pdf")
     assert folder == home / "Downloads" and name == "x.pdf"
 
 

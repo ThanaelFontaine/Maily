@@ -104,10 +104,24 @@ With Claude Code: `claude mcp add --scope user --env MAILY_DATA_DIR=/path/to/ano
 | `maily_get_message` | `message_id`, `include_html=False` | Full message: sender, recipients, date, subject, plain-text body (HTML converted to text if needed), attachments (`attachment_id`, name, type, size), optionally the raw HTML. |
 | `maily_search` | `query`, `profile=None`, `limit=20` | Local full-text search (subject, body, sender), in one profile or all. |
 | `maily_sync` | `profile=None` | Fetches new mail from Gmail / IMAP, for one profile or all. |
-| `maily_export_eml` | `message_id`, `dest_path=None` | Saves a message as `.eml` (default folder: `~/Downloads`; allowed: Downloads, Desktop, Documents; never overwrites a file). Returns the path. |
-| `maily_download_attachment` | `message_id`, `attachment_id`, `dest_path=None` | Saves an attachment to disk (default: `~/Downloads`; allowed: Downloads, Desktop, Documents; the name is cleaned and an existing file is never overwritten). |
+| `maily_export_eml` | `message_id`, `dest_path=None` | Saves a message as `.eml` (default folder: `~/Downloads`; allowed: Downloads, Desktop, Documents; never overwrites a file; `dest_path` cannot change the extension). Returns the path and `quarantine` (see [below](#files-written-by-the-tools)). |
+| `maily_download_attachment` | `message_id`, `attachment_id`, `dest_path=None` | Saves an attachment to disk (default: `~/Downloads`; allowed: Downloads, Desktop, Documents; the name is cleaned, an existing file is never overwritten and `dest_path` cannot change the extension). Returns the path, the type, the size and `quarantine` (see [below](#files-written-by-the-tools)). |
 | `maily_trash` | `message_id` | Moves a message to the trash: **reversible for Gmail** (restore from the app); for an IMAP profile the message goes to the server's trash folder and Maily cannot restore it. If the IMAP account has no trash folder, the tool returns an error with `"code": "no_trash_folder"` and leaves the message untouched. **Guarded**: Maily asks you to confirm, at most 30 per hour ([section 3](#3-safety-rules)). |
 | `maily_send` | `profile`, `to`, `subject`, `body_text`, `cc=None` | Sends a plain-text email **from a Gmail profile**, without attachments. **Irreversible.** **Guarded**: Maily asks you to confirm, at most 5 recipients and 10 emails per hour ([section 3](#3-safety-rules)). |
+
+### Files written by the tools
+
+`maily_export_eml` and `maily_download_attachment` write a file that comes from a mail. Maily marks it as coming from the internet when the system supports it, before the content is written, and says so in the answer:
+
+| `quarantine` | Meaning |
+|---|---|
+| `applied` | macOS: the file carries the quarantine attribute (agent `Maily`, type "e-mail attachment"), so macOS warns when you open an app, a script or an executable. Windows: the file carries a `Zone.Identifier` stream with `ZoneId=3` (Mark-of-the-Web). |
+| `not_supported` | The system has no such mark (Linux and others), or the Windows volume has no named streams (FAT32). The file is written without a mark. |
+
+The mark is not a virus scan. If the system supports the mark and Maily cannot set it, nothing is saved and the tool returns `"code": "quarantine_failed"`. Other errors:
+
+- `dest_path_not_allowed`: the folder is outside Downloads, Desktop and Documents, or `dest_path` names a file whose extension differs from the original name (case aside): a mail cannot turn a `.txt` into a `.bat`. An exported message keeps `.eml`.
+- `save_failed`: the file could not be written. The answer carries `errno`, never the path.
 
 ### What the read tools return
 

@@ -106,6 +106,74 @@ def test_export_eml_confined_like_attachments(monkeypatch, home):
     assert S.maily_export_eml(1, dest_path="/tmp")["code"] == "dest_path_not_allowed"
 
 
+# --- Files from a mail carry the mark of the internet (MAIL-25) -----------
+
+
+@pytest.fixture
+def one_attachment(monkeypatch):
+    from core import accounts_service
+    monkeypatch.setattr(S, "_account_of", lambda mid: ({"id": mid}, {"email": "a@example.com"}))
+    monkeypatch.setattr(accounts_service, "fetch_attachment",
+                        lambda *a, **k: (b"data", "text/plain", "f.txt"))
+    monkeypatch.setattr(accounts_service, "export_eml", lambda st, mid: (b"raw", "m.eml"))
+
+
+def _fail_mark(monkeypatch):
+    from core import quarantine
+
+    def fail(path, platform=None):
+        raise quarantine.QuarantineFailed("set_resource_value_failed")
+
+    monkeypatch.setattr(quarantine, "mark_from_mail", fail)
+
+
+def test_tools_report_the_quarantine_status(monkeypatch, home, one_attachment):
+    from core import quarantine
+    monkeypatch.setattr(quarantine, "mark_from_mail",
+                        lambda path, platform=None: quarantine.APPLIED)
+    a = S.maily_download_attachment(1, 1)
+    e = S.maily_export_eml(1)
+    assert a["quarantine"] == "applied" and e["quarantine"] == "applied"
+    assert (home / "Downloads" / "f.txt").read_bytes() == b"data"
+    assert e["saved"].endswith(".eml")
+
+
+def test_tools_say_not_supported_where_there_is_no_mark(monkeypatch, home, one_attachment):
+    from core import quarantine
+    monkeypatch.setattr(quarantine, "mark_from_mail",
+                        lambda path, platform=None: quarantine.NOT_SUPPORTED)
+    assert S.maily_download_attachment(1, 1)["quarantine"] == "not_supported"
+
+
+def test_failed_mark_means_no_file_and_quarantine_failed(monkeypatch, home, one_attachment, caplog):
+    _fail_mark(monkeypatch)
+    for r in (S.maily_download_attachment(1, 1), S.maily_export_eml(1)):
+        assert r["code"] == "quarantine_failed"
+        assert str(home) not in r["error"] and "f.txt" not in r["error"]
+    assert list((home / "Downloads").iterdir()) == []
+    assert caplog.records
+    assert all("f.txt" not in r.getMessage() and str(home) not in r.getMessage()
+               for r in caplog.records)
+
+
+def test_os_error_message_has_no_path(monkeypatch, home, one_attachment):
+    from core import filenames
+
+    def boom(*a, **k):
+        raise PermissionError(13, "Permission denied", str(home / "Downloads" / "f.txt"))
+
+    monkeypatch.setattr(filenames, "write_new", boom)
+    for r in (S.maily_download_attachment(1, 1), S.maily_export_eml(1)):
+        assert r == {"error": "could not save the file", "code": "save_failed", "errno": 13}
+
+
+def test_extension_cannot_be_changed_through_dest_path(monkeypatch, home, one_attachment):
+    r = S.maily_download_attachment(1, 1, dest_path=str(home / "Desktop" / "x.bat"))
+    assert r["code"] == "dest_path_not_allowed"
+    assert S.maily_export_eml(1, dest_path=str(home / "Desktop" / "x.txt"))["code"] == "dest_path_not_allowed"
+    assert not (home / "Desktop").exists() or list((home / "Desktop").iterdir()) == []
+
+
 # --- Email content is returned as untrusted data (MA-1, CA5) ---------------
 
 @pytest.fixture
