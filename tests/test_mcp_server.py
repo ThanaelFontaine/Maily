@@ -167,6 +167,21 @@ def test_os_error_message_has_no_path(monkeypatch, home, one_attachment):
         assert r == {"error": "could not save the file", "code": "save_failed", "errno": 13}
 
 
+def test_read_errors_have_no_path(monkeypatch, home, one_attachment):
+    from core import accounts_service
+    leaked = str(home / "cache" / "private-name.pdf")
+
+    def boom(*a, **k):
+        raise PermissionError(13, "Permission denied", leaked)
+
+    monkeypatch.setattr(accounts_service, "fetch_attachment", boom)
+    monkeypatch.setattr(accounts_service, "export_eml", boom)
+    assert S.maily_download_attachment(1, 1) == {
+        "error": "could not download the attachment", "code": "download_failed", "errno": 13}
+    assert S.maily_export_eml(1) == {
+        "error": "could not export the message", "code": "export_failed", "errno": 13}
+
+
 def test_extension_cannot_be_changed_through_dest_path(monkeypatch, home, one_attachment):
     r = S.maily_download_attachment(1, 1, dest_path=str(home / "Desktop" / "x.bat"))
     assert r["code"] == "dest_path_not_allowed"

@@ -111,9 +111,13 @@ def write_new(folder: pathlib.Path, filename: str, data: bytes,
 
 
 def _remove_if_same_empty(path: pathlib.Path, f) -> None:
-    """Removes path only if it is still the empty file open as f."""
+    """Removes path only if it is still the empty file open as f. The file is
+    read, then closed, then compared and removed: Windows refuses to remove a
+    file that is still open."""
     try:
-        a, b = os.fstat(f.fileno()), os.stat(path, follow_symlinks=False)
+        a = os.fstat(f.fileno())
+        f.close()
+        b = os.stat(path, follow_symlinks=False)
         if a.st_size == 0 and b.st_size == 0 and os.path.samestat(a, b):
             os.unlink(path)
     except OSError:

@@ -533,6 +533,10 @@ def maily_export_eml(message_id: int, dest_path: str | None = None) -> dict:
     from core.accounts_service import export_eml
     try:
         data, filename = export_eml(store(), message_id)
+    except OSError as e:
+        # Never the path or the name: they come from a mail.
+        return {"error": "could not export the message", "code": "export_failed",
+                "errno": e.errno}
     except Exception as e:
         return {"error": f".eml export failed: {e}"}
     r = _write_download(dest_path, filename, data)
@@ -560,6 +564,10 @@ def maily_download_attachment(message_id: int, attachment_id: int,
     try:
         data, mime, filename = fetch_attachment(store(), acc["email"], message_id,
                                                 attachment_id, attdir)
+    except OSError as e:
+        # Never the cache path or the name: they come from a mail.
+        return {"error": "could not download the attachment", "code": "download_failed",
+                "errno": e.errno}
     except Exception as e:
         return {"error": f"download failed: {e}"}
     r = _write_download(dest_path, filename or "attachment", data)

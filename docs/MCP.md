@@ -122,6 +122,7 @@ The mark is not a virus scan. If the system supports the mark and Maily cannot s
 
 - `dest_path_not_allowed`: the folder is outside Downloads, Desktop and Documents, or `dest_path` names a file whose extension differs from the original name (case aside): a mail cannot turn a `.txt` into a `.bat`. An exported message keeps `.eml`.
 - `save_failed`: the file could not be written. The answer carries `errno`, never the path.
+- `download_failed`, `export_failed`: the attachment could not be read from the local cache, or the message could not be exported, because of a system error (disk, permission). The answer carries `errno`, never the path or the file name.
 
 ### What the read tools return
 

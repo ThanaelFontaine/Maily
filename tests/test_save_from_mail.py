@@ -1,9 +1,17 @@
 """save_from_mail, write_new(before_write=...) and the extension rule of
 dest_path (MAIL-25). Kept apart from test_filenames.py (another lot edits it)."""
 import os
+import sys
+
 import pytest
 
 from core import filenames, quarantine
+
+pytestmark = pytest.mark.windows
+
+posix_only = pytest.mark.skipif(sys.platform == "win32",
+                                reason="a file that is open cannot be replaced on Windows")
+win_only = pytest.mark.skipif(sys.platform != "win32", reason="Windows only")
 
 
 @pytest.fixture
@@ -33,6 +41,27 @@ def test_save_from_mail_returns_path_and_status(home, marks):
     assert marks == [(path, 0)]
 
 
+@win_only
+def test_windows_marks_the_file_while_it_is_open_and_keeps_the_data(home):
+    """No spy: the real Mark-of-the-Web is written while the file is open."""
+    path, status = filenames.save_from_mail(None, "a.txt", b"hello")
+    assert status == quarantine.APPLIED
+    assert path.read_bytes() == b"hello"
+    with open(str(path) + ":Zone.Identifier", "rb") as f:
+        assert f.read() == b"[ZoneTransfer]\r\nZoneId=3\r\n"
+
+
+@win_only
+def test_windows_failed_mark_removes_the_open_empty_file(home, monkeypatch):
+    def fail(path, platform=None):
+        raise quarantine.QuarantineFailed("x")
+
+    monkeypatch.setattr(quarantine, "mark_from_mail", fail)
+    with pytest.raises(quarantine.QuarantineFailed):
+        filenames.save_from_mail(None, "a.txt", b"hello")
+    assert list((home / "Downloads").iterdir()) == []
+
+
 def test_mark_is_set_before_the_data_is_written(home, marks):
     path, _ = filenames.save_from_mail(None, "a.txt", b"hello")
     assert marks[0][1] == 0 and path.stat().st_size == 5
@@ -54,6 +83,7 @@ def test_failed_mark_leaves_no_file(home, monkeypatch):
     assert list((home / "Downloads").iterdir()) == []
 
 
+@posix_only
 def test_a_replaced_file_is_not_removed(home, monkeypatch):
     victim = {}
 
