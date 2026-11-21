@@ -605,8 +605,13 @@ const BASE_CSS = `
   ::-webkit-scrollbar-thumb:hover { background: rgba(20,50,63,.5); }
 `;
 
-function buildDoc(fragment) {
+// Defence in depth (MAIL-35): the sandboxed frame may load images from data:
+// only, plus http(s): once the user lets remote images through. Nothing else
+// (script, frame, font, connection) is ever allowed in a message.
+function buildDoc(fragment, allowRemote) {
+  const csp = "default-src 'none'; style-src 'unsafe-inline'; img-src data:" + (allowRemote ? " https: http:" : "");
   return `<!doctype html><html><head><meta charset="utf-8">` +
+    `<meta http-equiv="Content-Security-Policy" content="${csp}">` +
     `<meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<style>${BASE_CSS}</style></head><body>${fragment}</body></html>`;
 }
@@ -821,7 +826,7 @@ async function openMessage(id) {
     const { html, blocked } = await fetchHtml(id, allowRemote);
     if (seq !== state.openSeq) return;
     const body = (html && html.trim()) ? html : `<pre>${esc(m.body_text) || esc(tr("message.empty"))}</pre>`;
-    frame.srcdoc = buildDoc(body);
+    frame.srcdoc = buildDoc(body, allowRemote);
     if (!allowRemote && blocked > 0) {
       imgBar.innerHTML = `<span>${esc(tr("read.remoteBlocked", { count: blocked }))}</span>` +
         `<button class="ghost img-bar-btn">${esc(tr("read.showImages"))}</button>`;

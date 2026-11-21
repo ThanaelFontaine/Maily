@@ -21,6 +21,9 @@ _DOWNLOAD_URLS = {
 }
 # Shape of the data: URI substituted for a cid: reference: raster image, base64 only.
 _INLINE_URI = re.compile(r"data:image/(?:png|jpeg|gif|webp|bmp|avif);base64,[A-Za-z0-9+/]*={0,2}")
+# Shape accepted for a Content-ID (RFC 5322 msg-id characters): never a quote, a
+# bracket or a space.
+_CONTENT_ID = re.compile(r"[A-Za-z0-9!#$%&*+./=?^_`{|}~@-]+")
 _RELEASES_URL = "https://github.com/ThanaelFontaine/Maily/releases/latest"
 _CATEGORY_LABELS = {
     "promotions": "CATEGORY_PROMOTIONS",
@@ -282,20 +285,28 @@ def create_app(store, token, sync_fn=None, send_fn=None, act_fn=None,
         m = store.get_message(message_id)
         if not m:
             raise _fail(404, "message_not_found", "not found")
-        html, blocked = sanitize_html_report(m["body_html"] or "", allow_remote=allow_remote)
+        atts_by_cid: dict[str, dict] = {}
         if inline_fn:
             for att in store.list_attachments(message_id):
                 cid = att["content_id"]
-                if not cid:
-                    continue
-                pattern = re.compile("cid:" + re.escape(cid) + r"(?=[\"'\s>)]|$)")
-                if pattern.search(html):
-                    try:
-                        uri = inline_fn(message_id, att["id"])
-                    except Exception:
-                        uri = None
-                    if uri and _INLINE_URI.fullmatch(uri):
-                        html = pattern.sub(lambda m: uri, html)
+                # A Content-ID comes from the mail headers: only the shape of a
+                # msg-id is accepted (no quote, bracket or space), anything else
+                # is ignored for the substitution (MAIL-35).
+                if cid and _CONTENT_ID.fullmatch(cid):
+                    atts_by_cid.setdefault(cid, att)
+
+        def resolve_cid(cid: str) -> str | None:
+            att = atts_by_cid.get(cid)
+            if att is None:
+                return None
+            try:
+                uri = inline_fn(message_id, att["id"])
+            except Exception:
+                return None
+            return uri if uri and _INLINE_URI.fullmatch(uri) else None
+
+        html, blocked = sanitize_html_report(m["body_html"] or "", allow_remote=allow_remote,
+                                             resolve_cid=resolve_cid if atts_by_cid else None)
         # Number of remote resources removed (tracking pixels, web images): the
         # interface uses it to offer "Show images".
         return HTMLResponse(html, headers={"X-Maily-Blocked-Remote": str(blocked)})

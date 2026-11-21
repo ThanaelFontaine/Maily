@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Callable
 import nh3
 
 _RESOURCE_ATTRS = {"src", "background", "poster", "srcset"}
@@ -29,11 +30,18 @@ _ATTRS.setdefault("tr", set()).update({"bgcolor", "align", "valign"})
 _ATTRS.setdefault("font", set()).update({"color", "face", "size"})
 
 
-def sanitize_html_report(html: str, allow_remote: bool = False) -> tuple[str, int]:
+def sanitize_html_report(html: str, allow_remote: bool = False,
+                         resolve_cid: Callable[[str], str | None] | None = None) -> tuple[str, int]:
     """Cleans the HTML of a message and counts the blocked remote resources.
 
     Returns (clean_html, number_of_remote_resources_removed). The counter lets
     the interface offer "Show images" only when something was really blocked.
+
+    `resolve_cid` turns the Content-ID of an `<img src="cid:...">` into a
+    replacement `src` (a data: URI), or None to leave the reference as is. The
+    substitution happens here, on the attribute value, before nh3 serializes
+    it: whatever the value holds is escaped by nh3 and can never leave the
+    attribute (a substitution on the serialized HTML could, MAIL-35).
     """
     if not html:
         return "", 0
@@ -42,6 +50,10 @@ def sanitize_html_report(html: str, allow_remote: bool = False) -> tuple[str, in
     def attr_filter(tag: str, attr: str, value: str):
         nonlocal blocked
         low = value.strip().lower()
+        if resolve_cid and tag == "img" and attr == "src" and low.startswith("cid:"):
+            uri = resolve_cid(value.strip()[4:])
+            if uri:
+                return uri
         # Links: never data:/javascript:/vbscript: (phishing/XSS)
         if attr == "href" and low.startswith(("data:", "javascript:", "vbscript:")):
             return None
