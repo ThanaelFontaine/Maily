@@ -141,3 +141,9 @@ def test_without_a_token_the_page_shows_a_notice_and_makes_no_request():
     guard = JS[start:JS.index("await loadPrefs()", start)]
     assert "if (!TOKEN)" in guard and "app.openFromApp" in guard and "return;" in guard
     assert "fetch(" not in guard and "api(" not in guard
+
+
+def test_reading_frame_has_a_csp_limiting_images():
+    # MAIL-35: defence in depth, images from data: only until remote images are allowed.
+    assert "img-src data:" in JS and "default-src 'none'" in JS
+    assert "buildDoc(body, allowRemote)" in JS

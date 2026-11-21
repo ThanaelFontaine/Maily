@@ -74,3 +74,57 @@ def test_attachments_endpoints(database):
 
     r = c.get(f"/messages/{mid}/html", headers=_auth())
     assert "data:image/png;base64,UE5H" in r.text and "cid:logo1" not in r.text
+
+
+def _img_attrs(html):
+    from html.parser import HTMLParser
+
+    found = []
+
+    class P(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == "img":
+                found.append(dict(attrs))
+
+    P().feed(html)
+    return found
+
+
+def _html_with_cid(database, body_html, content_id, allow_remote=False):
+    store = Store(database)
+    a = store.upsert_account("me@example.com")
+    mid = store.upsert_message(a, "g1", body_html=body_html)
+    store.replace_attachments(mid, [{"filename": "x.png", "mime_type": "image/png",
+                                     "size": 3, "gmail_attachment_id": "att1", "content_id": content_id}])
+    app = create_app(store, TOKEN, inline_fn=lambda m, aid: "data:image/png;base64,AAAA")
+    return TestClient(app).get(f"/messages/{mid}/html?allow_remote={'true' if allow_remote else 'false'}",
+                               headers=_auth())
+
+
+def test_hostile_content_id_cannot_leave_the_src_attribute(database):
+    """MAIL-35: a Content-ID with quotes and brackets used to move the quotes of the sanitized HTML."""
+    body = '<img src="cid:a"><img alt="b srcset=https://evil.example/p.gif x">'
+    r = _html_with_cid(database, body, 'a"><img alt=')
+    assert r.status_code == 200
+    # The text stays inside the alt value: no tag carries a srcset or a remote src.
+    attrs = _img_attrs(r.text)
+    assert attrs and all("srcset" not in a and not a.get("src", "").startswith("http") for a in attrs)
+    assert "data:image/png" not in r.text
+    assert r.headers["X-Maily-Blocked-Remote"] == "0"
+
+
+def test_hostile_content_id_with_space_is_ignored(database):
+    r = _html_with_cid(database, '<img src="cid:a b"><img src="cid:a">', "a b")
+    assert "data:image/png" not in r.text
+
+
+def test_ordinary_content_ids_are_still_substituted(database):
+    for cid in ("logo1", "image001.png@01D6A5B2.4F3C2A10", "ii_kx3a9+z=1"):
+        r = _html_with_cid(database, f'<img src="cid:{cid}"><p>hi</p>', cid)
+        assert 'src="data:image/png;base64,AAAA"' in r.text and "cid:" not in r.text, cid
+        assert r.headers["X-Maily-Blocked-Remote"] == "0"
+
+
+def test_cid_in_the_text_is_not_rewritten(database):
+    r = _html_with_cid(database, '<p>write cid:logo1 in the src</p><img src="cid:logo1">', "logo1")
+    assert "write cid:logo1 in the src" in r.text and r.text.count("data:image/png") == 1
