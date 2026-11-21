@@ -147,3 +147,7 @@ def test_reading_frame_has_a_csp_limiting_images():
     # MAIL-35: defence in depth, images from data: only until remote images are allowed.
     assert "img-src data:" in JS and "default-src 'none'" in JS
     assert "buildDoc(body, allowRemote)" in JS
+    # Remote images stay out of the policy until the user allows them (a mutation that
+    # always added https:/http: survived the checks above).
+    assert '(allowRemote ? " https: http:" : "")' in JS
+    assert JS.count("https: http:") == 1
