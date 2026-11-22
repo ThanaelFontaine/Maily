@@ -31,9 +31,12 @@ def write_runtime_file(path, host: str, port: int, token: str | None = None) -> 
     # Create file with 0600 permissions atomically (never world-readable).
     # Fix permissions before writing any token bytes (handles pre-existing loose perms).
     # Close fd exactly once on all paths: exception handlers close it if setup fails.
+    # os.fchmod only exists on POSIX (on Windows it appears in Python 3.13): same
+    # guard as prefs.py and secret_file.py.
     fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
-        os.fchmod(fd, 0o600)
+        if os.name == "posix":
+            os.fchmod(fd, 0o600)
         f = os.fdopen(fd, "w", encoding="utf-8")
     except BaseException:
         os.close(fd)

@@ -10,6 +10,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - A crafted Content-ID could move the quotes of the sanitized HTML when an inline image was substituted, and make the reading pane load a remote image (tracking pixel, IP address) although remote images were blocked. The `cid:` substitution now happens on the `src` value inside the sanitizer, only for a Content-ID shaped like a message id, and the reading frame carries a Content Security Policy (`img-src data:`, plus `http:` and `https:` once remote images are allowed). Regression tests keep both (MAIL-35).
 
+### Fixed
+
+- On Windows, writing `runtime.json` at launch called `os.fchmod`, which does not exist there before Python 3.13: the call is now guarded for POSIX, like the other private-file writes. Nothing changes on macOS and Linux, where the file stays `0600` (MAIL-22).
+
 ### Changed
 
 - The CI refuses a workflow that names a runner of our own or an action not pinned by a full commit SHA (`scripts/check_workflows.py`, in the `check-text` job). The workflows already complied; the check keeps them so.
