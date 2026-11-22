@@ -43,7 +43,39 @@ def test_runtime_file_carries_the_token_with_0600(tmp_path):
     assert data["token"] == "abc"
     loaded = runtime.read_runtime_file(p)
     assert loaded["token"] == "abc" and loaded["port"] == 50123 and loaded["host"] == "127.0.0.1"
-    assert stat.S_IMODE(p.stat().st_mode) == 0o600
+    if os.name == "posix":
+        assert stat.S_IMODE(p.stat().st_mode) == 0o600
+
+
+class _FakeOs:
+    """`os` as seen by core.runtime on Windows: name is "nt" and fchmod is absent
+    (patching the real os.name would break pathlib)."""
+
+    name = "nt"
+
+    def __getattr__(self, attr):
+        if attr == "fchmod":
+            raise AttributeError("fchmod")
+        return getattr(os, attr)
+
+
+def test_runtime_file_without_fchmod_non_posix(tmp_path, monkeypatch):
+    # On Windows os.fchmod does not exist (Python < 3.13): the file must still be written.
+    p = tmp_path / "runtime.json"
+    monkeypatch.setattr(runtime, "os", _FakeOs())
+    data = runtime.write_runtime_file(p, "127.0.0.1", 50123, token="abc")
+    assert data["token"] == "abc"
+    assert runtime.read_runtime_file(p)["token"] == "abc"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
+def test_runtime_file_calls_fchmod_0600_on_posix(tmp_path, monkeypatch):
+    p = tmp_path / "runtime.json"
+    calls = []
+    real = os.fchmod
+    monkeypatch.setattr(os, "fchmod", lambda fd, mode: (calls.append(mode), real(fd, mode))[1])
+    runtime.write_runtime_file(p, "127.0.0.1", 50123, token="abc")
+    assert calls == [0o600]
 
 
 def test_runtime_file_fixes_loose_permissions(tmp_path):
@@ -61,6 +93,7 @@ def test_runtime_file_fixes_loose_permissions(tmp_path):
     assert loaded["token"] == "xyz"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="fchmod is only called on POSIX")
 def test_runtime_file_no_fd_leak_on_fchmod_error(tmp_path, monkeypatch):
     # Verify fd is closed if os.fchmod raises (fd leak protection).
     p = tmp_path / "runtime.json"
