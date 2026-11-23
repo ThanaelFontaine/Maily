@@ -10,6 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - A crafted Content-ID could move the quotes of the sanitized HTML when an inline image was substituted, and make the reading pane load a remote image (tracking pixel, IP address) although remote images were blocked. The `cid:` substitution now happens on the `src` value inside the sanitizer, only for a Content-ID shaped like a message id, and the reading frame carries a Content Security Policy (`img-src data:`, plus `http:` and `https:` once remote images are allowed). Regression tests keep both (MAIL-35).
 
+- The `publish` job of the release workflow no longer leaves its write token in `.git/config`: the checkout runs with `persist-credentials: false` (as every other checkout of the repository), and the tag is pushed with the token given to that one command as an inline header, masked in the log and never written to the git configuration. A test refuses any checkout of the workflows that keeps its credentials (MAIL-36).
+
 ### Fixed
 
 - On Windows, writing `runtime.json` at launch called `os.fchmod`, which does not exist there before Python 3.13: the call is now guarded for POSIX, like the other private-file writes. Nothing changes on macOS and Linux, where the file stays `0600` (MAIL-22).

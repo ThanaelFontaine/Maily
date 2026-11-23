@@ -137,7 +137,7 @@ def test_publish_creates_a_draft_with_the_files_then_publishes_it():
     assert '-ge 13' in publish and '-ge 9' not in publish
     create = publish.rindex("gh release create")
     assert "--draft --verify-tag" in publish[create:create + 300]
-    assert publish.index("git push origin") < create < publish.index("gh release edit \"$TAG\" --draft=false")
+    assert publish.index('push origin "$TAG"') < create < publish.index("gh release edit \"$TAG\" --draft=false")
 
 
 def test_no_clobber_anywhere():
@@ -287,3 +287,42 @@ def test_dry_run_has_its_own_queue_and_is_refused_on_main():
 def test_dry_run_trap_looks_the_draft_up_by_name_before_creating_it():
     block = _dry_run_block()
     assert block.index("trap cleanup EXIT") < block.index("gh release create")
+
+
+def test_no_checkout_keeps_its_credentials():
+    # A checkout that keeps the token leaves it in .git/config, readable by
+    # every later step (the publish job holds a write token): MAIL-36.
+    workflows = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
+    assert workflows
+    seen = 0
+    for path in workflows:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if not re.match(r"\s*-?\s*uses:\s*actions/checkout@", line):
+                continue
+            seen += 1
+            indent = len(line) - len(line.lstrip())
+            step_indent = indent if not line.lstrip().startswith("-") else indent + 2
+            block = []
+            for nxt in lines[i + 1:]:
+                if nxt.strip() and (len(nxt) - len(nxt.lstrip())) < step_indent:
+                    break
+                if re.match(r"\s*- ", nxt) and (len(nxt) - len(nxt.lstrip())) <= step_indent - 2:
+                    break
+                block.append(nxt)
+            assert any(re.match(r"\s*persist-credentials:\s*false\s*(#.*)?$", b) for b in block), \
+                f"{path.name} line {i + 1}: actions/checkout without persist-credentials: false"
+    assert seen >= 4
+
+
+def test_tag_push_carries_its_token_on_that_one_command():
+    publish = _job("publish")
+    assert "persist-credentials: false" in publish
+    assert "fetch-depth: 0" in publish
+    assert '::add-mask::$AUTH' in publish
+    pushes = re.findall(r"^.*git .*push .*$", publish, re.M)
+    assert len(pushes) == 1
+    assert 'git -c http.extraheader="AUTHORIZATION: basic $AUTH" push origin "$TAG"' in pushes[0]
+    # The token is never written to the git configuration.
+    assert not re.search(r"^\s*git config\b(?! user\.)", publish, re.M)
+    assert not re.search(r"^\s*git config\b.*(extraheader|token)", publish, re.M | re.I)
