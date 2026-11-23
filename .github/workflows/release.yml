@@ -146,6 +146,9 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
+          # The write token must not stay in .git/config, readable by every
+          # later step: the tag push below carries it on that one command.
+          persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -262,7 +265,14 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "$TAG" -m "Maily $TAG" "$HEAD_SHA"
-            git push origin "$TAG"
+            # The checkout keeps no credentials (persist-credentials: false):
+            # the token goes to this one command, as an inline header that is
+            # never written to the git configuration, and its encoded form is
+            # masked in the log.
+            AUTH="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
+            echo "::add-mask::$AUTH"
+            git -c http.extraheader="AUTHORIZATION: basic $AUTH" push origin "$TAG"
+            unset AUTH
           fi
 
           gh release create "$TAG" "${FILES[@]/#/release-assets/}" \
