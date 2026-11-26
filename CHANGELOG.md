@@ -6,12 +6,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-### Security
-
-- A crafted Content-ID could move the quotes of the sanitized HTML when an inline image was substituted, and make the reading pane load a remote image (tracking pixel, IP address) although remote images were blocked. The `cid:` substitution now happens on the `src` value inside the sanitizer, only for a Content-ID shaped like a message id, and the reading frame carries a Content Security Policy (`img-src data:`, plus `http:` and `https:` once remote images are allowed). Regression tests keep both (MAIL-35).
-
-- The `publish` job of the release workflow no longer leaves its write token in `.git/config`: the checkout runs with `persist-credentials: false` (as every other checkout of the repository), and the tag is pushed with the token given to that one command as an inline header, masked in the log and never written to the git configuration. A test refuses any checkout of the workflows that keeps its credentials (MAIL-36).
-
 ### Fixed
 
 - On Windows, writing `runtime.json` at launch called `os.fchmod`, which does not exist there before Python 3.13: the call is now guarded for POSIX, like the other private-file writes. Nothing changes on macOS and Linux, where the file stays `0600` (MAIL-22).
@@ -19,6 +13,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - The CI refuses a workflow that names a runner of our own or an action not pinned by a full commit SHA (`scripts/check_workflows.py`, in the `check-text` job). The workflows already complied; the check keeps them so.
+
+### Security
+
+- A crafted Content-ID could move the quotes of the sanitized HTML when an inline image was substituted, and make the reading pane load a remote image (tracking pixel, IP address) although remote images were blocked. The `cid:` substitution now happens on the `src` value inside the sanitizer, only for a Content-ID shaped like a message id, and the reading frame carries a Content Security Policy (`img-src data:`, plus `http:` and `https:` once remote images are allowed). Regression tests keep both (MAIL-35).
+
+- The `publish` job of the release workflow no longer leaves its write token in `.git/config`: the checkout runs with `persist-credentials: false` (as every other checkout of the repository), and the tag is pushed with the token given to that one command as an inline header, masked in the log and never written to the git configuration. A test refuses any checkout of the workflows that keeps its credentials (MAIL-36).
 
 ## [0.10.1] - 2026-11-09
 
@@ -74,7 +74,7 @@ A security release: update to it. The apps of 0.9.0 embed an outdated certificat
 
 ### Security
 
-- **Safer CI.** Every action of the workflows is pinned to a commit (the version stays in a comment, and Dependabot keeps both up to date), checkouts keep no credentials unless they push, and the `Release` workflow can write only in the job that publishes. `.github/dependabot.yml` opens at most one monthly pull request per group for the Python dependencies and the actions, nothing merges by itself.
+- **Safer CI.** Every action of the workflows is pinned to a commit (the version stays in a comment, and Dependabot keeps both up to date), checkouts keep no credentials unless they push, and the `Release` workflow can write only in the job that publishes. `.github/dependabot.yml` opens at most one monthly pull request per group for the version updates of the Python dependencies and the actions (security updates are not held by that monthly schedule), nothing merges by itself.
 - **Text check.** A `check-text` job (`python3 scripts/check_text.py`) fails the CI on an em or en dash or on a personal path or address in any tracked file.
 - **Dependencies updated for security advisories.** `certifi` 2026.10.23 (the CA bundle embedded in the apps no longer trusts the compromised emSign root, GHSA-6q48-6c7w-9gw2), `urllib3` 2.8.0 (three advisories, one in the TLS configuration through an HTTPS proxy), `PyJWT` 2.15.1, `mcp` 1.30.0 (still 1.x), `oauthlib` 4.0.0, `Pillow` 13.0.0 (build scripts only) and `setuptools` 84.2.1 (build only). The advisories on `PyJWT`, `mcp`, `oauthlib` and `Pillow` concern code Maily does not run (the app and its MCP server use no JWT decoding, no HTTP transport of `mcp`, no OAuth server and no image decoding of untrusted files); they are updated anyway so that no advisory stays open. The 0.9.0 apps carry the old certifi bundle: update to 0.9.1.
 
