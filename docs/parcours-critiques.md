@@ -2,10 +2,10 @@
 
 The journeys that must keep working for a person using Maily (local app, local API, MCP server), with how to run each one by hand, what to expect, and what runs them automatically. Use it as the non-regression checklist before a release.
 
-- Last verified: 2026-11-09
-- Commit of `origin/main` verified: `d1ce0469af86b815ac9914ec97bdc658b9828f82` (version 0.10.0, after lot 6 of MAIL-34, before 0.10.1)
+- Last verified: 2026-11-27
+- Commit of `origin/main` verified: `f4f3874811c2e0e7e3fe0a6b3572e3f5ca168b77` (version 0.10.1 plus the 7 commits merged since, before 0.10.2)
 - Environment: macOS, Python 3.12 from `uv sync --locked`, everything local, fictitious data only (demo mode), no real mailbox, no network to a provider.
-- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 628 passed, 2 skipped), re-run for this page.
+- "Automated" results marked "suite" come from the full `uv run pytest` run of the same day on that commit (green: 737 passed, 2 skipped), re-run for this page.
 
 ## P1. Start the app and the local API on demo data
 
@@ -19,7 +19,7 @@ The journeys that must keep working for a person using Maily (local app, local A
   The demo prints its launch address with the token (`/#k=<token>`, or pass `--token`); send it as `Authorization: Bearer <token>`. `GET /accounts` then returns the three fictitious accounts.
 - **Expected:** 200, then 401 without token, then 3 accounts (`example.com`, `example.org`, `example.net`).
 - **Automated:** `tests/test_api.py`, `tests/test_api_static.py` (`test_index_never_serves_the_token`, `test_static_served`), `tests/test_demo.py` (the demo refuses the real data folder).
-- **Result 2026-11-09:** green (manual: 200, 401, 3 accounts; suite green).
+- **Result 2026-11-27:** green (manual: 200, 401, 3 accounts; suite green).
 
 ## P2. List and read messages
 
@@ -27,7 +27,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** with the token of P1: `GET /messages?limit=100`, `GET /messages?account_id=2`, `GET /messages/1`, `GET /messages/1/html`, `GET /messages/1/attachments`, `GET /messages/1/attachments/1/download`.
 - **Expected:** 9 inbox messages in the unified view, 2 for account 2; the message has its subject and body; the HTML answer carries `X-Maily-Blocked-Remote: 0` and no script; the attachment list holds `meeting-minutes.pdf`; the download returns the demo file.
 - **Automated:** `tests/test_store_listing.py`, `tests/test_api_v2.py`, `tests/test_sanitize.py`, `tests/test_attachments.py`.
-- **Result 2026-11-09:** green (manual: 9, 2, subject read, HTML 200 with `X-Maily-Blocked-Remote: 0`, attachment listed and downloaded; suite green).
+- **Result 2026-11-27:** green (manual: 9 inbox messages, 2 for account 2, HTML 200 with `X-Maily-Blocked-Remote: 0` and no script, attachment `meeting-minutes.pdf` listed; the download was not replayed by hand, `tests/test_attachments.py` covers it; suite green).
 
 ## P3. Actions on a message: archive, trash, restore
 
@@ -35,7 +35,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** with the token: `POST /messages/1/modify` with `{"remove_labels":["INBOX"]}` (archive), then `GET /messages?archived=true`; `POST /messages/1/modify` with `{"add_labels":["INBOX"]}`; `POST /messages/2/trash`, `GET /messages?trashed=true`, `POST /messages/2/untrash`.
 - **Expected:** each call answers `{"ok":true}`; the inbox drops from 9 to 8 after the archive and returns to 9; the trash holds message 2, then is empty after the restore.
 - **Automated:** `tests/test_actions.py`, `tests/test_accounts_service.py` (`test_trash_message_imap`), `tests/test_sync_labels.py`.
-- **Result 2026-11-09:** green (manual: inbox 9, archive 8, restore 9, trash then empty after restore; suite green).
+- **Result 2026-11-27:** green (manual: archive 9 to 8 then restore to 9 on message 1, trash then untrash of message 2 with the trash back to empty; suite green).
 
 ## P4. Search
 
@@ -43,15 +43,15 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** `GET /search?q=meeting`, then `GET /search?q=zzzqqq` (with the token).
 - **Expected:** two results ("Thursday's progress meeting", "General meeting on October 12"), then an empty list.
 - **Automated:** `tests/test_store.py`, `tests/test_api.py`.
-- **Result 2026-11-09:** green (manual: 2 results then 0; suite green).
+- **Result 2026-11-27:** green (manual: 2 results then 0; suite green).
 
 ## P5. The web interface in a real browser
 
 - **Proves:** the page served by FastAPI loads, lists mail, opens a message, runs archive, trash and restore from the buttons, searches and opens Settings, without a script error.
 - **Run:** start the demo (P1), open `http://127.0.0.1:8765/` in a headless Chromium (Playwright), then: select the first account, open the first message, click *Archive*, open *Archived*, trash a message, open *Trash*, click *Restore*, type `meeting` in the search box, open *Settings* then *About*. Watch the page console.
-- **Expected:** the message list appears; opening a message shows its subject in the reading pane and a sandboxed frame; the lists follow each action (the archived message leaves the inbox and shows in *Archived*, the trashed one shows in *Trash* and leaves it after *Restore*); the search shows the matching row; *About* shows `Version 0.10.0` and the demo data folder; no console or page error.
+- **Expected:** the message list appears; opening a message shows its subject in the reading pane and a sandboxed frame; the lists follow each action (the archived message leaves the inbox and shows in *Archived*, the trashed one shows in *Trash* and leaves it after *Restore*); the search shows the matching row; *About* shows `Version 0.10.1` and the demo data folder; no console or page error.
 - **Automated:** none for the browser flow (the API behind it is covered by P1 to P4; `tests/test_frontend_defaults.py` and `tests/test_i18n.py` cover the static side). The packaged app has `--self-check --window` in `build.yml`.
-- **Result 2026-11-09:** green (headless Chromium, one-off Playwright script not kept in the repository; the first account shows its two messages, opening one fills the reading pane with its subject in a sandboxed frame, *Archive* leaves the inbox and shows the message in *Archived*, *Trash* then *Restore* empties *Trash*, `meeting` finds 2 rows, *About* shows `Version 0.10.0` and the demo data folder, 0 console or page errors).
+- **Result 2026-11-27:** partly by hand, green (headless Chromium, one-off Playwright script not kept: the list shows the mail, opening a message fills the reading pane in a sandboxed frame, `meeting` finds the matching rows, in light 1440 px and dark 390 px). The archive, trash and restore buttons and *Settings > About* were not clicked this time: the API behind them is covered by P3 and the suite is green. Console: only the expected CSP refusals of an unresolved `cid:` reference (P11).
 
 ## P6. Connect an account, and send
 
@@ -59,7 +59,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** in the app, *+ Add account* (Google OAuth in the browser, or IMAP with host, port and password). By hand this needs a real Google OAuth client or a real IMAP mailbox.
 - **Expected:** the account appears in the rail, its mail is imported, *Disconnect* removes its secrets and local copy, a sent message is never sent twice.
 - **Automated:** `tests/test_accounts_service.py` (`test_add_google_account_*`, `test_add_imap_account_ok`, `test_add_imap_account_bad_credentials`, `test_logout_account_deletes_secret_and_cache`), `tests/test_sync.py`, `tests/test_imap_sync.py`, `tests/test_outbox.py`, `tests/test_sender.py`, `tests/test_auth.py`, all on test doubles.
-- **Result 2026-11-09:** green for the doubles (suite, including the malformed-mail sync test and the purge on disconnection). Real connection and real send: not verifiable locally (needs a real provider account, forbidden for this check). In demo mode `POST /send` correctly answers 502 `sending is disabled in demo mode`, and `POST /accounts/1/sync` answers `{"changed":0}`.
+- **Result 2026-11-27:** green for the doubles (suite, including the malformed-mail sync test and the purge on disconnection). Real connection and real send: not verifiable locally (needs a real provider account, forbidden for this check). In demo mode `POST /send` correctly answers 502 `sending is disabled in demo mode`, and `POST /accounts/1/sync` answers `{"changed":0}`.
 
 ## P7. The MCP server
 
@@ -67,7 +67,7 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** `uv run pytest tests/test_mcp_server.py`. To use it for real, add it to an assistant as described in `docs/MCP.md`.
 - **Expected:** `maily_list_accounts`, `maily_list_messages`, `maily_get_message`, `maily_search`, `maily_sync`, `maily_export_eml`, `maily_download_attachment`, `maily_trash`, `maily_send` are all registered.
 - **Automated:** `tests/test_mcp_server.py` (`test_all_tools_registered`, `test_get_message_lists_real_attachments`), `tests/test_mcp_guard.py` (the confirmation of `maily_send` and `maily_trash`).
-- **Result 2026-11-09:** green (suite; the nine tools are registered, and `maily_send` and `maily_trash` are confirmed in code, `tests/test_mcp_guard.py`). A session with a real assistant over stdio: not verifiable locally here (needs an MCP client and real accounts).
+- **Result 2026-11-27:** green (suite; the nine tools are registered, and `maily_send` and `maily_trash` are confirmed in code, `tests/test_mcp_guard.py`). A session with a real assistant over stdio: not verifiable locally here (needs an MCP client and real accounts).
 
 ## P8. Text check
 
@@ -75,15 +75,15 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** `python3 scripts/check_text.py`
 - **Expected:** `check-text ok (N files)`, exit 0.
 - **Automated:** `.github/workflows/tests.yml` (job `check-text`), `tests/test_check_text.py` (`test_the_repository_itself_passes`).
-- **Result 2026-11-09:** green (`check-text ok (137 files)`).
+- **Result 2026-11-27:** green (`check-text ok (139 files)`), and `python3 scripts/check_workflows.py` answers `check_workflows ok (3 workflows: GitHub-hosted runners only, actions pinned)`.
 
 ## P9. Launcher self-check
 
 - **Proves:** the launcher starts and the embedded pieces work (frontend, migrations, encryption, TLS bundle, local API libraries, window library).
 - **Run:** `uv run python run_maily.py --version` then `uv run python run_maily.py --self-check`
-- **Expected:** `Maily 0.10.0`, then eight `ok` lines and `Self-check passed.`, exit 0.
+- **Expected:** `Maily 0.10.1`, then eight `ok` lines and `Self-check passed.`, exit 0.
 - **Automated:** `tests/test_selfcheck.py`, and `--self-check --window` on every built binary in `build.yml`.
-- **Result 2026-11-09:** green (version 0.10.0, 8 checks ok, exit 0).
+- **Result 2026-11-27:** green (version 0.10.1, 8 checks ok, exit 0).
 
 ## P10. Build the downloadable apps
 
@@ -91,7 +91,15 @@ The journeys that must keep working for a person using Maily (local app, local A
 - **Run:** `uv sync --group build` then the steps of `docs/BUILD.md`; or push a branch that touches the packaging (the paths listed in `.github/workflows/build.yml`), or run the Build workflow by hand (`workflow_dispatch`).
 - **Expected:** `Maily.app` and the `.dmg`, the Windows zip, the Linux archive, with their `.sha256` files.
 - **Automated:** `.github/workflows/build.yml` (on a pushed branch that touches the packaging, by hand, and from `release.yml`), `tests/test_release_workflow.py`.
-- **Result 2026-11-09:** green through CI, not rebuilt locally (the `build` dependency group is not installed here and each platform builds on its own runner). The Build workflow of the 2026-11-09 run on the branch of lot 6 (`f4ac1f7`, which changes `uv.lock`) passed on macOS arm64, Windows x64 and Linux x64, with the Linux archive self-checked on fedora:latest, debian:trixie and ubuntu:24.04; `uv.lock`, `pyproject.toml`, `packaging` and `.github` are identical between that commit and `main` (`d1ce046`), and the whole tree of the last lot 6 commit (`add90a3`) is identical to `main`. The Tests workflow of `d1ce046` on `main` is green.
+- **Result 2026-11-27:** not rebuilt locally (the `build` dependency group is not installed here). The Build workflow passed on the Dependabot branch of `astral-sh/setup-uv` 10.3 (2026-11-10, run 42728642872, with the checkout 7.0.1 and setup-uv 10.3.x of `main`) and on the branch of the workflows guard; `build.yml` of `main` has not been run as such since the last merge (the later PRs do not touch the packaging). The Tests workflow of `f4f3874` on `main` is green. The publish path of `release.yml` after MAIL-36 (no persisted write token) is covered by `tests/test_release_workflow.py` only: it first runs for real with the release of 0.10.2.
+
+## P11. A mail with inline images (`cid:`)
+
+- **Proves:** the reading pane shows the inline images of a mail, and a hostile Content-ID can neither inject markup nor load anything (MAIL-35).
+- **Run:** on a throwaway demo data folder, add a message whose HTML holds `<img src="cid:logo1@example.com">`, a `cid:` with a space, and a `cid:` in plain text, with attachments carrying those Content-IDs (one of them hostile, with a quote and a tag in it) and a small PNG cached as their file. Serve the API with `inline_fn=make_attachment_fns(...)[1]` (the demo does not wire `inline_fn`), then `GET /messages/<id>/html` and open the message in a headless Chromium.
+- **Expected:** the legitimate Content-IDs (`logo1@example.com`, `image001.png@01D6A5B2.4F3C2A10`) become `data:image/png;base64,...` and the images load (natural width 1); the hostile one and the one with a space stay `cid:` and nothing loads; the plain text `cid:logo1@example.com` is untouched; no `onerror` in the frame.
+- **Automated:** `tests/test_attachments.py` (`test_attachments_endpoints`, `test_hostile_content_id_with_space_is_ignored`, `test_cid_in_the_text_is_not_rewritten` and the msg-id shapes), `tests/test_sanitize.py`, `tests/test_frontend_defaults.py` (the frame CSP).
+- **Result 2026-11-27:** green (manual as described, in light 1440 px and dark 390 px; mutation: dropping the `_CONTENT_ID` shape check makes `test_hostile_content_id_with_space_is_ignored` fail).
 
 ## How to add a journey
 
