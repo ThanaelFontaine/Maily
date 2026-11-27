@@ -36,7 +36,7 @@ dependencies = [
     # pinned explicitly to make the resolution reliable).
     # >=1.10: first release with elicitation (Context.elicit), used by the
     # confirmation of maily_send and maily_trash (core/mcp_guard.py).
-    "mcp>=1.10,<2",
+    "mcp>=1.10,<3",
     "jsonschema>=4.20",
 ]
 
