@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-11-27
+
+A corrective release that follows 0.10.1: two security fixes (a crafted Content-ID in the reading pane, the release workflow's write token) and a Windows launch fix. Nothing else changes in how Maily works.
+
 ### Fixed
 
 - On Windows, writing `runtime.json` at launch called `os.fchmod`, which does not exist there before Python 3.13: the call is now guarded for POSIX, like the other private-file writes. Nothing changes on macOS and Linux, where the file stays `0600` (MAIL-22).
@@ -13,6 +17,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - The CI refuses a workflow that names a runner of our own or an action not pinned by a full commit SHA (`scripts/check_workflows.py`, in the `check-text` job). The workflows already complied; the check keeps them so.
+- Two GitHub Actions updated: `actions/checkout` 7.0.1 and `astral-sh/setup-uv` 10.3.3 (Dependabot). They only run in the CI.
 
 ### Security
 
@@ -285,7 +290,8 @@ First open-source release: a new default look, a single settings panel, a harden
 - Local HTTP API with token and host checks, stable `v1_*` SQL views, `runtime.json`, and a ready-made Python client.
 - PyInstaller packaging for macOS, Linux and Windows.
 
-[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/ThanaelFontaine/Maily/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.2...v0.10.0
 [0.9.2]: https://github.com/ThanaelFontaine/Maily/compare/v0.9.1...v0.9.2
