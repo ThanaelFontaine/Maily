@@ -218,15 +218,15 @@ wheels = [
 
 [[package]]
 name = "dmgbuild"
-version = "1.6.7"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ds-store" },
     { name = "mac-alias" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/a5/f4dbd63c96902de8f2427a82518aaeedac0006587409294e55a14e45f367/dmgbuild-1.6.7.tar.gz", hash = "sha256:676b17acd448899f6d4a83b2184e0657480444ecb6ac9c4922889efad9e5dbfb", size = 36938, upload-time = "2026-01-15T23:13:43.779Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/b6/0c00a7e313e984d6da57d365801320763930bdb131791fa7ef5083acf521/dmgbuild-2.0.0.tar.gz", hash = "sha256:8775460fd888aebf56ed1eb9b947ac67e0a100eae2c23718aceb6bfd54ef99d3", size = 67652, upload-time = "2026-11-16T03:48:25.223Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6c/4a/8812638bba991a55a4b670806ab9cf60207077401893bb308eb1b04f288c/dmgbuild-1.6.7-py3-none-any.whl", hash = "sha256:37ee5771c377beb3203d9164aae8046ffed8531c06edf9227f5788b3c599b1bf", size = 34853, upload-time = "2026-01-15T23:13:41.854Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/e6/c05f595fd48046d85e8dd47f6ef9d0f2ce82ad2c263f8e04c2fdf8fdcae3/dmgbuild-2.0.0-py3-none-any.whl", hash = "sha256:3d4f33f3a0def7ae2a43701a40aa6ae341f90445433694abd4bc67aab779d2f8", size = 35678, upload-time = "2026-11-16T03:48:23.863Z" },
 ]
 
 [[package]]
